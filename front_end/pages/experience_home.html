@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Experience Home</title>
+<link rel="stylesheet" href="../css/styles.css">
+<link rel="stylesheet" href="../css/experiencestyles.css">
+</head>
+<body class="experience-page experience-home-page">
+<div id="navbar"></div>
+
+<main class="experience-shell">
+    <section class="experience-hero">
+        <div>
+            <p class="experience-eyebrow">Experience Dashboard</p>
+            <h1 class="page-title">Home</h1>
+            <p class="page-subtitle">Overview of your sessions, occupancy, and booking momentum.</p>
+        </div>
+    </section>
+
+    <section class="stats-grid experience-stats-grid" id="stats"></section>
+
+    <section class="experience-grid">
+        <article class="content-card experience-card">
+            <div class="card-header experience-card-header">
+                <div>
+                    <p class="section-kicker">Priority</p>
+                    <h2>Action Required</h2>
+                </div>
+                <span class="section-chip">Ops alerts</span>
+            </div>
+            <div id="alerts" class="experience-alert-list"></div>
+        </article>
+
+        <article class="content-card experience-card">
+            <div class="card-header experience-card-header">
+                <div>
+                    <p class="section-kicker">Today</p>
+                    <h2>Today's Schedule</h2>
+                </div>
+                <span class="section-chip">Live slots</span>
+            </div>
+            <div id="schedule" class="experience-schedule-grid"></div>
+        </article>
+    </section>
+
+    <section class="experience-bottom-grid">
+        <article class="content-card experience-card">
+            <div class="card-header experience-card-header">
+                <div>
+                    <p class="section-kicker">Guests</p>
+                    <h2>Upcoming Bookings</h2>
+                </div>
+                <button type="button" class="primary-btn home-view-all-btn">View All</button>
+            </div>
+            <div id="bookings" class="experience-booking-list"></div>
+        </article>
+
+        <article class="content-card experience-card reviews-section home-reviews-card">
+            <div class="card-header experience-card-header">
+                <div>
+                    <p class="section-kicker">Social proof</p>
+                    <h2 class="section-title">What People Say</h2>
+                </div>
+            </div>
+            <div class="reviews-container" id="reviewsContainer"></div>
+        </article>
+    </section>
+</main>
+
+<script type="module" src="../js/app.js"></script>
+
+</body>
+</html>

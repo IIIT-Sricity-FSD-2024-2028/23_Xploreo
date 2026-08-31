@@ -15,7 +15,7 @@ export class PartnersController {
   constructor(private readonly partnersService: PartnersService) {}
 
   @Get('bookings')
-  @Roles(Role.HOTEL)
+  @Roles(Role.PARTNER)
   @ApiOperation({ summary: "Partner views bookings for that partner's hotels" })
   @ApiReadEndpoint()
   findBookings(@Req() req: any) {

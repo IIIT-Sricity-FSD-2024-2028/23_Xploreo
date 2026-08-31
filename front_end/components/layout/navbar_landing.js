@@ -1,10 +1,10 @@
 import { landingLinks } from "./navlinks_landing.js";
 
 const isPages = window.location.pathname.includes("/pages/");
-const rootPath = isPages ? "../.." : ".";
+const rootPath = isPages ? ".." : ".";
 
 const logoPath = isPages
-    ? "../../components/ui/landing/navbar-logo.png"
+    ? "../components/ui/landing/navbar-logo.png"
     : "./components/ui/landing/navbar-logo.png";
 
 export function renderLandingNavbar() {
@@ -43,13 +43,13 @@ function attachNavbarEvents() {
 
     if (loginBtn) {
         loginBtn.addEventListener("click", () => {
-            window.location.href = `${rootPath}/pages/mainpages/login.html`;
+            window.location.href = `${rootPath}/pages/login.html`;
         });
     }
 
     if (signupBtn) {
         signupBtn.addEventListener("click", () => {
-            window.location.href = `${rootPath}/pages/mainpages/signup.html`;
+            window.location.href = `${rootPath}/pages/signup.html`;
         });
     }
 }

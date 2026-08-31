@@ -333,7 +333,8 @@ function renderTravelerBookingDetailsPage(containerId) {
 
             const draft = createTravelerDraft({
                 ...state.packageData,
-                departureDate: state.selectedDate
+                departureDate: state.selectedDate,
+                itinerary: state.itinerary
             }, state.travelers);
             const confirmation = createTravelerConfirmation(draft);
 
@@ -426,7 +427,8 @@ function renderTravelerBookingDetailsPage(containerId) {
     function persistDraft(showMessage) {
         const draft = createTravelerDraft({
             ...state.packageData,
-            departureDate: state.selectedDate
+            departureDate: state.selectedDate,
+            itinerary: state.itinerary
         }, state.travelers);
         saveTravelerBookingDraft(draft);
 
@@ -558,13 +560,47 @@ function cloneItinerary(itinerary) {
 function buildPackageViewModel(packageData) {
     const keyword = `${packageData.destination} ${packageData.title}`.toLowerCase();
 
+    let finalItinerary = [];
+    if (packageData.itinerary && packageData.itinerary.day1) {
+        const struct = packageData.itinerary;
+        const day1Items = [];
+        if (struct.day1.flight) {
+            const f = struct.day1.flight;
+            const depTime = new Date(f.departureAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const arrTime = new Date(f.arrivalAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            day1Items.push(itineraryItem(flightIcon(), `Flight: ${f.airline} ${f.flightNumber}`, `${f.fromAirport} ➔ ${f.toAirport} | Depart: ${depTime} | Arrive: ${arrTime}`, "Economy Class", "flight"));
+        }
+        if (struct.day1.transport) {
+            const t = struct.day1.transport;
+            day1Items.push(itineraryItem(transferIcon(), "Arrival Transfer", t.description || "Coordinated transfer from airport", "Private AC Sedan", "transfer"));
+        }
+        if (struct.day1.hotel) {
+            const h = struct.day1.hotel;
+            day1Items.push(itineraryItem(hotelSmallIcon(), "Hotel Check-in", h.description || `Check-in at ${h.name || 'your selected accommodation'}`, "", "hotel"));
+        }
+        finalItinerary.push(itineraryDay("Arrival & Check-in", day1Items));
+
+        if (Array.isArray(struct.days)) {
+            struct.days.forEach(d => {
+                const dayItems = d.experiences.map(exp => itineraryItem(compassIcon(), exp.title, exp.description || `Location: ${exp.location}`, "", "activity"));
+                finalItinerary.push(itineraryDay(`Day ${d.dayNumber}`, dayItems));
+            });
+        }
+    } else if (Array.isArray(packageData.itinerary) && packageData.itinerary.length > 0) {
+        finalItinerary = packageData.itinerary.map(day => {
+             return itineraryDay(day.title || day.day || "Day", [itineraryItem(compassIcon(), day.title || "Experience", day.detail || "", "", "activity")]);
+        });
+    } else {
+        finalItinerary = createItinerary(packageData, keyword);
+    }
+
     return {
         locationLabel: inferLocationLabel(packageData.destination),
         rating: inferRating(packageData),
         reviews: inferReviews(packageData),
         gallery: createGallery(keyword, packageData.image),
         highlights: createHighlights(packageData),
-        itinerary: createItinerary(packageData, keyword),
+        itinerary: finalItinerary,
         inclusions: createInclusions(packageData),
         exclusions: createExclusions()
     };
@@ -572,9 +608,9 @@ function buildPackageViewModel(packageData) {
 
 function inferLocationLabel(destination) {
     const map = {
-        bali: "Bali, Indonesia",
+        goa: "Goa, Indonesia",
         maldives: "Maldives",
-        dubai: "Dubai, UAE",
+        mumbai: "Mumbai, UAE",
         thailand: "Phuket & Krabi, Thailand",
         switzerland: "Swiss Alps, Switzerland",
         goa: "Goa, India",
@@ -593,7 +629,7 @@ function inferReviews(packageData) {
 }
 
 function createGallery(keyword, fallbackImage) {
-    if (keyword.includes("bali")) {
+    if (keyword.includes("goa")) {
         return [
             fallbackImage,
             "https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&q=80&w=1400",
@@ -611,7 +647,7 @@ function createGallery(keyword, fallbackImage) {
         ];
     }
 
-    if (keyword.includes("dubai")) {
+    if (keyword.includes("mumbai")) {
         return [
             fallbackImage,
             "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=1400",
@@ -662,9 +698,9 @@ function createHighlights(packageData) {
 }
 
 function createItinerary(packageData, keyword) {
-    if (keyword.includes("bali")) {
+    if (keyword.includes("goa")) {
         return [
-            itineraryDay("Arrival & Check-in", [itineraryItem(transferIcon(), "Arrival Transfer", "Coordinated transfer and hotel check-in", "Private AC Sedan", "transfer"), itineraryItem(hotelSmallIcon(), "Hotel Check-in", "Check-in at your selected hotel and relax", "Grand Mirage Resort & Thalasso Bali (4★)", "hotel")]),
+            itineraryDay("Arrival & Check-in", [itineraryItem(transferIcon(), "Arrival Transfer", "Coordinated transfer and hotel check-in", "Private AC Sedan", "transfer"), itineraryItem(hotelSmallIcon(), "Hotel Check-in", "Check-in at your selected hotel and relax", "Grand Mirage Resort & Thalasso Goa (4★)", "hotel")]),
             itineraryDay("Explore Destination", [itineraryItem(compassIcon(), "Guided Experience", "Visit Tegallalang Rice Terraces, Tirta Empul Temple, and Ubud Monkey Forest", "", "activity")]),
             itineraryDay("Water Sports & Beach Day", [itineraryItem(wavesIcon(), "Water Sports Activities", "Full day at Nusa Dua Beach for water sports activities", "Water Sports Package - Standard", "activity")]),
             itineraryDay("Temple Tour", [itineraryItem(cameraIcon(), "Temple Tours", "Visit Tanah Lot Temple and Uluwatu Temple with Kecak Fire Dance performance", "", "activity")]),
@@ -715,41 +751,41 @@ function getModifyOptions(item) {
     if (item.kind === "transfer") {
         return [
             optionCard("Private AC Sedan", "Standard Transfer • Up to 3 passengers", ["AC Vehicle", "English Speaking Driver", "Airport Pickup"], "Included in package", transferImage, transferIcon(), "Selected"),
-            optionCard("Private AC SUV", "Premium Transfer • Up to 6 passengers", ["Luxury SUV", "Professional Chauffeur", "Complimentary Water"], "+$89 per vehicle", transferImage, transferIcon()),
-            optionCard("Shared Shuttle Service", "Budget Transfer • Shared with other travelers", ["AC Vehicle", "Fixed Schedule", "Airport Pickup"], "+$45 per person", transferImage, transferIcon())
+            optionCard("Private AC SUV", "Premium Transfer • Up to 6 passengers", ["Luxury SUV", "Professional Chauffeur", "Complimentary Water"], "+₹89 per vehicle", transferImage, transferIcon()),
+            optionCard("Shared Shuttle Service", "Budget Transfer • Shared with other travelers", ["AC Vehicle", "Fixed Schedule", "Airport Pickup"], "+₹45 per person", transferImage, transferIcon())
         ];
     }
 
     if (item.kind === "hotel") {
         return [
-            optionCard("Grand Mirage Resort & Thalasso Bali (4★)", "Beachfront Stay • Breakfast Included", ["Oceanfront", "Spa Access", "Daily Breakfast"], "Included in package", hotelImage, hotelSmallIcon(), "Selected"),
-            optionCard("Nusa Dua Grand Villas (5★)", "Luxury Villa Stay • Private Pool", ["Private Pool", "Premium Lounge", "Butler Support"], "+$190 per person", hotelImage, hotelSmallIcon()),
-            optionCard("Sanur Breeze Hotel (4★)", "Seaside Stay • Calm Area", ["Beach Access", "Family Friendly", "Breakfast Included"], "+$60 per person", hotelImage, hotelSmallIcon())
+            optionCard("Grand Mirage Resort & Thalasso Goa (4★)", "Beachfront Stay • Breakfast Included", ["Oceanfront", "Spa Access", "Daily Breakfast"], "Included in package", hotelImage, hotelSmallIcon(), "Selected"),
+            optionCard("Nusa Dua Grand Villas (5★)", "Luxury Villa Stay • Private Pool", ["Private Pool", "Premium Lounge", "Butler Support"], "+₹190 per person", hotelImage, hotelSmallIcon()),
+            optionCard("Sanur Breeze Hotel (4★)", "Seaside Stay • Calm Area", ["Beach Access", "Family Friendly", "Breakfast Included"], "+₹60 per person", hotelImage, hotelSmallIcon())
         ];
     }
 
     return [
-        optionCard("Private Temple Tour", "Cultural Experience • 4 hours", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "+$75 per person", image, cameraIcon(), "Recommended"),
-        optionCard("Balinese Cooking Class", "Culinary Experience • 3 hours", ["Market Tour", "All Ingredients", "Recipe Book"], "+$65 per person", "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
-        optionCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", ["Buffet Dinner", "Live Music", "Transfers"], "+$95 per person", "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon())
+        optionCard("Private Temple Tour", "Cultural Experience • 4 hours", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "+₹75 per person", image, cameraIcon(), "Recommended"),
+        optionCard("Goanese Cooking Class", "Culinary Experience • 3 hours", ["Market Tour", "All Ingredients", "Recipe Book"], "+₹65 per person", "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
+        optionCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", ["Buffet Dinner", "Live Music", "Transfers"], "+₹95 per person", "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon())
     ];
 }
 
 function getAddOptions(destination, dayIndex) {
     const lower = String(destination || "").toLowerCase();
 
-    if (lower.includes("bali")) {
+    if (lower.includes("goa")) {
         return [
-            addCard("Private Temple Tour", "Cultural Experience • 4 hours", "4.8", "156", "$75 per person", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=800", cameraIcon()),
-            addCard("Balinese Cooking Class", "Culinary Experience • 3 hours", "4.9", "203", "$65 per person", ["Market Tour", "All Ingredients", "Recipe Book"], "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
-            addCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", "4.7", "178", "$95 per person", ["Buffet Dinner", "Live Music", "Transfers"], "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon()),
-            addCard(`Leisure Activity for Day ${dayIndex + 1}`, "Flexible Experience • 2 hours", "4.6", "91", "$40 per person", ["Flexible Timing", "Local Support", "Instant Confirmation"], "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&q=80&w=800", sparkleIcon())
+            addCard("Private Temple Tour", "Cultural Experience • 4 hours", "4.8", "156", "₹75 per person", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=800", cameraIcon()),
+            addCard("Goanese Cooking Class", "Culinary Experience • 3 hours", "4.9", "203", "₹65 per person", ["Market Tour", "All Ingredients", "Recipe Book"], "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
+            addCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", "4.7", "178", "₹95 per person", ["Buffet Dinner", "Live Music", "Transfers"], "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon()),
+            addCard(`Leisure Activity for Day ${dayIndex + 1}`, "Flexible Experience • 2 hours", "4.6", "91", "₹40 per person", ["Flexible Timing", "Local Support", "Instant Confirmation"], "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&q=80&w=800", sparkleIcon())
         ];
     }
 
     return [
-        addCard("Guided City Tour", "Sightseeing • 4 hours", "4.8", "124", "$70 per person", ["Guide Included", "Transfers", "Photo Stops"], "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&q=80&w=800", compassIcon()),
-        addCard("Signature Dining Experience", "Dining • 2 hours", "4.7", "89", "$55 per person", ["Reserved Seating", "Chef Special", "Flexible Timing"], "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", mealIcon())
+        addCard("Guided City Tour", "Sightseeing • 4 hours", "4.8", "124", "₹70 per person", ["Guide Included", "Transfers", "Photo Stops"], "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&q=80&w=800", compassIcon()),
+        addCard("Signature Dining Experience", "Dining • 2 hours", "4.7", "89", "₹55 per person", ["Reserved Seating", "Chef Special", "Flexible Timing"], "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", mealIcon())
     ];
 }
 
@@ -806,6 +842,7 @@ function airplaneIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="c
 function hotelSmallIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 9h.01"></path><path d="M15 9h.01"></path><path d="M9 13h.01"></path><path d="M15 13h.01"></path></svg>`; }
 function mealIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12"></path><path d="M10 3v12"></path><path d="M14 3a5 5 0 0 1 5 5v7"></path><path d="M4 15h8"></path><path d="M17 21v-8"></path></svg>`; }
 function transferIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="11" width="15" height="7" rx="2"></rect><path d="M16 13h3l3 3v2h-6"></path><circle cx="5.5" cy="18.5" r="1.5"></circle><circle cx="18.5" cy="18.5" r="1.5"></circle></svg>`; }
+function flightIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>`; }
 function sparkleIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"></path><path d="M5 19h.01"></path><path d="M19 19h.01"></path></svg>`; }
 function giftIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13"></path><path d="M19 8V6a2 2 0 0 0-2-2h-1.5a2.5 2.5 0 0 0-2.5 2.5V8"></path><path d="M5 8V6a2 2 0 0 1 2-2h1.5A2.5 2.5 0 0 1 11 6.5V8"></path></svg>`; }
 function compassIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m16 8-2.6 7.4L6 18l2.6-7.4L16 8z"></path></svg>`; }

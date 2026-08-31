@@ -197,9 +197,9 @@ function buildIncludesLine(packageData) {
 
 function getLocationLabel(destination) {
     const map = {
-        Bali: "Bali, Indonesia",
+        Goa: "Goa, Indonesia",
         Maldives: "Maldives",
-        Dubai: "Dubai, UAE",
+        Mumbai: "Mumbai, UAE",
         Thailand: "Phuket & Krabi, Thailand",
         Switzerland: "Swiss Alps, Switzerland",
         Goa: "Goa, India",

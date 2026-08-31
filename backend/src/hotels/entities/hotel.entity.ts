@@ -10,6 +10,8 @@ export class Hotel {
   reviewCount!: number;
   pricePerNight!: number;
   taxesAndFees!: number;
+  totalRooms!: number;
+  availableRooms!: number;
   image!: string;
   amenities!: string[];
   status!: 'active' | 'inactive';

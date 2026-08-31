@@ -1,196 +1,162 @@
 const navlinks = [
   {
     name: "Dashboard",
-    path: "../techadmin/tech_tickets.html",
-    icon: "../../components/ui/dashboard.svg",
-    roles: ["techadmin"]
+    path: "../pages/dashboard.html",
+    icon: "../components/ui/dashboard.svg",
+    roles: ["techadmin", "TECH_ADMIN"]
   },
   {
     name: "Tickets",
-    path: "../techadmin/tech_tickets.html",
-    icon: "../../components/ui/support.svg",
-    roles: ["techadmin"]
-  },
-  {
-    name: "Activity",
-    path: "../techadmin/tech_activity.html",
-    icon: "../../components/ui/users.png",
-    roles: ["techadmin"]
-  },
-  {
-    name: "System Logs",
-    path: "../techadmin/tech_logs.html",
-    icon: "../../components/ui/operations.png",
-    roles: ["techadmin"]
-  },
-  {
-    name: "Profile",
-    path: "../mainpages/profile.html",
-    icon: "../../components/ui/user.svg",
-    roles: ["techadmin"]
+    path: "../pages/tech_tickets.html",
+    icon: "../components/ui/support.svg",
+    roles: ["techadmin", "TECH_ADMIN"]
   },
   {
     name: "Dashboard",
-    path: "../guide/dashboard.html",
-    icon: "../../components/ui/dashboard.svg",
-    roles: ["guide"]
+    path: "../pages/dashboard.html",
+    icon: "../components/ui/dashboard.svg",
+    roles: ["guide","superadmin","opadmin","hotel"]
   },
   {
     name: "Dashboard",
-    path: "../superadmin/users.html",
-    icon: "../../components/ui/dashboard.svg",
-    roles: ["superadmin"]
-  },
-  {
-    name: "Dashboard",
-    path: "../guide/dashboard.html",
-    icon: "../../components/ui/dashboard.svg",
-    roles: ["hotel"]
-  },
-  {
-    name: "Dashboard",
-    path: "../nontechadmin/nta_dashboard.html",
-    icon: "../../components/ui/dashboard.svg",
+    path: "../pages/nta_dashboard.html",
+    icon: "../components/ui/dashboard.svg",
     roles: ["nontechadmin"]
   },
   {
     name: "Travel Packages",
-    path: "../nontechadmin/nta_plans.html",
-    icon: "../../components/ui/operations.png",
+    path: "../pages/nta_plans.html",
+    icon: "../components/ui/operations.png",
+    roles: ["nontechadmin"]
+  },
+  {
+    name: "Guide Applications",
+    path: "../pages/nta_guide_applications.html",
+    icon: "../components/ui/users.png",
     roles: ["nontechadmin"]
   },
   {
     name: "Guides",
-    path: "../misleous/guide.html",
-    icon: "../../components/ui/users.png",
+    path: "../pages/guide.html",
+    icon: "../components/ui/users.png",
     roles: ["superadmin", "nontechadmin"]
   },
   {
     name: "Plans",
-    path: "../misleous/plans.html",
-    icon: "../../components/ui/operations.png",
-    roles: ["superadmin", "nontechadmin"]
+    path: "../pages/plans.html",
+    icon: "../components/ui/operations.png",
+    roles: ["superadmin"]
   },
   {
     name: "Trips",
-    path: "../misleous/trips.html",
-    icon: "../../components/ui/tours.svg",
-    roles: ["superadmin", "nontechadmin"]
+    path: "../pages/trips.html",
+    icon: "../components/ui/tours.svg",
+    roles: ["superadmin"]
   },
   {
     name: "Operations & Bookings",
-    path: "../superadmin/opsbook.html",
-    icon: "../../components/ui/operations.png",
+    path: "../pages/opsbook.html",
+    icon: "../components/ui/operations.png",
     roles: ["superadmin"]
   },
   {
     name: "Users & Partners",
-    path: "../superadmin/users.html",
-    icon: "../../components/ui/users.png",
+    path: "../pages/users.html",
+    icon: "../components/ui/users.png",
     roles: ["superadmin"]
   },
   {
     name: "Finance & Reports",
-    path: "../superadmin/finance.html",
-    icon: "../../components/ui/finance.png",
+    path: "../pages/finance.html",
+    icon: "../components/ui/finance.png",
     roles: ["superadmin"]
   },
-  {
-    name: "Tours",
-    path: "../misleous/tours.html",
-    icon: "../../components/ui/tours.svg",
-    roles: ["guide"]
-  },
-  {
-    name: "Schedule",
-    path: "../guide/schedule.html",
-    icon: "../../components/ui/schedule.svg",
-    roles: ["guide"]
-  },
+
   {
     name: "Earnings",
-    path: "../guide/earnings.html",
-    icon: "../../components/ui/earnings.svg",
+    path: "../pages/earnings.html",
+    icon: "../components/ui/earnings.svg",
     roles: ["guide"]
   },
   {
     name: "Reviews",
-    path: "../guide/reviews.html",
-    icon: "../../components/ui/reviews.svg",
+    path: "../pages/reviews.html",
+    icon: "../components/ui/reviews.svg",
     roles: ["guide"]
   },
   {
     name: "Bookings",
-    path: "../hotels/hotelBookings.html",
-    icon: "../../components/ui/operations.png",
+    path: "../pages/hotelBookings.html",
+    icon: "../components/ui/operations.png",
     roles: ["hotel"]
   },
   {
     name: "Services",
-    path: "../hotels/hotelRooms.html",
-    icon: "../../components/ui/tours.svg",
+    path: "../pages/hotelRooms.html",
+    icon: "../components/ui/tours.svg",
     roles: ["hotel"]
   },
   {
     name: "Earnings",
-    path: "../hotels/hotelEarning.html",
-    icon: "../../components/ui/earnings.svg",
+    path: "../pages/hotelEarning.html",
+    icon: "../components/ui/earnings.svg",
     roles: ["hotel"]
   },
   {
     name: "Home",
-    path: "../experiences/experience_home.html",
-    icon: "../../components/ui/dashboard.svg",
+    path: "../pages/experience_home.html",
+    icon: "../components/ui/dashboard.svg",
     roles: ["experience"]
   },
   {
     name: "Bookings",
-    path: "../experiences/experience_bookings.html",
-    icon: "../../components/ui/operations.png",
+    path: "../pages/experience_bookings.html",
+    icon: "../components/ui/operations.png",
     roles: ["experience"]
   },
   {
     name: "Experiences",
-    path: "../experiences/experience_experience.html",
-    icon: "../../components/ui/tours.svg",
+    path: "../pages/experience_experience.html",
+    icon: "../components/ui/tours.svg",
     roles: ["experience"]
   },
   {
     name: "Earnings",
-    path: "../experiences/experience_earnings.html",
-    icon: "../../components/ui/earnings.svg",
+    path: "../pages/experience_earnings.html",
+    icon: "../components/ui/earnings.svg",
     roles: ["experience"]
   },
 
   
   {
     name: "Explore",
-    path: "../traveller/traveller_dashboard.html",
-    icon: "../../components/ui/exploreIcon.jpg",
+    path: "../pages/traveller_dashboard.html",
+    icon: "../components/ui/exploreIcon.jpg",
     roles: ["traveller"]
   },
   
    
   {
     name: "Wish List",
-    path: "../traveller/traveller_wishlist.html",
-    icon: "../../components/ui/wishlistIcon.jpg",
+    path: "../pages/traveller_wishlist.html",
+    icon: "../components/ui/wishlistIcon.jpg",
     roles: ["traveller"]
   },
 
   {
     name: "My Trips",
-    path: "../traveller/traveller_mytrips.html",
-    icon: "../../components/ui/mytripsIcon.jpg",
+    path: "../pages/traveller_mytrips.html",
+    icon: "../components/ui/mytripsIcon.jpg",
     roles: ["traveller"]
   }
 ];
 
 export function getNavLinks(role){
   const currentPage = window.location.pathname.split("/").pop();
+  const normalizedRole = (role || "").toLowerCase().replace(/_/g, "");
 
   return navlinks
-    .filter(link => link.roles.includes(role))
+    .filter(link => link.roles.some(r => r.toLowerCase().replace(/_/g, "") === normalizedRole))
     .map(link => {
       const pageName = link.path.split("/").pop();
       return `

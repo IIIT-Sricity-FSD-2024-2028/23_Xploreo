@@ -27,6 +27,7 @@ export class HotelsService {
       reviewCount: 0,
       pricePerNight: dto.pricePerNight,
       taxesAndFees: dto.taxesAndFees ?? 0,
+      totalRooms: dto.totalRooms ?? 10,
       image: dto.image ?? '',
       amenities: dto.amenities ?? [],
       status: dto.status ?? 'active',

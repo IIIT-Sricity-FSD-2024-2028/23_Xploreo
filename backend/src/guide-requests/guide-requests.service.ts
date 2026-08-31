@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { TripsService } from '../trips/trips.service';
 import { CreateGuideRequestDto } from './dto/create-guide-request.dto';
 import { UpdateGuideRequestDto } from './dto/update-guide-request.dto';
@@ -19,8 +24,12 @@ export class GuideRequestsService {
       throw new BadRequestException('Traveller does not own this trip');
     }
 
-    if (!this.tripsService.experienceExistsOnTrip(dto.tripId, dto.experienceId)) {
-      throw new BadRequestException('Experience is not part of this trip itinerary');
+    if (
+      !this.tripsService.experienceExistsOnTrip(dto.tripId, dto.experienceId)
+    ) {
+      throw new BadRequestException(
+        'Experience is not part of this trip itinerary',
+      );
     }
 
     if (
@@ -63,29 +72,43 @@ export class GuideRequestsService {
     return this.repository.findByTraveller(travellerId);
   }
 
-  update(id: string, dto: UpdateGuideRequestDto, actor?: { userId?: string; role?: string }) {
+  update(
+    id: string,
+    dto: UpdateGuideRequestDto,
+    actor?: { userId?: string; role?: string },
+  ) {
     const request = this.findOne(id);
 
     if (!dto.status && !dto.guideId) {
-      throw new BadRequestException('At least one guide request field is required');
+      throw new BadRequestException(
+        'At least one guide request field is required',
+      );
     }
 
     const nextGuideId = dto.guideId || actor?.userId;
     if (dto.status === GuideRequestStatus.ACCEPTED) {
       if (request.status !== GuideRequestStatus.PENDING) {
-        throw new BadRequestException('Only pending guide requests can be accepted');
+        throw new BadRequestException(
+          'Only pending guide requests can be accepted',
+        );
       }
 
       if (!nextGuideId) {
-        throw new BadRequestException('guideId is required to accept a request');
+        throw new BadRequestException(
+          'guideId is required to accept a request',
+        );
       }
 
       if (actor?.role === 'guide' && actor.userId !== nextGuideId) {
-        throw new ForbiddenException('Guide can only accept requests for their own account');
+        throw new ForbiddenException(
+          'Guide can only accept requests for their own account',
+        );
       }
 
       if (request.guideId && request.guideId !== nextGuideId) {
-        throw new ForbiddenException('Guide request is assigned to another guide');
+        throw new ForbiddenException(
+          'Guide request is assigned to another guide',
+        );
       }
     }
 
@@ -109,7 +132,9 @@ export class GuideRequestsService {
     return { message: `Guide request ${id} deleted` };
   }
 
-  private buildItinerarySummary(trip: ReturnType<TripsService['findOne']>): string[] {
+  private buildItinerarySummary(
+    trip: ReturnType<TripsService['findOne']>,
+  ): string[] {
     const day1 = trip.itinerary?.day1;
     const items = [
       day1?.flight

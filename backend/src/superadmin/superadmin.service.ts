@@ -7,8 +7,12 @@ import { UpdateSuperadminDto } from './dto/update-superadmin.dto';
 export class SuperadminService {
   constructor(private readonly repo: SuperadminRepository) {}
 
-  create(dto: CreateSuperadminDto) { return this.repo.create(dto); }
-  findAll() { return this.repo.findAll(); }
+  create(dto: CreateSuperadminDto) {
+    return this.repo.create(dto);
+  }
+  findAll() {
+    return this.repo.findAll();
+  }
   findOne(id: string) {
     const a = this.repo.findById(id);
     if (!a) throw new NotFoundException(`Superadmin ${id} not found`);
@@ -20,7 +24,8 @@ export class SuperadminService {
     return updated;
   }
   remove(id: string) {
-    if (!this.repo.delete(id)) throw new NotFoundException(`Superadmin ${id} not found`);
+    if (!this.repo.delete(id))
+      throw new NotFoundException(`Superadmin ${id} not found`);
     return { message: `Superadmin ${id} deleted` };
   }
 }

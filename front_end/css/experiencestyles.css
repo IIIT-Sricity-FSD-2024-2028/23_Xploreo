@@ -518,7 +518,7 @@ body.experience-page {
   margin-bottom: 14px;
 }
 
-.experience-card-header-line > :first-child {
+.experience-card-header-line> :first-child {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -784,6 +784,7 @@ body.experience-page {
 }
 
 .experience-select-shell select,
+.experience-page select,
 .experience-page input,
 .experience-page textarea {
   width: 100%;
@@ -798,6 +799,7 @@ body.experience-page {
 
 .experience-page input:focus,
 .experience-page textarea:focus,
+.experience-page select:focus,
 .experience-select-shell select:focus {
   outline: none;
   border-color: rgba(47, 111, 237, 0.55);
@@ -1223,7 +1225,7 @@ body.experience-page {
   align-content: start;
 }
 
-.field-group > span {
+.field-group>span {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--experience-text);
@@ -1262,20 +1264,22 @@ body.experience-page {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.5);
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px;
-  z-index: 999;
+  padding: 40px 24px;
+  z-index: 1050;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .modal-box {
-  width: min(760px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
+  width: min(540px, 100%);
   background: #fff;
   border-radius: 28px;
   padding: 40px 40px 36px;
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.2);
+  box-sizing: border-box;
+  margin: auto;
 }
 
 .booking-modal-box {
@@ -1291,9 +1295,6 @@ body.experience-page {
 .edit-modal-box {
   width: min(780px, 100%);
   padding: 0;
-  max-height: 88vh;
-  overflow-y: auto;
-  overflow-x: hidden;
 }
 
 .edit-modal-box .modal-header {
@@ -1350,7 +1351,7 @@ body.experience-page {
   width: 100%;
 }
 
-#addExperienceForm .field-group > span {
+#addExperienceForm .field-group>span {
   line-height: 1.3;
 }
 
@@ -1358,8 +1359,38 @@ body.experience-page {
   grid-column: 1 / -1;
 }
 
-#addExperienceForm input {
+#addExperienceForm input,
+.experience-form select,
+#addExperienceForm textarea {
   width: 100%;
+  box-sizing: border-box;
+}
+
+.experience-form select {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--experience-border);
+  background-color: var(--experience-surface-soft);
+  color: var(--experience-text);
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 12px;
+  font-family: inherit;
+}
+
+.experience-form select:focus {
+  outline: none;
+  border-color: var(--experience-primary);
+  box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.1);
+  background-color: #fff;
+}
+
+.experience-form select:hover {
+  border-color: #cbd5e1;
 }
 
 #addExperienceForm .field-error {
@@ -1387,6 +1418,7 @@ body.experience-page {
   background: #fff;
   display: grid;
   width: 100%;
+  box-sizing: border-box;
   justify-items: center;
   align-content: center;
   gap: 10px;
@@ -1453,7 +1485,7 @@ body.experience-page {
   gap: 8px;
 }
 
-.edit-modal-box .field-group > span em {
+.edit-modal-box .field-group>span em {
   font-style: normal;
   color: var(--experience-muted);
   font-weight: 500;
@@ -1676,8 +1708,8 @@ body.experience-page {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.booking-modal-box .grid-2 > div,
-.booking-modal-box .grid-3 > div {
+.booking-modal-box .grid-2>div,
+.booking-modal-box .grid-3>div {
   padding: 16px 18px;
   border-radius: 18px;
   background: var(--experience-surface-soft);
@@ -1927,7 +1959,7 @@ th {
   color: var(--experience-muted);
 }
 
-.source-item + .source-item {
+.source-item+.source-item {
   margin-top: 24px;
 }
 
@@ -2036,6 +2068,7 @@ th {
 }
 
 @media (max-width: 1100px) {
+
   .experience-grid,
   .experience-bottom-grid,
   .profile-grid,

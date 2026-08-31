@@ -12,6 +12,8 @@ import {
     saveTravelerBookingConfirmation,
     saveTravelerBookingDraft
 } from "../traveler/dashboard.js";
+import { fetchAvailableGuidesForPlan, createGuideAssignment } from "../api/services.js";
+import { getCurrentUser } from "../api/session.js";
 
 export function renderTravelerBookingDetailsPage(containerId) {
     const container = document.getElementById(containerId);
@@ -345,18 +347,76 @@ export function renderTravelerBookingDetailsPage(containerId) {
             const validation = validateTravelers(state.travelers);
             if (!validation.valid) {
                 setFeedback(validation.message, true);
+                alert(validation.message); // Explicit alert so user knows they must fill the form
                 return;
             }
 
             const draft = createTravelerDraft({
                 ...state.packageData,
-                departureDate: state.selectedDate
+                departureDate: state.selectedDate,
+                itinerary: state.itinerary
             }, state.travelers);
             const confirmation = createTravelerConfirmation(draft);
 
-            saveTravelerBookingDraft(draft);
-            saveTravelerBookingConfirmation(confirmation);
-            window.location.href = "./traveller_booking-confirmation.html";
+            const startDate = state.selectedDate || new Date().toISOString().split('T')[0];
+            const endDateObj = new Date(startDate);
+            endDateObj.setDate(endDateObj.getDate() + Math.max(1, Number(state.packageData.nights) || (state.packageData.days ? state.packageData.days - 1 : 1)));
+            const endDate = endDateObj.toISOString().split('T')[0];
+
+            // Use consistent bookingId
+            const bookingIdStr = String(confirmation.bookingId);
+
+            // Show guide selection popup before finishing the booking
+            showGuideSelectionPopup({ ...state.packageData, bookingId: bookingIdStr }, startDate, endDate, (assignedGuide) => {
+                if (assignedGuide) {
+                    draft.packageData.pricePerPerson += assignedGuide.price;
+                    draft.totalPrice += (assignedGuide.price * draft.travelerCount);
+                    confirmation.packageData.pricePerPerson += assignedGuide.price;
+                    confirmation.totalPrice += (assignedGuide.price * confirmation.travelerCount);
+                    confirmation.assignedGuide = assignedGuide;
+                }
+                
+                saveTravelerBookingDraft(draft);
+                saveTravelerBookingConfirmation(confirmation);
+
+                const plan = state.packageData;
+                const bookingId = bookingIdStr;
+
+                try {
+                    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+                    const customerId = currentUser?.id || "traveler-fallback";
+                    const tripRecord = {
+                        id: bookingId,
+                        bookingId: bookingId,
+                        planId: plan.id,
+                        title: plan.title,
+                        destination: plan.destination,
+                        location: plan.location,
+                        image: plan.image,
+                        dateRange: `${startDate} - ${endDate}`,
+                        status: "Upcoming",
+                        guests: state.travelerCount || 2,
+                        amount: draft.totalPrice,
+                        durationLabel: `${plan.days || 6} Days, ${plan.nights || 5} Nights`,
+                        itinerary: plan.itinerary || [],
+                        type: "Tour",
+                        bookedOn: new Date().toISOString(),
+                        assignedGuide: assignedGuide ? { id: assignedGuide.id, name: assignedGuide.name, price: assignedGuide.price } : null
+                    };
+
+                    const allTours = JSON.parse(localStorage.getItem("tours") || "[]");
+                    allTours.push(tripRecord);
+                    localStorage.setItem("tours", JSON.stringify(allTours));
+
+                    const myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]");
+                    myTrips.push(tripRecord);
+                    localStorage.setItem("traveler_my_trips", JSON.stringify(myTrips));
+                } catch (error) {
+                    console.warn("Could not save plan booking to traveler trips", error);
+                }
+
+                window.location.href = `./traveller_booking-confirmation.html?plan=${bookingId}`;
+            }, false, state.travelerCount || state.travelers.length);
         });
     }
 
@@ -465,13 +525,19 @@ export function renderTravelerBookingDetailsPage(containerId) {
 }
 
 function getActiveTravelerPackage() {
-    const planId = new URLSearchParams(window.location.search).get("plan");
+    const urlParams = new URLSearchParams(window.location.search);
+    const planId = urlParams.get("plan") || urlParams.get("planId");
     const catalog = getTravelerPackageCatalog();
 
     if (planId) {
-        const selectedFromUrl = catalog.find((item) => item.id === planId);
+        const selectedFromUrl = catalog.find((item) => String(item.id) === String(planId));
         if (selectedFromUrl) {
             return selectedFromUrl;
+        }
+
+        const storedSelected = getSelectedTravelerPackage();
+        if (storedSelected && (String(storedSelected.id) === String(planId) || String(storedSelected.packageId) === String(planId))) {
+            return storedSelected;
         }
     }
 
@@ -605,9 +671,9 @@ function buildPackageViewModel(packageData) {
 
 function inferLocationLabel(destination) {
     const map = {
-        bali: "Bali, Indonesia",
+        goa: "Goa, Indonesia",
         maldives: "Maldives",
-        dubai: "Dubai, UAE",
+        mumbai: "Mumbai, UAE",
         thailand: "Phuket & Krabi, Thailand",
         switzerland: "Swiss Alps, Switzerland",
         goa: "Goa, India",
@@ -626,7 +692,7 @@ function inferReviews(packageData) {
 }
 
 function createGallery(keyword, fallbackImage) {
-    if (keyword.includes("bali")) {
+    if (keyword.includes("goa")) {
         return [
             fallbackImage,
             "https://images.unsplash.com/photo-1537953773345-d172ccf13cf1?auto=format&fit=crop&q=80&w=1400",
@@ -644,7 +710,7 @@ function createGallery(keyword, fallbackImage) {
         ];
     }
 
-    if (keyword.includes("dubai")) {
+    if (keyword.includes("mumbai")) {
         return [
             fallbackImage,
             "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&q=80&w=1400",
@@ -695,9 +761,9 @@ function createHighlights(packageData) {
 }
 
 function createItinerary(packageData, keyword) {
-    if (keyword.includes("bali")) {
+    if (keyword.includes("goa")) {
         return [
-            itineraryDay("Arrival & Check-in", [itineraryItem(transferIcon(), "Arrival Transfer", "Coordinated transfer and hotel check-in", "Private AC Sedan", "transfer"), itineraryItem(hotelSmallIcon(), "Hotel Check-in", "Check-in at your selected hotel and relax", "Grand Mirage Resort & Thalasso Bali (4★)", "hotel")]),
+            itineraryDay("Arrival & Check-in", [itineraryItem(transferIcon(), "Arrival Transfer", "Coordinated transfer and hotel check-in", "Private AC Sedan", "transfer"), itineraryItem(hotelSmallIcon(), "Hotel Check-in", "Check-in at your selected hotel and relax", "Grand Mirage Resort & Thalasso Goa (4★)", "hotel")]),
             itineraryDay("Explore Destination", [itineraryItem(compassIcon(), "Guided Experience", "Visit Tegallalang Rice Terraces, Tirta Empul Temple, and Ubud Monkey Forest", "", "activity")]),
             itineraryDay("Water Sports & Beach Day", [itineraryItem(wavesIcon(), "Water Sports Activities", "Full day at Nusa Dua Beach for water sports activities", "Water Sports Package - Standard", "activity")]),
             itineraryDay("Temple Tour", [itineraryItem(cameraIcon(), "Temple Tours", "Visit Tanah Lot Temple and Uluwatu Temple with Kecak Fire Dance performance", "", "activity")]),
@@ -748,41 +814,41 @@ function getModifyOptions(item) {
     if (item.kind === "transfer") {
         return [
             optionCard("Private AC Sedan", "Standard Transfer • Up to 3 passengers", ["AC Vehicle", "English Speaking Driver", "Airport Pickup"], "Included in package", transferImage, transferIcon(), "Selected"),
-            optionCard("Private AC SUV", "Premium Transfer • Up to 6 passengers", ["Luxury SUV", "Professional Chauffeur", "Complimentary Water"], "+$89 per vehicle", transferImage, transferIcon()),
-            optionCard("Shared Shuttle Service", "Budget Transfer • Shared with other travelers", ["AC Vehicle", "Fixed Schedule", "Airport Pickup"], "+$45 per person", transferImage, transferIcon())
+            optionCard("Private AC SUV", "Premium Transfer • Up to 6 passengers", ["Luxury SUV", "Professional Chauffeur", "Complimentary Water"], "+₹89 per vehicle", transferImage, transferIcon()),
+            optionCard("Shared Shuttle Service", "Budget Transfer • Shared with other travelers", ["AC Vehicle", "Fixed Schedule", "Airport Pickup"], "+₹45 per person", transferImage, transferIcon())
         ];
     }
 
     if (item.kind === "hotel") {
         return [
-            optionCard("Grand Mirage Resort & Thalasso Bali (4★)", "Beachfront Stay • Breakfast Included", ["Oceanfront", "Spa Access", "Daily Breakfast"], "Included in package", hotelImage, hotelSmallIcon(), "Selected"),
-            optionCard("Nusa Dua Grand Villas (5★)", "Luxury Villa Stay • Private Pool", ["Private Pool", "Premium Lounge", "Butler Support"], "+$190 per person", hotelImage, hotelSmallIcon()),
-            optionCard("Sanur Breeze Hotel (4★)", "Seaside Stay • Calm Area", ["Beach Access", "Family Friendly", "Breakfast Included"], "+$60 per person", hotelImage, hotelSmallIcon())
+            optionCard("Grand Mirage Resort & Thalasso Goa (4★)", "Beachfront Stay • Breakfast Included", ["Oceanfront", "Spa Access", "Daily Breakfast"], "Included in package", hotelImage, hotelSmallIcon(), "Selected"),
+            optionCard("Nusa Dua Grand Villas (5★)", "Luxury Villa Stay • Private Pool", ["Private Pool", "Premium Lounge", "Butler Support"], "+₹190 per person", hotelImage, hotelSmallIcon()),
+            optionCard("Sanur Breeze Hotel (4★)", "Seaside Stay • Calm Area", ["Beach Access", "Family Friendly", "Breakfast Included"], "+₹60 per person", hotelImage, hotelSmallIcon())
         ];
     }
 
     return [
-        optionCard("Private Temple Tour", "Cultural Experience • 4 hours", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "+$75 per person", image, cameraIcon(), "Recommended"),
-        optionCard("Balinese Cooking Class", "Culinary Experience • 3 hours", ["Market Tour", "All Ingredients", "Recipe Book"], "+$65 per person", "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
-        optionCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", ["Buffet Dinner", "Live Music", "Transfers"], "+$95 per person", "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon())
+        optionCard("Private Temple Tour", "Cultural Experience • 4 hours", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "+₹75 per person", image, cameraIcon(), "Recommended"),
+        optionCard("Goanese Cooking Class", "Culinary Experience • 3 hours", ["Market Tour", "All Ingredients", "Recipe Book"], "+₹65 per person", "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
+        optionCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", ["Buffet Dinner", "Live Music", "Transfers"], "+₹95 per person", "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon())
     ];
 }
 
 function getAddOptions(destination, dayIndex) {
     const lower = String(destination || "").toLowerCase();
 
-    if (lower.includes("bali")) {
+    if (lower.includes("goa")) {
         return [
-            addCard("Private Temple Tour", "Cultural Experience • 4 hours", "4.8", "156", "$75 per person", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=800", cameraIcon()),
-            addCard("Balinese Cooking Class", "Culinary Experience • 3 hours", "4.9", "203", "$65 per person", ["Market Tour", "All Ingredients", "Recipe Book"], "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
-            addCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", "4.7", "178", "$95 per person", ["Buffet Dinner", "Live Music", "Transfers"], "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon()),
-            addCard(`Leisure Activity for Day ${dayIndex + 1}`, "Flexible Experience • 2 hours", "4.6", "91", "$40 per person", ["Flexible Timing", "Local Support", "Instant Confirmation"], "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&q=80&w=800", sparkleIcon())
+            addCard("Private Temple Tour", "Cultural Experience • 4 hours", "4.8", "156", "₹75 per person", ["Hotel Pickup", "Guide Included", "Entrance Fees"], "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=800", cameraIcon()),
+            addCard("Goanese Cooking Class", "Culinary Experience • 3 hours", "4.9", "203", "₹65 per person", ["Market Tour", "All Ingredients", "Recipe Book"], "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&q=80&w=800", mealIcon()),
+            addCard("Sunset Dinner Cruise", "Water Activity • 2.5 hours", "4.7", "178", "₹95 per person", ["Buffet Dinner", "Live Music", "Transfers"], "https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&q=80&w=800", wavesIcon()),
+            addCard(`Leisure Activity for Day ${dayIndex + 1}`, "Flexible Experience • 2 hours", "4.6", "91", "₹40 per person", ["Flexible Timing", "Local Support", "Instant Confirmation"], "https://images.unsplash.com/photo-1493558103817-58b2924bce98?auto=format&fit=crop&q=80&w=800", sparkleIcon())
         ];
     }
 
     return [
-        addCard("Guided City Tour", "Sightseeing • 4 hours", "4.8", "124", "$70 per person", ["Guide Included", "Transfers", "Photo Stops"], "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&q=80&w=800", compassIcon()),
-        addCard("Signature Dining Experience", "Dining • 2 hours", "4.7", "89", "$55 per person", ["Reserved Seating", "Chef Special", "Flexible Timing"], "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", mealIcon())
+        addCard("Guided City Tour", "Sightseeing • 4 hours", "4.8", "124", "₹70 per person", ["Guide Included", "Transfers", "Photo Stops"], "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&q=80&w=800", compassIcon()),
+        addCard("Signature Dining Experience", "Dining • 2 hours", "4.7", "89", "₹55 per person", ["Reserved Seating", "Chef Special", "Flexible Timing"], "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800", mealIcon())
     ];
 }
 
@@ -841,7 +907,133 @@ function mealIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="curre
 function transferIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="11" width="15" height="7" rx="2"></rect><path d="M16 13h3l3 3v2h-6"></path><circle cx="5.5" cy="18.5" r="1.5"></circle><circle cx="18.5" cy="18.5" r="1.5"></circle></svg>`; }
 function sparkleIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"></path><path d="M5 19h.01"></path><path d="M19 19h.01"></path></svg>`; }
 function giftIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"></rect><path d="M12 8v13"></path><path d="M19 8V6a2 2 0 0 0-2-2h-1.5a2.5 2.5 0 0 0-2.5 2.5V8"></path><path d="M5 8V6a2 2 0 0 1 2-2h1.5A2.5 2.5 0 0 1 11 6.5V8"></path></svg>`; }
-function compassIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="m16 8-2.6 7.4L6 18l2.6-7.4L16 8z"></path></svg>`; }
+function compassIcon() {
+    return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+    `;
+}
+
+export async function showGuideSelectionPopup(plan, startDate, endDate, onComplete, skipApiCall = false, travelerCount = 1) {
+    const backdrop = document.createElement("div");
+    backdrop.style.cssText = `
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; font-family: 'Inter', sans-serif;
+    `;
+
+    backdrop.innerHTML = `
+        <div style="background: #fff; border-radius: 16px; padding: 28px; width: 500px; max-width: 90%; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 20px; font-weight: 700; color: #1e293b;">Would you like to add a Guide?</h3>
+                <span id="g-close-btn" style="cursor: pointer; font-size: 20px; color: #94a3b8; font-weight: bold;">&times;</span>
+            </div>
+            <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.5;">Make your journey memorable by booking a local expert guide. Pricing is per traveller.</p>
+            <div id="g-list-container" style="max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin: 10px 0;">
+                <p style="color: #64748b; font-size: 14px;">Loading available guides...</p>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                <button id="g-btn-skip" style="padding: 10px 18px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-weight: 600; color: #475569; cursor: pointer;">No, thanks</button>
+                <button id="g-btn-confirm" style="padding: 10px 18px; background: #2563eb; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer;" disabled>Select Guide</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+
+    const listContainer = backdrop.querySelector("#g-list-container");
+    const confirmBtn = backdrop.querySelector("#g-btn-confirm");
+    const skipBtn = backdrop.querySelector("#g-btn-skip");
+    const closeBtn = backdrop.querySelector("#g-close-btn");
+
+    let selectedGuide = null;
+
+    try {
+        const guides = await fetchAvailableGuidesForPlan(plan.id);
+        if (!guides || !guides.length) {
+            listContainer.innerHTML = `<div style="text-align: center; padding: 20px; border: 1.5px dashed #e2e8f0; border-radius: 10px; color: #94a3b8; font-size: 14px;">No guides are currently available for this package's location.</div>`;
+        } else {
+            listContainer.innerHTML = guides.map(g => `
+                <div class="guide-item-card" data-guide-id="${g.guideId}" data-price="${g.guidePricePerPerson}" data-guide-name="${g.fname} ${g.lname}" style="border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 14px; cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <strong style="font-size: 15px; color: #1e293b;">${g.fname} ${g.lname}</strong>
+                            <span style="font-size: 12px; color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 12px; margin-left: 6px; font-weight: 600;">⭐ New</span>
+                        </div>
+                        <strong style="color: #1e293b; font-size: 15px;">₹${g.guidePricePerPerson}</strong>
+                    </div>
+                    <p style="margin: 0; font-size: 12px; color: #64748b; font-style: italic;">"${g.bio}"</p>
+                    <div style="font-size: 12px; color: #475569; display: flex; justify-content: space-between;">
+                        <span>💼 ${g.years_exp} yrs exp</span>
+                        <span>🗣️ ${g.lang_spoken.join(", ")}</span>
+                    </div>
+                </div>
+            `).join("");
+
+            const style = document.createElement("style");
+            style.textContent = `.guide-item-card:hover { border-color: #cbd5e1; background: #f8fafc; } .guide-item-card.selected { border-color: #2563eb; background: #f0fdf4; box-shadow: 0 0 0 1px #2563eb; }`;
+            document.head.appendChild(style);
+
+            listContainer.querySelectorAll(".guide-item-card").forEach(card => {
+                card.addEventListener("click", () => {
+                    listContainer.querySelectorAll(".guide-item-card").forEach(c => c.classList.remove("selected"));
+                    card.classList.add("selected");
+                    selectedGuide = {
+                        id: card.dataset.guideId,
+                        price: Number(card.dataset.price),
+                        name: card.dataset.guideName
+                    };
+                    confirmBtn.disabled = false;
+                });
+            });
+        }
+    } catch (e) {
+        listContainer.innerHTML = `<div style="color: #ef4444; font-size: 14px;">Failed to load guides.</div>`;
+    }
+
+    const cleanup = (guide = null) => {
+        document.body.removeChild(backdrop);
+        onComplete(guide);
+    };
+
+    closeBtn.addEventListener("click", () => cleanup());
+    skipBtn.addEventListener("click", () => cleanup());
+
+    confirmBtn.addEventListener("click", async () => {
+        if (!selectedGuide) return;
+        confirmBtn.textContent = "Assigning...";
+        confirmBtn.disabled = true;
+        try {
+            if (!skipApiCall) {
+                const user = getCurrentUser();
+                await createGuideAssignment({
+                    guideId: selectedGuide.id,
+                    planId: plan.id,
+                    bookingId: plan.bookingId,
+                    guidePricePerPerson: selectedGuide.price,
+                    paidAmount: selectedGuide.price,
+                    startDate,
+                    endDate,
+                    travelerCount: travelerCount || plan.occupancy?.guestCount || plan.travelers || plan.guestCount || 1
+                });
+                const mHtml = `<div id="gd-success-modal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; font-family: 'Inter', sans-serif;">
+                  <div style="background: white; border-radius: 8px; width: 320px; padding: 24px; text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+                    <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
+                    <div style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 8px;">Success!</div>
+                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 24px;">Guide successfully added to your booking!</div>
+                    <button onclick="document.getElementById('gd-success-modal').remove()" style="background: #2563eb; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 500; cursor: pointer; width: 100%;">OK</button>
+                  </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', mHtml);
+            }
+            cleanup(selectedGuide);
+        } catch (e) {
+            console.error(e);
+            alert(e.message || "Failed to assign guide. Please try again later.");
+            confirmBtn.textContent = "Select Guide";
+            confirmBtn.disabled = false;
+        }
+    });
+}
 function wavesIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"></path><path d="M2 12c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"></path><path d="M2 18c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2 2 2 4 2"></path></svg>`; }
 function cameraIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`; }
 function spaIcon() { return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3c1.2 2.4 3 4 5 4 1.7 0 3-1 4-3 0 5.5-3.8 9-9 9S3 9.5 3 4c1 2 2.3 3 4 3 2 0 3.8-1.6 5-4Z"></path><path d="M12 13v8"></path></svg>`; }

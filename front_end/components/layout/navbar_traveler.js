@@ -1,5 +1,5 @@
 const TRAVELER_PAGES_PATH = "./";
-const LOGIN_PATH = "../../pages/mainpages/login.html";
+const LOGIN_PATH = "../login.html";
 const PROFILE_PATH = "./traveller_profile.html";
 const SUPPORT_PATH = "./traveller_support.html";
 const LOGO_PATH = "../../components/ui/landing/navbar-logo.png";
@@ -12,7 +12,7 @@ export function renderTravelerNavbar() {
         user = {
             name: "John Doe",
             username: "johndoe",
-            profilePic: "../../components/ui/landing/traveler.png" 
+            profilePic: "../components/ui/landing/traveler.png" 
         };
     }
 
@@ -26,15 +26,15 @@ export function renderTravelerNavbar() {
             </div>
             
             <nav class="nav-links">
-                <a href="${TRAVELER_PAGES_PATH}traveller_dashboard.html">
+                <a href="${TRAVELER_PAGES_PATH}dashboard.html">
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
                    Explore
                 </a>
-                <a href="${TRAVELER_PAGES_PATH}traveller_wishlist.html">
+                <a href="${TRAVELER_PAGES_PATH}wishlist.html">
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                    Wishlist
                 </a>
-                <a href="${TRAVELER_PAGES_PATH}traveller_mytrips.html">
+                <a href="${TRAVELER_PAGES_PATH}mytrips.html">
                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                    My Trips
                 </a>
@@ -86,7 +86,7 @@ function attachNavbarEvents() {
 
     if (logo) {
         logo.addEventListener("click", () => {
-            window.location.href = `${TRAVELER_PAGES_PATH}traveller_dashboard.html`;
+            window.location.href = `${TRAVELER_PAGES_PATH}dashboard.html`;
         });
     }
 

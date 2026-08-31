@@ -6,7 +6,11 @@ import { createId } from '../common/utils/id';
 export class NontechadminRepository {
   private admins: Nontechadmin[] = [
     {
-      adminId: 'NTA001',
+      adminId: 'seed-nontech-1',
+      fname: 'Priya',
+      lname: 'Nair',
+      email: 'priya@xploreo.com',
+      phone_number: 9123456780,
       location: 'Mumbai',
     },
   ];
@@ -17,7 +21,9 @@ export class NontechadminRepository {
     return admin;
   }
 
-  findAll(): Nontechadmin[] { return this.admins; }
+  findAll(): Nontechadmin[] {
+    return this.admins;
+  }
 
   findById(id: string): Nontechadmin | undefined {
     return this.admins.find((a) => a.adminId === id);

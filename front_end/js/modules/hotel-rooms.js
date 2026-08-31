@@ -1,31 +1,51 @@
-export function renderRooms(containerId) {
+import { fetchPartnerHotels } from "../api/services.js";
+
+export async function renderRooms(containerId) {
     const container = document.getElementById(containerId);
+    if (!container) return;
 
-    container.innerHTML = `
-        <div class="hotel-card-header">
-            <h2>Rooms & Occupancy</h2>
-        </div>
+    try {
+        const hotels = await fetchPartnerHotels().catch(() => []);
+        let totalRooms = 0;
+        let availableRooms = 0;
 
-        <div class="hotel-room-grid">
+        hotels.forEach(h => {
+            if (h.status === "active" || h.status === "ACTIVE") {
+                totalRooms += (Number(h.totalRooms) || 10);
+                availableRooms += (Number(h.availableRooms) ?? Number(h.totalRooms) ?? 10);
+            }
+        });
 
-            <div class="hotel-room-box">
-                <img src="../../components/ui/system.png" class="hotel-card-icon"/>
-                <p>Total Rooms</p>
-                <h3>50</h3>
+        const occupiedRooms = totalRooms - availableRooms;
+
+        container.innerHTML = `
+            <div class="hotel-card-header">
+                <h2>Rooms & Occupancy</h2>
             </div>
 
-            <div class="hotel-room-box">
-                <img src="../../components/ui/dashboard.png" class="hotel-card-icon"/>
-                <p>Available</p>
-                <h3 class="green">11</h3>
-            </div>
+            <div class="hotel-room-grid">
 
-            <div class="hotel-room-box">
-                <img src="../../components/ui/operations.png" class="hotel-card-icon"/>
-                <p>Occupied</p>
-                <h3 class="blue">39</h3>
-            </div>
+                <div class="hotel-room-box">
+                    <img src="../components/ui/system.png" class="hotel-card-icon"/>
+                    <p>Total Rooms</p>
+                    <h3>${totalRooms}</h3>
+                </div>
 
-        </div>
-    `;
+                <div class="hotel-room-box">
+                    <img src="../components/ui/dashboard.png" class="hotel-card-icon"/>
+                    <p>Available</p>
+                    <h3 class="green">${availableRooms}</h3>
+                </div>
+
+                <div class="hotel-room-box">
+                    <img src="../components/ui/operations.png" class="hotel-card-icon"/>
+                    <p>Occupied</p>
+                    <h3 class="blue">${occupiedRooms}</h3>
+                </div>
+
+            </div>
+        `;
+    } catch (err) {
+        console.error("Failed to load rooms", err);
+    }
 }

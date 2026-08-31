@@ -20,23 +20,38 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
-  @Roles( Role.TRAVELLER)
-  @ApiOperation({ summary: 'Traveller creates a support ticket' })
+  @ApiOperation({ summary: 'Create a support ticket' })
   @ApiCreateEndpoint(CreateTicketDto)
   create(@Body() dto: CreateTicketDto, @Req() req: any) {
-    return this.ticketsService.create(req.user?.userId, dto);
+    return this.ticketsService.create(req.user, dto);
   }
 
   @Get()
-  @Roles(Role.TECHADMIN)
-  @ApiOperation({ summary: 'Technical admin views all support tickets' })
+  @ApiOperation({
+    summary:
+      'View support tickets (all for Technical Admin, user-scoped for other roles)',
+  })
   @ApiReadEndpoint()
-  findAll() {
-    return this.ticketsService.findAll();
+  findAll(@Req() req: any) {
+    return this.ticketsService.findAllForUser(req.user);
+  }
+
+  @Get('user/:userId')
+  @ApiOperation({ summary: 'View support tickets for a specific user' })
+  @ApiReadEndpoint()
+  findByUser(@Param('userId', NonEmptyStringPipe) userId: string) {
+    return this.ticketsService.findByUserId(userId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a single support ticket by ID' })
+  @ApiReadEndpoint()
+  findOne(@Param('id', NonEmptyStringPipe) id: string) {
+    return this.ticketsService.findOne(id);
   }
 
   @Patch(':id')
-  @Roles(Role.TECHADMIN)
+  @Roles(Role.TECH_ADMIN, Role.TECHADMIN)
   @ApiOperation({ summary: 'Technical admin resolves a support ticket' })
   @ApiUpdateEndpoint(ResolveTicketDto)
   resolve(

@@ -1,4 +1,6 @@
-const travelerData = (() => { try { return JSON.parse(localStorage.getItem("travelerData") || "{}"); } catch { return {}; } })();
+import { travelerData } from "../api/legacyData.js";
+import { fetchHotel } from "../api/services.js";
+import { mapHotelToSearchCard } from "../api/adapters.js";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const HOTEL_BOOKING_PAGE = "./traveller_hotel-booking.html";
@@ -13,8 +15,8 @@ export const HOTEL_DETAIL_DATA = {
         title: "The Grand Luxury Resort",
         area: "Downtown Dubai",
         distance: "2.5 km from city center",
-        rating: 4.8,
-        reviews: 1245,
+        rating: 0,
+        reviews: 0,
         stars: 5,
         roomName: "Deluxe King Room",
         adults: "2 Adults",
@@ -98,8 +100,8 @@ export const HOTEL_DETAIL_DATA = {
         title: "Beachfront Paradise Villa",
         area: "Jumeirah Beach",
         distance: "0.5 km from beach",
-        rating: 4.9,
-        reviews: 856,
+        rating: 0,
+        reviews: 0,
         stars: 5,
         roomName: "Private Ocean Villa",
         adults: "2 Adults",
@@ -171,8 +173,8 @@ export const HOTEL_DETAIL_DATA = {
         title: "Modern Boutique Hotel",
         area: "Dubai Marina",
         distance: "1.8 km from marina",
-        rating: 4.6,
-        reviews: 432,
+        rating: 0,
+        reviews: 0,
         stars: 4,
         roomName: "Boutique Queen Room",
         adults: "2 Adults",
@@ -245,8 +247,8 @@ export const HOTEL_DETAIL_DATA = {
         title: "Family Resort & Spa",
         area: "Al Barsha",
         distance: "3.2 km from Mall of Emirates",
-        rating: 4.7,
-        reviews: 698,
+        rating: 0,
+        reviews: 0,
         stars: 5,
         roomName: "Family Deluxe Room",
         adults: "2 Adults, 2 Children",
@@ -318,8 +320,8 @@ export const HOTEL_DETAIL_DATA = {
         title: "Skyline Party Lofts",
         area: "Business Bay",
         distance: "1.1 km from nightlife district",
-        rating: 4.3,
-        reviews: 288,
+        rating: 0,
+        reviews: 0,
         stars: 4,
         roomName: "Skyline Loft",
         adults: "2 Adults",
@@ -388,14 +390,15 @@ export const HOTEL_DETAIL_DATA = {
     }
 };
 
-export function renderTravelerHotelDetailPage(containerId) {
+export async function renderTravelerHotelDetailPage(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const hotel = getSelectedHotel();
+    let hotel = await getSelectedHotel();
+
     const initialSearchValues = normalizeSearchValues(getSearchValues(hotel));
-    const params = new URLSearchParams(window.location.search);
     const defaultRoom = hotel.rooms.find((room) => room.selected) || hotel.rooms[0];
+    const params = new URLSearchParams(window.location.search);
     const selectedRoomFromUrl = params.get("room");
     const state = {
         selectedImageIndex: 0,
@@ -406,7 +409,7 @@ export function renderTravelerHotelDetailPage(containerId) {
     function render() {
         const selectedRoom = hotel.rooms.find((room) => room.id === state.selectedRoomId) || defaultRoom;
         const status = new URLSearchParams(window.location.search).get("status")?.trim().toLowerCase() || "";
-        const isCompleted = status === "completed" || status === "upcoming";
+        const isCompleted = status === "completed" || status === "upcoming" || status === "cancelled";
         const mainImage = hotel.gallery[state.selectedImageIndex] || hotel.gallery[0];
         const stayNights = getStayNights(state.searchValues.checkIn, state.searchValues.checkOut);
         const roomCount = Math.max(1, Number.parseInt(state.searchValues.rooms, 10) || 1);
@@ -519,22 +522,26 @@ export function renderTravelerHotelDetailPage(containerId) {
                             <div class="traveler-hotel-price-breakdown">
                                 <h3>Price Breakdown</h3>
                                 <div class="traveler-hotel-breakdown-row">
-                                    <span>$${selectedRoom.price} x ${stayNights} ${stayNights === 1 ? "night" : "nights"} x ${roomCount} ${roomCount === 1 ? "room" : "rooms"}</span>
-                                    <strong>$${roomSubtotal}</strong>
+                                    <span>₹${selectedRoom.price} x ${stayNights} ${stayNights === 1 ? "night" : "nights"} x ${roomCount} ${roomCount === 1 ? "room" : "rooms"}</span>
+                                    <strong>₹${roomSubtotal}</strong>
                                 </div>
                                 <div class="traveler-hotel-breakdown-row">
                                     <span>Taxes & fees</span>
-                                    <strong>$${taxTotal}</strong>
+                                    <strong>₹${taxTotal}</strong>
                                 </div>
                                 <div class="traveler-hotel-total-row">
                                     <span>Total Amount</span>
-                                    <strong>$${totalAmount}</strong>
+                                    <strong>₹${totalAmount}</strong>
                                 </div>
                             </div>
 
                             <div class="traveler-hotel-booking-actions">
-                                ${isCompleted ? "" : `<button class="traveler-hotel-primary-btn" type="button">Book This Now</button>`}
-                                <button class="traveler-hotel-secondary-btn" type="button">View All Rooms</button>
+                                ${status === "upcoming" ? `
+                                    <button class="traveler-hotel-danger-btn" type="button" data-cancel-hotel-booking style="background: #ef4444; color: white; padding: 12px; border-radius: 8px; width: 100%; border: none; cursor: pointer; font-weight: 600; margin-bottom: 12px;">Cancel Booking</button>
+                                ` : !isCompleted ? `
+                                    <button class="traveler-hotel-primary-btn" type="button">Book This Now</button>
+                                    <button class="traveler-hotel-secondary-btn" type="button">View All Rooms</button>
+                                ` : ""}
                             </div>
                         </aside>
                     </section>
@@ -572,8 +579,8 @@ export function renderTravelerHotelDetailPage(containerId) {
                                                 </div>
                                             </div>
                                             <div class="traveler-hotel-room-price">
-                                                ${selectedRoom.oldPrice ? `<del>$${selectedRoom.oldPrice}</del>` : ""}
-                                                <strong>$${selectedRoom.price}</strong>
+                                                ${selectedRoom.oldPrice ? `<del>₹${selectedRoom.oldPrice}</del>` : ""}
+                                                <strong>₹${selectedRoom.price}</strong>
                                                 <span>per night</span>
                                             </div>
                                         </div>
@@ -593,8 +600,8 @@ export function renderTravelerHotelDetailPage(containerId) {
                                                     </div>
                                                 </div>
                                                 <div class="traveler-hotel-room-price">
-                                                    ${room.oldPrice ? `<del>$${room.oldPrice}</del>` : ""}
-                                                    <strong>$${room.price}</strong>
+                                                    ${room.oldPrice ? `<del>₹${room.oldPrice}</del>` : ""}
+                                                    <strong>₹${room.price}</strong>
                                                     <span>per night</span>
                                                 </div>
                                             </div>
@@ -652,7 +659,7 @@ export function renderTravelerHotelDetailPage(containerId) {
             }
 
             persistSearchValues(state.searchValues);
-            window.location.href = HOTEL_RESULTS_PAGE;
+            render();
         });
 
         container.querySelectorAll("[data-thumb-index]").forEach((button) => {
@@ -702,6 +709,56 @@ export function renderTravelerHotelDetailPage(containerId) {
             container.querySelector("#traveler-hotel-room-list")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
 
+        container.querySelector("[data-cancel-hotel-booking]")?.addEventListener("click", () => {
+            const params = new URLSearchParams(window.location.search);
+            const bookingId = params.get("bookingId");
+            if (!bookingId) {
+                showWishlistToast("Booking ID not found.");
+                return;
+            }
+
+            let myTrips = [];
+            try { myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]"); } catch (e) {}
+            const tripIndex = myTrips.findIndex(t => String(t.id) === String(bookingId) || String(t.bookingId) === String(bookingId));
+            if (tripIndex >= 0) {
+                myTrips[tripIndex].status = "Cancelled";
+                localStorage.setItem("traveler_my_trips", JSON.stringify(myTrips));
+            }
+
+            let tours = [];
+            try { tours = JSON.parse(localStorage.getItem("tours") || "[]"); } catch (e) {}
+            const tourIndex = tours.findIndex(t => String(t.id) === String(bookingId) || String(t.bookingId) === String(bookingId));
+            if (tourIndex >= 0) {
+                tours[tourIndex].status = "Cancelled";
+                localStorage.setItem("tours", JSON.stringify(tours));
+            }
+
+            let hotelBookings = [];
+            try { hotelBookings = JSON.parse(localStorage.getItem("hotelBookings") || "[]"); } catch (e) {}
+            const hbIndex = hotelBookings.findIndex(b => String(b.id) === String(bookingId));
+            if (hbIndex >= 0) {
+                hotelBookings[hbIndex].status = "Cancelled";
+                localStorage.setItem("hotelBookings", JSON.stringify(hotelBookings));
+            }
+
+            const currentTraveler = getCurrentTraveler();
+            const getApiBaseUrl = () => (window.__XPLOREO_API_BASE__ || localStorage.getItem("xploreo_api_base_url") || "http://localhost:3000/api").replace(/\/$/, "");
+
+            fetch(`${getApiBaseUrl()}/bookings/${bookingId}/cancel`, {
+                method: 'PATCH',
+                headers: {
+                    "Content-Type": "application/json",
+                    "x-user-id": currentTraveler?.id || "traveler-fallback",
+                    "x-user-role": "TRAVELLER"
+                }
+            }).catch(e => console.error("Failed to cancel on backend:", e));
+
+            showWishlistToast("Booking successfully cancelled.");
+            setTimeout(() => {
+                window.location.href = "./traveller_mytrips.html";
+            }, 1500);
+        });
+
         container.querySelector("[data-hotel-wishlist]")?.addEventListener("click", () => {
             const wishlist = getWishlistItems();
             const existingIndex = wishlist.findIndex((item) => item.title === hotel.title);
@@ -723,16 +780,33 @@ export function renderTravelerHotelDetailPage(containerId) {
     render();
 }
 
-function getSelectedHotel() {
+async function getSelectedHotel() {
     const params = new URLSearchParams(window.location.search);
     const hotelId = params.get("hotel");
-    return getHotelDetailDataById(hotelId);
+    return await getHotelDetailDataById(hotelId);
 }
 
-export function getHotelDetailDataById(hotelId) {
+export async function getHotelDetailDataById(hotelId) {
     const resolvedId = HOTEL_DETAIL_ALIASES[hotelId] || hotelId;
     if (HOTEL_DETAIL_DATA[resolvedId]) {
         return HOTEL_DETAIL_DATA[resolvedId];
+    }
+
+    if (hotelId && hotelId !== "grand-luxury") {
+        try {
+            const backendHotel = await fetchHotel(hotelId);
+            if (backendHotel && backendHotel.id) {
+                const searchCard = mapHotelToSearchCard(backendHotel);
+                return buildGeneratedHotelDetail({
+                    ...searchCard,
+                    name: searchCard.title,
+                    priceValue: searchCard.price,
+                    maxGuests: searchCard.maxGuests || 4,
+                });
+            }
+        } catch (e) {
+            console.warn("Could not fetch hotel from API", e);
+        }
     }
 
     const searchHotel = travelerData.searchCatalog.hotels.find((hotel) => hotel.id === hotelId);
@@ -1094,7 +1168,6 @@ function escapeHtml(value) {
 function icon(name) {
     const icons = {
         calendar: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="3"></rect><path d="M8 2v4M16 2v4M3 10h18"></path></svg>`,
-        guests: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="3"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 4.13a3 3 0 0 1 0 5.74"></path></svg>`,
         check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>`,
         shield: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v6c0 5 3.5 8.5 7 9 3.5-.5 7-4 7-9V6l-7-3Z"></path><path d="m9.5 12 1.5 1.5L14.5 10"></path></svg>`,
         clock: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>`,
@@ -1110,7 +1183,23 @@ function icon(name) {
         chevronDown: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>`,
         chevronLeft: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>`,
         chevronRight: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>`,
-        search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>`
+        search: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>`,
+        guests: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
     };
     return icons[name] || icons.check;
+}
+
+function getCurrentTraveler() {
+    if (typeof localStorage === "undefined") {
+        return { id: "traveler-fallback", name: "Traveler", email: "", phone: "" };
+    }
+    try {
+        const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+        if (!currentUser || !currentUser.role) {
+            return { id: "traveler-fallback", name: "Traveler", email: "", phone: "" };
+        }
+        return currentUser;
+    } catch (error) {
+        return { id: "traveler-fallback", name: "Traveler", email: "", phone: "" };
+    }
 }

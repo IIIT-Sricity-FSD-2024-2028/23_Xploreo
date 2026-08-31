@@ -7,17 +7,53 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { AuthGuard } from './common/guards/auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AppLoggerService } from './common/logger/logger.service';
+import { SecurityMiddleware } from './common/middleware/security.middleware';
+import { RequestIdMiddleware } from './common/middleware/router-level.middleware';
+import { RequestResponseLoggingMiddleware } from './common/middleware/router-level.middleware';
+import { ApiVersionMiddleware } from './common/middleware/router-level.middleware';
+import { corsOptions } from './common/middleware/router-level.middleware';
+
+import * as express from 'express';
+import * as path from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bodyParser: false });
 
   const reflector = app.get(Reflector);
+  const logger = app.get(AppLoggerService);
 
   // Global prefix
   app.setGlobalPrefix('api');
 
-  // CORS
-  app.enableCors();
+  // CORS with options
+  app.enableCors(corsOptions);
+
+  // Security Headers Middleware (helmet)
+  const securityMiddleware = app.get(SecurityMiddleware);
+  app.use(securityMiddleware.use.bind(securityMiddleware));
+
+  // Router-level Middleware
+  const requestIdMiddleware = app.get(RequestIdMiddleware);
+  app.use(requestIdMiddleware.use.bind(requestIdMiddleware));
+
+  const requestResponseLoggingMiddleware = app.get(
+    RequestResponseLoggingMiddleware,
+  );
+  app.use(
+    requestResponseLoggingMiddleware.use.bind(requestResponseLoggingMiddleware),
+  );
+
+  const apiVersionMiddleware = app.get(ApiVersionMiddleware);
+  app.use(apiVersionMiddleware.use.bind(apiVersionMiddleware));
+
+  // Static file serving for uploads
+  const uploadsPath = path.join(process.cwd(), 'uploads');
+  app.use('/uploads', express.static(uploadsPath));
+
+  // Payload limits (for Base64 images)
+  app.use(express.json({ limit: '50mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
   // Global validation
   app.useGlobalPipes(
@@ -29,10 +65,12 @@ async function bootstrap() {
   );
 
   // Global exception filter
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const httpExceptionFilter = app.get(HttpExceptionFilter);
+  app.useGlobalFilters(httpExceptionFilter);
 
   // Global interceptors
-  app.useGlobalInterceptors(new LoggingInterceptor(), new ResponseInterceptor());
+  const loggingInterceptor = app.get(LoggingInterceptor);
+  app.useGlobalInterceptors(loggingInterceptor, new ResponseInterceptor());
 
   // Global guards
   app.useGlobalGuards(new AuthGuard(reflector), new RolesGuard(reflector));
@@ -42,7 +80,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`🚀 Xploreo API running on http://localhost:${port}/api`);
-  console.log(`📚 Swagger docs at  http://localhost:${port}/api/docs`);
+  logger.log(`🚀 Xploreo API running on http://localhost:${port}/api`);
+  logger.log(`📚 Swagger docs at  http://localhost:${port}/api/docs`);
 }
 bootstrap();

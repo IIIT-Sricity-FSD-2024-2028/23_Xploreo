@@ -89,10 +89,11 @@ export class CreateExperienceDto {
   @Min(1)
   durationHours!: number;
 
-  @ApiProperty({ example: 12 })
+  @ApiPropertyOptional({ example: 12 })
+  @IsOptional()
   @IsNumber()
-  @Min(1)
-  capacity!: number;
+  @Min(0)
+  capacity?: number;
 
   @ApiPropertyOptional({ example: 8 })
   @IsOptional()

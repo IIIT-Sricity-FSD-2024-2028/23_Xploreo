@@ -13,4 +13,8 @@ export class Guide {
   bank_name!: string;
   bank_acc_num_end!: number;
   iban!: string;
+  pricePerDay?: number;
+  rating?: number;
+  totalRatings?: number;
+  avatar?: string;
 }

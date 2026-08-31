@@ -40,6 +40,11 @@ export class ItineraryFlightDto {
   @IsString()
   arrivalAt!: string;
 
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  description?: string;
+
   @ApiProperty({ enum: ItineraryItemStatus })
   @IsEnum(ItineraryItemStatus)
   status!: ItineraryItemStatus;
@@ -69,6 +74,11 @@ export class ItineraryTransportDto {
   @ApiProperty()
   @IsString()
   pickupAt!: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @ApiProperty({ enum: ItineraryItemStatus })
   @IsEnum(ItineraryItemStatus)
@@ -100,6 +110,11 @@ export class ItineraryHotelDto {
   @IsString()
   roomType!: string;
 
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  description?: string;
+
   @ApiProperty({ enum: ItineraryItemStatus })
   @IsEnum(ItineraryItemStatus)
   status!: ItineraryItemStatus;
@@ -129,6 +144,11 @@ export class ItineraryExperienceDto {
   @ApiProperty()
   @IsString()
   endsAt!: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  description?: string;
 
   @ApiProperty({ enum: ItineraryItemStatus })
   @IsEnum(ItineraryItemStatus)

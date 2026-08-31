@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superadmin Profile - Xploreo</title>
+    <link rel="stylesheet" href="../css/shared.css">
+    
+    <style>
+        /* Basic reset for clean rendering */
+        * { margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        body { background-color: #f4f6f9; color: #333; }
+        .main-content { padding: 32px; max-width: 1200px; margin: 0 auto; }
+    </style>
+</head>
+<body>
+
+    <div class="main-content">
+        <div id="superadmin-profile-container"></div>
+    </div>
+
+    <script type="module">
+        // Import the function we created above
+        import { getSuperAdminProfileHTML } from '../js/modules/adminProfile.js';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Find the container
+            const container = document.getElementById('superadmin-profile-container');
+            
+            // Inject the HTML
+            container.innerHTML = getSuperAdminProfileHTML();
+        });
+    </script>
+
+</body>
+</html>

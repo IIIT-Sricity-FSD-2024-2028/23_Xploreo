@@ -6,9 +6,10 @@ export type Review = {
   id: number;
   userId: number;
   targetType: ReviewTargetType;
-  targetId: number;
+  targetId: string;
   rating: number;
   comment: string;
+  image?: string;
   createdAt: Date;
 };
 
@@ -19,7 +20,7 @@ export class ReviewsRepository {
       id: 1,
       userId: 20001,
       targetType: ReviewTargetType.GUIDE,
-      targetId: 10001,
+      targetId: '10001',
       rating: 5,
       comment: 'Friendly guide and a very well planned city walk.',
       createdAt: new Date(),

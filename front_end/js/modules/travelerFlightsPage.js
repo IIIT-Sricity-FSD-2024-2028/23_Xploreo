@@ -1,14 +1,11 @@
-import { apiGetAndSync } from "../utils/api.js";
+import { flightsData } from "../api/legacyData.js";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const SAVED_FLIGHTS_KEY = "traveler_saved_mock_flights";
 
-export async function renderTravelerFlightsPage(containerId) {
+export function renderTravelerFlightsPage(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-
-    // Fetch flights from backend; sync to localStorage as cache
-    const flightsData = await apiGetAndSync("/flights", "flightsData", {});
 
     const searchValues = getSearchValues();
     const dateTabs = buildDateTabs(flightsData);
@@ -58,7 +55,7 @@ export async function renderTravelerFlightsPage(containerId) {
                             <div class="traveler-filter-block">
                                 <div class="traveler-filter-title-row">
                                     <h3>Price</h3>
-                                    <span>$${state.filters.price}</span>
+                                    <span>₹${state.filters.price}</span>
                                 </div>
                                 <input
                                     id="traveler-price-slider"
@@ -71,8 +68,8 @@ export async function renderTravelerFlightsPage(containerId) {
                                     style="--slider-progress:${(state.filters.price / 2000) * 100}%"
                                 >
                                 <div class="traveler-filter-scale">
-                                    <span>$0</span>
-                                    <span>$2000</span>
+                                    <span>₹0</span>
+                                    <span>₹2000</span>
                                 </div>
                             </div>
 
@@ -108,7 +105,7 @@ export async function renderTravelerFlightsPage(containerId) {
                                         >
                                             <span class="traveler-date-day">${date.day}</span>
                                             <strong>${date.label}</strong>
-                                            <small>from $${date.price}</small>
+                                            <small>from ₹${date.price}</small>
                                         </button>
                                     `).join("")}
                                 </div>
@@ -319,7 +316,7 @@ function renderFlightCard(flight, state) {
 
                 <div class="traveler-flight-price">
                     <span class="traveler-flight-badge">${getFlightBadge(flight)}</span>
-                    <strong>$${flight.price}</strong>
+                    <strong>₹${flight.price}</strong>
                     <small>per person</small>
                     <button type="button" class="traveler-details-button" data-toggle-details="${flight.id}">View Details</button>
                 </div>
@@ -427,8 +424,8 @@ function getDefaultSelectedDate(dateTabs) {
 
 function getSearchValues() {
     const fallback = {
-        from: "New York (JFK)",
-        to: "Dubai (DXB)",
+        from: "Chennai (MAA)",
+        to: "Mumbai (BOM)",
         departure: "2026-06-15",
         returnDate: "",
         travellers: "1 Traveller, Economy",

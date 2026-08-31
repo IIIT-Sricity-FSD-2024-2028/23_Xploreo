@@ -1,8 +1,4 @@
-const partnerStatusStyles = {
-    Verified: { color: "#1e8e3e", bg: "#e6f4ea" },
-    "Under Review": { color: "#d97706", bg: "#fef3c7" },
-    Unverified: { color: "#e53e3e", bg: "#fff5f5" }
-};
+import { partnerStatusStyles } from '../api/legacyData.js';
 
 export function getPartnerTableShellHTML() {
     return `

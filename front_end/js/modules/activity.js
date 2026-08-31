@@ -15,7 +15,7 @@ export function renderActivity(containerId) {
         {
             type: "payout",
             title: "Payout Disbursed",
-            desc: "$12,400.00 released to Marriott.",
+            desc: "₹12,400.00 released to Marriott.",
             time: "42 mins ago",
             iconClass: "icon-green",
             // Simple Cash/Bill Icon SVG

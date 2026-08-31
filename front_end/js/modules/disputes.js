@@ -1,4 +1,4 @@
-const getDisputesData = () => { try { return JSON.parse(localStorage.getItem('disputes') || '[]'); } catch { return []; } };
+import { getDisputesData } from '../api/legacyData.js';
 
 export function getDisputesHTML() {
     // 1. Fetch the dynamic list of disputes

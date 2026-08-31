@@ -11,8 +11,11 @@ export enum TicketPriority {
 
 export class Ticket {
   id!: string;
-  travellerId!: string;
-  travellerName!: string;
+  userId!: string;
+  userName!: string;
+  userRole!: string;
+  travellerId?: string;
+  travellerName?: string;
   subject!: string;
   category!: string;
   message!: string;

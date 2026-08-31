@@ -1,4 +1,4 @@
-const earningsData = (() => { try { return JSON.parse(localStorage.getItem("experienceEarnings") || "[]"); } catch { return []; } })();
+import { earningsData } from "../api/legacyData.js";
 import {
     formatCurrency,
     readStorage,
@@ -76,7 +76,7 @@ export function renderExperienceEarningsPage() {
         setElementText("totalRevenueText", formatCurrency(total));
         setElementText("earnings", formatCurrency(total - refunded));
         setElementText("refundAmount", formatCurrency(refunded));
-        setElementText("avgBooking", bookingsCount ? formatCurrency(Math.round(total / bookingsCount)) : "$0");
+        setElementText("avgBooking", bookingsCount ? formatCurrency(Math.round(total / bookingsCount)) : "₹0");
         setElementText("topExperience", getMaxKey(expMap));
         setElementText("bestDay", getMaxKey(dayMap));
         setElementText("utilization", bookingsCount ? `${Math.min(100, bookingsCount * 10)}%` : "0%");

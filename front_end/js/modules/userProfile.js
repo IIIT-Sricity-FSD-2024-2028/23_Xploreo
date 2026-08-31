@@ -1,14 +1,4 @@
-const userStatusStyles = {
-    Active: { color: "#1e8e3e", bg: "#e6f4ea" },
-    Pending: { color: "#d97706", bg: "#fef3c7" },
-    Inactive: { color: "#e53e3e", bg: "#fff5f5" }
-};
-
-const activityIcons = {
-    check: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`,
-    alert: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`,
-    star: `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`
-};
+import { userStatusStyles, activityIcons } from '../api/legacyData.js';
 
 export function generateProfileHTML(user) {
     if (!user) {

@@ -1,4 +1,4 @@
-const travelerData = (() => { try { return JSON.parse(localStorage.getItem("travelerData") || "{}"); } catch { return {}; } })();
+import { travelerData } from "../api/legacyData.js";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const SELECTED_FLIGHT_KEY = "traveler_selected_flight";
@@ -56,12 +56,12 @@ export function renderTravelerFlightSearchPage(containerId) {
                         <div class="flight-search-summary-grid one-way-layout">
                             <div class="flight-search-field field-with-icon">
                                 <span>From</span>
-                                <strong>${getSummaryLocationLabel(searchValues.from || "New York (JFK)")}</strong>
+                                <strong>${getSummaryLocationLabel(searchValues.from || "Chennai (MAA)")}</strong>
                             </div>
                             <div class="flight-search-swap">→</div>
                             <div class="flight-search-field field-with-icon">
                                 <span>To</span>
-                                <strong>${getSummaryLocationLabel(searchValues.to || "Dubai")}</strong>
+                                <strong>${getSummaryLocationLabel(searchValues.to || "Mumbai")}</strong>
                             </div>
                             <div class="flight-search-field field-with-icon">
                                 <span>Departure</span>
@@ -95,8 +95,8 @@ export function renderTravelerFlightSearchPage(containerId) {
                                 style="--range-progress: ${getRangeProgress(priceLimit)}%;"
                             >
                             <div class="filter-range-values">
-                                <span>$0</span>
-                                <strong>$${priceLimit}</strong>
+                                <span>₹0</span>
+                                <strong>₹${priceLimit}</strong>
                             </div>
                         </div>
 
@@ -356,8 +356,8 @@ function applyFlightSearchDefaults(state) {
     state.tripType = state.tripType || "One Way";
     state.values = state.values || {};
     state.values.flights = state.values.flights || {};
-    state.values.flights.from = state.values.flights.from || "New York (JFK)";
-    state.values.flights.to = state.values.flights.to || "Dubai";
+    state.values.flights.from = state.values.flights.from || "Chennai (MAA)";
+    state.values.flights.to = state.values.flights.to || "Mumbai";
     state.values.flights.departure = state.values.flights.departure || "2026-03-21";
     state.values.flights.returnDate = state.values.flights.returnDate || "2026-03-24";
     state.values.flights.travellers = state.values.flights.travellers || "1 Traveller, Economy";
@@ -429,7 +429,7 @@ function getRouteMeta(searchValues = {}) {
     const from = String(searchValues.from || "").toLowerCase();
     const to = String(searchValues.to || "").toLowerCase();
 
-    if (from.includes("new york") && to.includes("dubai")) {
+    if (from.includes("chennai") && to.includes("mumbai")) {
         return {
             defaultDate: "2026-03-21",
             totalCount: 47,
@@ -456,8 +456,8 @@ function getSummaryLocationLabel(value) {
     const raw = String(value || "").trim();
 
     if (!raw) return "";
-    if (raw.toLowerCase().includes("new york")) return "New York (NYC)";
-    if (raw.toLowerCase().includes("dubai")) return "Dubai (DXB)";
+    if (raw.toLowerCase().includes("chennai")) return "Chennai (NYC)";
+    if (raw.toLowerCase().includes("mumbai")) return "Mumbai (BOM)";
     return raw;
 }
 
@@ -466,7 +466,7 @@ function getNumericPrice(price) {
 }
 
 function formatMoney(price) {
-    return `$${getNumericPrice(price)}`;
+    return `₹${getNumericPrice(price)}`;
 }
 
 function getDurationMinutes(duration) {
@@ -496,8 +496,8 @@ function getAirportCode(value) {
 
 function getResultsAirportCode(value) {
     const raw = String(value || "").toLowerCase();
-    if (raw.includes("new york")) return "NYC";
-    if (raw.includes("dubai")) return "DXB";
+    if (raw.includes("chennai")) return "NYC";
+    if (raw.includes("mumbai")) return "BOM";
     return getAirportCode(value);
 }
 

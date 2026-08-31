@@ -1,5 +1,6 @@
 import { attachLocationAutocomplete, getTodayDateString, extractUniqueLocations } from "../utils/locationAutocomplete.js";
-import { apiGetAndSync } from "../utils/api.js";
+import { fetchExperiences } from "../api/services.js";
+import { mapExperienceToSearchCard } from "../api/adapters.js";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const WISHLIST_STORAGE_KEY = "traveler_wishlist";
@@ -8,20 +9,24 @@ const SELECTED_EXPERIENCE_KEY = "traveler_selected_experience";
 let EXPERIENCE_RESULTS = null;
 
 export async function renderTravelerExperienceSearchPage(containerId) {
-    if (!EXPERIENCE_RESULTS) {
-        try {
-            EXPERIENCE_RESULTS = await apiGetAndSync("/experiences", "experienceCatalog", []);
-            if (!Array.isArray(EXPERIENCE_RESULTS)) EXPERIENCE_RESULTS = [];
-        } catch (error) {
-            EXPERIENCE_RESULTS = [];
-        }
-    }
     const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = `<div class="traveler-experience-empty">Loading experiences...</div>`;
+    }
+    try {
+        const experiences = await fetchExperiences();
+        EXPERIENCE_RESULTS = experiences.map(normalizeExperience);
+    } catch (error) {
+        if (container) {
+            container.innerHTML = `<div class="traveler-experience-empty">Unable to load experiences right now.</div>`;
+        }
+        return;
+    }
     if (!container) return;
 
     const state = {
         searchValues: getSearchValues(),
-        maxPrice: 300,
+        maxPrice: 100000,
         selectedCategories: new Set(),
         selectedDurations: new Set()
     };
@@ -49,12 +54,12 @@ export async function renderTravelerExperienceSearchPage(containerId) {
                             <div class="traveler-experience-filter-group">
                                 <h3>Price Range</h3>
                                 <div class="traveler-experience-slider-wrap">
-                                    <input id="traveler-experience-price" type="range" min="0" max="500" step="5" value="${state.maxPrice}">
+                                    <input id="traveler-experience-price" type="range" min="0" max="100000" step="500" value="${state.maxPrice}">
                                 </div>
                                 <div class="traveler-experience-slider-labels">
-                                    <span>$0</span>
-                                    <span class="active">${formatCurrency(state.maxPrice)}</span>
-                                    <span>$500</span>
+                                    <span>₹0</span>
+                                    <span class="active-label">${formatCurrency(state.maxPrice)}</span>
+                                    <span>₹100,000</span>
                                 </div>
                             </div>
 
@@ -166,7 +171,7 @@ export async function renderTravelerExperienceSearchPage(containerId) {
                 const item = EXPERIENCE_RESULTS.find((entry) => entry.id === button.dataset.experienceDetails);
                 if (!item) return;
                 persistSelectedExperience(item);
-                window.location.href = "./traveller_experience-detail.html";
+                window.location.href = `./traveller_experience-detail.html?experience=${encodeURIComponent(item.id)}`;
             });
         });
     }
@@ -187,17 +192,28 @@ function attachExperienceSearchAutocomplete(container) {
     });
 }
 
+function getDisplayCategory(backendCategory) {
+    if (!backendCategory) return "Tours";
+    const mapping = {
+        'adventure': 'Adventure',
+        'culture': 'Culture',
+        'culinary': 'Culture',
+        'wellness': 'Culture',
+        'wildlife': 'Adventure',
+        'photography': 'Culture'
+    };
+    const key = String(backendCategory).toLowerCase();
+    return mapping[key] || (backendCategory.charAt(0).toUpperCase() + backendCategory.slice(1));
+}
+
 function normalizeExperience(item, index) {
     const priceValue = extractAmount(item.price);
     const title = String(item.title || "Signature Experience").trim();
     const destination = String(item.destination || "Explore").trim();
-    const category = inferCategory(title, destination, index);
-    const durationHours = extractDurationHours(item.time);
-    const originalPrice = category.includes("Tickets") || category === "Cruises"
-        ? priceValue + 20
-        : priceValue > 60
-            ? priceValue + 30
-            : 0;
+    const rawCategory = item.category || inferCategory(title, destination, index);
+    const category = getDisplayCategory(rawCategory);
+    const durationHours = item.durationHours ? Number(item.durationHours) : extractDurationHours(item.time);
+    const originalPrice = 0;
 
     return {
         id: item.id || `experience-${index + 1}`,
@@ -209,13 +225,14 @@ function normalizeExperience(item, index) {
         durationLabel: item.time || `${durationHours} hours`,
         durationBucket: getDurationBucket(durationHours),
         durationHours,
-        rating: Number(item.rating) || 4.7,
-        reviews: Number(item.reviews) || 180 + index * 67,
+        rating: Number(item.rating) || 0.0,
+        reviews: Number(item.reviews) || 0,
         price: priceValue || 59,
         originalPrice,
-        discount: originalPrice > priceValue ? Math.max(10, Math.round(((originalPrice - priceValue) / originalPrice) * 100)) : 0,
-        category: item.category || category,
-        perks: Array.isArray(item.perks) && item.perks.length ? item.perks : getPerksForCategory(category, title),
+        discount: 0,
+        category: category,
+        capacity: Number(item.capacity) || 12,
+        perks: Array.isArray(item.perks) && item.perks.length ? item.perks : (item.partnerId === "experience-partner-seed" ? getPerksForCategory(category, title) : []),
         customizable: Boolean(item.customizable),
         description: item.description || [],
         audience: item.audience || [],
@@ -252,11 +269,11 @@ function normalizeWorkspaceExperience(booking, activity, bookingIndex, activityI
         durationLabel: `${durationHours} hours`,
         durationBucket: getDurationBucket(durationHours),
         durationHours,
-        rating: 4.6 + ((activityIndex % 3) * 0.1),
-        reviews: 145 + (bookingIndex * 80) + (activityIndex * 44),
+        rating: 0.0,
+        reviews: 0,
         price,
-        originalPrice,
-        discount: Math.max(12, Math.round(((originalPrice - price) / originalPrice) * 100)),
+        originalPrice: price,
+        discount: 0,
         category,
         perks: getPerksForCategory(category, title),
         customizable: true,
@@ -301,7 +318,7 @@ function persistSelectedExperience(item) {
 
 function getSearchValues() {
     const fallback = {
-        destination: "Dubai",
+        destination: "",
         activityDate: ""
     };
 
@@ -341,9 +358,7 @@ function getFilteredExperiences(state) {
         includesText(item.destination, destinationTerm) || includesText(item.title, destinationTerm)
     );
 
-    const basePool = exactMatches.length
-        ? { items: exactMatches, matchMode: "destination" }
-        : { items: EXPERIENCE_RESULTS, matchMode: "all" };
+    const basePool = { items: exactMatches, matchMode: "destination" };
 
     const items = basePool.items
         .filter((item) => item.price <= state.maxPrice)
@@ -362,7 +377,7 @@ function getHeadline(destination, count, matchMode) {
     }
 
     if (matchMode === "all") {
-        return `Showing traveler mock experiences${destination ? ` inspired by ${destination}` : ""}.`;
+        return `No exact matches found. Showing other popular experiences${destination ? ` near ${destination}` : ""}.`;
     }
 
     return `Showing activities in ${destination || "your selected destination"}`;
@@ -433,6 +448,7 @@ function renderExperienceCard(item) {
             <div class="traveler-experience-card-body">
                 <h3>${escapeHtml(item.title)}</h3>
                 <p class="traveler-experience-duration">${clockIcon()} ${escapeHtml(item.durationLabel)}</p>
+                <p class="traveler-experience-description" style="color: #666; font-size: 0.9em; margin: 8px 0; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${escapeHtml(Array.isArray(item.description) ? item.description.join(" ") : (item.description || item.title))}</p>
 
                 <ul class="traveler-experience-perks">
                     ${item.perks.map((perk) => `<li>${checkIcon()} ${escapeHtml(perk)}</li>`).join("")}
@@ -586,7 +602,7 @@ function normalizeText(value) {
 function formatCurrency(value) {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "INR",
         maximumFractionDigits: 0
     }).format(Number(value) || 0);
 }

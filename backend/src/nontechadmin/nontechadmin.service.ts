@@ -7,8 +7,12 @@ import { UpdateNontechadminDto } from './dto/update-nontechadmin.dto';
 export class NontechadminService {
   constructor(private readonly repo: NontechadminRepository) {}
 
-  create(dto: CreateNontechadminDto) { return this.repo.create(dto); }
-  findAll() { return this.repo.findAll(); }
+  create(dto: CreateNontechadminDto) {
+    return this.repo.create(dto);
+  }
+  findAll() {
+    return this.repo.findAll();
+  }
   findOne(id: string) {
     const a = this.repo.findById(id);
     if (!a) throw new NotFoundException(`Nontechadmin ${id} not found`);
@@ -20,7 +24,8 @@ export class NontechadminService {
     return updated;
   }
   remove(id: string) {
-    if (!this.repo.delete(id)) throw new NotFoundException(`Nontechadmin ${id} not found`);
+    if (!this.repo.delete(id))
+      throw new NotFoundException(`Nontechadmin ${id} not found`);
     return { message: `Nontechadmin ${id} deleted` };
   }
 }

@@ -3,6 +3,7 @@ import { getProfile } from "../components/layout/profile.js";
 import { renderPageContent } from "./renderpages.js";
 import { initLogin } from "./login.js";
 import { initSignup } from "./signup.js";
+import { getCurrentUser } from "./api/session.js";
 import { renderLandingNavbar } from "../components/layout/navbar_landing.js";
 
 async function initApp() {
@@ -26,19 +27,10 @@ async function initApp() {
       return;
     }
 
-    // Landing pages (tours, partners, support) also just need navbar
-    if (path.startsWith("landing_")) {
-      renderLandingNavbar();
-      return;
-    }
-
-    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    const currentUser = getCurrentUser();
 
     if (!currentUser) {
-      const isSubPage = window.location.pathname.match(/\/pages\/[^/]+\//);
-      window.location.href = isSubPage
-        ? "../../pages/mainpages/login.html"
-        : "./pages/mainpages/login.html";
+      window.location.href = "./login.html";
       return;
     }
 

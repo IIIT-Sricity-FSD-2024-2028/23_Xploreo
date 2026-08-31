@@ -8,7 +8,7 @@
         departureTime: "08:15",
         arrivalTime: "22:45",
         from: "NYC",
-        to: "DXB",
+        to: "BOM",
         duration: "14h 30m",
         stops: 0,
         price: 1245

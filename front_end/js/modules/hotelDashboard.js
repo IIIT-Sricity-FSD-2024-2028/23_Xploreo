@@ -9,5 +9,4 @@ export function renderHotelDashboard(user) {
     renderRooms("rooms-section");
     renderBookings("bookings-section");
     renderHotelReviews("reviews-section-h");
-    renderActivity("activity-section");
 }

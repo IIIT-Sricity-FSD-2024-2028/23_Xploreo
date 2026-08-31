@@ -6,9 +6,16 @@ import {
   IsString,
   Min,
   MaxLength,
+  IsNumber,
+  IsArray,
 } from 'class-validator';
 
 export class CreateBookingDto {
+  @ApiPropertyOptional({ example: 'XPL-HTL-1234' })
+  @IsOptional()
+  @IsString()
+  id?: string;
+
   @ApiProperty({ example: 'hotel-goa-001' })
   @IsString()
   hotelId!: string;
@@ -50,4 +57,25 @@ export class CreateBookingDto {
   @IsString()
   @MaxLength(240)
   notes?: string;
+
+  @ApiPropertyOptional({ example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  rooms?: number;
+
+  @ApiPropertyOptional({ example: 1500 })
+  @IsOptional()
+  @IsNumber()
+  totalAmount?: number;
+
+  @ApiProperty({
+    description: 'Array of guest names',
+    required: false,
+    example: ['John Doe', 'Jane Doe'],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  guestNames?: string[];
 }

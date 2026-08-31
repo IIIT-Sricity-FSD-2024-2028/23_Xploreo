@@ -174,7 +174,7 @@ export function setDateMin(inputId, minDate) {
 
 /**
  * Extract unique sorted location strings from an array of items.
- * Deduplicates: if both "Dubai" and "Dubai (DXB)" exist, keeps only "Dubai (DXB)".
+ * Deduplicates: if both "Mumbai" and "Mumbai (BOM)" exist, keeps only "Mumbai (BOM)".
  * @param {Object[]} items
  * @param {string[]} fields - field names to extract from each item
  */
@@ -189,7 +189,7 @@ export function extractUniqueLocations(items, fields) {
 
     const all = [...set].sort();
     // Remove any plain city name that already has an airport-code variant
-    // e.g. remove "Dubai" if "Dubai (DXB)" exists
+    // e.g. remove "Mumbai" if "Mumbai (BOM)" exists
     return all.filter(entry => {
         const hasBracket = entry.includes("(");
         if (hasBracket) return true; // always keep airport-code version

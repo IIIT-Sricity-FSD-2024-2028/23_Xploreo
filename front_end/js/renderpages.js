@@ -26,11 +26,11 @@ import { renderExperienceProfilePage } from "./modules/experience_profile.js?v=p
 import { initOperations } from "./modules/operations.js";
 import { renderTechAdminDashboard } from "./techAdminDashboard.js";
 import { initTicketManagement } from "./modules/tech_tickets.js?v=phase3-tickets";
-import { initTechActivity } from "./modules/tech_activity.js";
-import { initTechLogs } from "./modules/tech_logs.js";
 import { renderTechTicketDetail } from "./modules/tech_ticket_detail.js";
 import { renderNtaDashboard } from "./modules/ntaDashboard.js";
 import { initNtaPlans } from "./modules/ntaPlans.js";
+import { renderGuideDashboard } from "./modules/guide_dashboard.js";
+import { initNtaGuideApplications } from "./modules/nta_guide_applications.js";
 
 // Traveler modules
 import { renderTravelerDashboard as renderTravellerDashboard } from "./modules/travelerDashboard.js?v=traveller-ui-6";
@@ -127,16 +127,14 @@ export async function renderPageContent(user) {
       return;
     }
   }
-  if (user.role === "guide" && page === "dashboard.html") {
-    await renderdashboard("main", user);
-    const main = document.getElementById("main");
-    const admin = document.getElementById("admin-dashboard");
-    const hotel = document.getElementById("hotel-dashboard");
-    if (main) main.style.display = "block";
-    if (admin) admin.style.display = "none";
-    if (hotel) hotel.style.display = "none";
+  if (user.role === "guide" && (page === "dashboard.html" || page === "guide.html")) {
+    showOnlyDashboard("main");
+    await renderSafely("Render guide dashboard", () =>
+      renderGuideDashboard("main", user),
+    );
+    return;
   } else if (user.role === "superadmin" && page === "dashboard.html") {
-    await renderAdminDashboard("admin-dashboard");
+    renderAdminDashboard("admin-dashboard");
     const main = document.getElementById("main");
     const admin = document.getElementById("admin-dashboard");
     const hotel = document.getElementById("hotel-dashboard");
@@ -145,22 +143,22 @@ export async function renderPageContent(user) {
     if (hotel) hotel.style.display = "none";
     document.getElementById("tech-admin-dash").style.display = "none";
   } else if (user.role === "superadmin" && page === "users.html") {
-    await initUsers();
+    initUsers();
   } else if (
     (user.role === "superadmin" || user.role === "nontechadmin") &&
     page === "guide.html"
   ) {
-    await renderGuideCrudPage("main", user);
+    renderGuideCrudPage("main", user);
   } else if (
     (user.role === "superadmin" || user.role === "nontechadmin") &&
     page === "plans.html"
   ) {
-    await renderPlansCrudPage("main", user);
+    renderPlansCrudPage("main", user);
   } else if (
     (user.role === "superadmin" || user.role === "nontechadmin") &&
     page === "trips.html"
   ) {
-    await renderTripsCrudPage("main", user);
+    renderTripsCrudPage("main", user);
   } else if (user.role === "superadmin" && page === "opsbook.html") {
     const mainDiv = document.getElementById("main");
     if (mainDiv) mainDiv.style.display = "block";
@@ -177,7 +175,7 @@ export async function renderPageContent(user) {
     (role === "techadmin" || role === "TECH_ADMIN") &&
     page === "dashboard.html"
   ) {
-    await renderTechAdminDashboard("tech-admin-dash");
+    renderTechAdminDashboard("tech-admin-dash");
     document.getElementById("tech-admin-dash").style.display = "block";
   } else if (
     (role === "techadmin" || role === "TECH_ADMIN") &&
@@ -189,16 +187,6 @@ export async function renderPageContent(user) {
     page === "tech_ticket_detail.html"
   ) {
     renderTechTicketDetail("main");
-  } else if (
-    (role === "techadmin" || role === "TECH_ADMIN") &&
-    page === "tech_activity.html"
-  ) {
-    initTechActivity();
-  } else if (
-    (role === "techadmin" || role === "TECH_ADMIN") &&
-    page === "tech_logs.html"
-  ) {
-    initTechLogs();
   } else if (user.role === "guide" && page === "tours.html") {
     rendertourpage("main", user);
   } else if (user.role === "guide" && page === "earnings.html") {
@@ -220,10 +208,16 @@ export async function renderPageContent(user) {
   } else if (
     (user.role === "guide" ||
       user.role === "hotel" ||
+      user.role === "PARTNER" ||
       user.role === "experience" ||
-      user.role === "EXPERIENCE_PARTNER") &&
+      user.role === "EXPERIENCE_PARTNER" ||
+      user.role === "nontechadmin" ||
+      user.role === "superadmin" ||
+      page === "support.html") &&
     page === "support.html"
   ) {
+    const main = document.getElementById("main");
+    if (main) main.style.display = "block";
     renderSupportPage("main", user);
   } else if (
     (role === "hotel" || role === "PARTNER") &&
@@ -255,7 +249,15 @@ export async function renderPageContent(user) {
     page === "hotelEarning.html"
   ) {
     renderHotelEarningPage();
-  } else if (
+  } /*else if (
+    (role === "experience" || role === "EXPERIENCE_PARTNER") &&
+    page === "dashboard.html"
+  ) {
+    showOnlyDashboard("experience-dashboard");
+    await renderSafely("Render experience dashboard", () =>
+      renderExperienceDashboard("experience-dashboard", user),
+    );
+  } */else if (
     (role === "experience" || role === "EXPERIENCE_PARTNER") &&
     page === "experience_home.html"
   ) {
@@ -286,9 +288,16 @@ export async function renderPageContent(user) {
     user.role === "nontechadmin" &&
     (page === "dashboard.html" || page === "nta_dashboard.html")
   ) {
-    await renderNtaDashboard("nta-dashboard");
+    renderNtaDashboard("nta-dashboard");
   } else if (user.role === "nontechadmin" && page === "nta_plans.html") {
-    await initNtaPlans();
+    initNtaPlans();
+  } else if (
+    (user.role === "nontechadmin" || user.role === "superadmin") &&
+    page === "nta_guide_applications.html"
+  ) {
+    const main = document.getElementById("main");
+    if (main) main.style.display = "block";
+    initNtaGuideApplications("main");
   }
 }
 

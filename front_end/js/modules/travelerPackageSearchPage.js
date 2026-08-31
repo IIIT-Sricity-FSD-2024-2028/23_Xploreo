@@ -1,12 +1,13 @@
 import { attachLocationAutocomplete, getTodayDateString } from "../utils/locationAutocomplete.js";
-import { apiGetAndSync } from "../utils/api.js";
+import { fetchPlans } from "../api/services.js";
+import { mapPlanToPackage } from "../api/adapters.js";
 
 const SELECTED_PACKAGE_STORAGE_KEY = "traveler_selected_package";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const WISHLIST_STORAGE_KEY = "traveler_wishlist";
 const ROOM_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8"];
-const GUEST_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8"];
+const GUEST_OPTIONS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
 
 let PACKAGE_RESULTS = [];
 
@@ -17,37 +18,69 @@ export async function renderTravelerPackageSearchPage(containerId) {
     const state = {
         searchValues: getSearchValues(),
         minDuration: 1,
-        flightMode: "with",
-        maxBudget: 5000,
+        flightMode: "",
+        maxBudget: 100000,
         selectedBudgets: new Set(),
         selectedCategories: new Set(),
         occupancyOpen: false
     };
 
-    if (!PACKAGE_RESULTS.length) {
-        try {
-            const raw = await apiGetAndSync("/plans", "plans", []);
-            PACKAGE_RESULTS = (Array.isArray(raw) ? raw : []).map((p) => ({
-                id: p.id || String(Date.now()),
-                title: p.title || p.name || "Package",
-                origin: p.originCity || "New Delhi",
-                destination: p.destination || "Bali",
-                nights: p.durationNights || 3,
-                days: (p.durationNights || 3) + 1,
-                pricePerPerson: p.pricePerPerson || p.price || 499,
-                withFlight: Boolean(p.includesFlight),
-                hotelCategory: p.hotelStars || 4,
-                stayLine: `${p.hotelStars || 4} Star Hotel`,
-                mealsLine: "Breakfast & Dinner",
-                transferLine: "Airport Transfers Included",
-                activityLine: "Guided City Sightseeing",
-                perk: (p.tags || ["Best Value"])[0],
-                emi: Math.round((p.pricePerPerson || p.price || 499) / 6),
-                budgetBucket: (p.pricePerPerson || p.price || 499) < 500 ? "under-500" : (p.pricePerPerson || p.price || 499) <= 1000 ? "500-1000" : "1000-2000",
-                image: p.image || "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800"
+    container.innerHTML = `<div class="traveler-package-empty">Loading packages...</div>`;
+    try {
+        let plans = await fetchPlans();
+        const localPlans = JSON.parse(localStorage.getItem("ntaPlans") || "[]");
+        if (Array.isArray(plans) && localPlans.length) {
+            const planIds = new Set(plans.map(p => String(p.id)));
+            const missing = localPlans.filter(p => !planIds.has(String(p.id))).map(p => ({
+                id: p.id,
+                title: p.name || p.title,
+                description: p.description,
+                pricePerPerson: p.price || p.pricePerPerson,
+                durationNights: parseInt(p.duration) || 3,
+                destination: p.destination,
+                originCity: "Any",
+                hotelStars: 4,
+                includesFlight: true,
+                tags: p.features || [],
+                itinerary: p.itinerary
             }));
-        } catch (error) {
-            PACKAGE_RESULTS = [];
+            plans = [...plans, ...missing];
+        } else if (!plans || !plans.length) {
+            plans = localPlans.map(p => ({
+                id: p.id,
+                title: p.name || p.title,
+                description: p.description,
+                pricePerPerson: p.price || p.pricePerPerson,
+                durationNights: parseInt(p.duration) || 3,
+                destination: p.destination,
+                originCity: "Any",
+                hotelStars: 4,
+                includesFlight: true,
+                tags: p.features || [],
+                itinerary: p.itinerary
+            }));
+        }
+        PACKAGE_RESULTS = (plans || []).map((plan) => mapPlanToPackage(plan, getSearchValues()));
+    } catch (error) {
+        const localPlans = JSON.parse(localStorage.getItem("ntaPlans") || "[]");
+        if (localPlans.length) {
+            const plans = localPlans.map(p => ({
+                id: p.id,
+                title: p.name || p.title,
+                description: p.description,
+                pricePerPerson: p.price || p.pricePerPerson,
+                durationNights: parseInt(p.duration) || 3,
+                destination: p.destination,
+                originCity: "Any",
+                hotelStars: 4,
+                includesFlight: true,
+                tags: p.features || [],
+                itinerary: p.itinerary
+            }));
+            PACKAGE_RESULTS = plans.map((plan) => mapPlanToPackage(plan, getSearchValues()));
+        } else {
+            container.innerHTML = `<div class="traveler-package-empty">Unable to load packages right now.</div>`;
+            return;
         }
     }
 
@@ -58,7 +91,6 @@ export async function renderTravelerPackageSearchPage(containerId) {
             <main class="traveler-package-page">
                 <div class="traveler-package-frame">
                     <section class="traveler-package-toolbar">
-                        ${renderTextField("fromCity", "Starting From", state.searchValues.fromCity, "Your city")}
                         ${renderTextField("destination", "Going To", state.searchValues.destination, "Destination")}
                         ${renderDateField("departureDate", "Starting Date", state.searchValues.departureDate)}
                         ${renderOccupancyField(state)}
@@ -95,18 +127,18 @@ export async function renderTravelerPackageSearchPage(containerId) {
                             <div class="traveler-package-filter-group">
                                 <h3>Budget</h3>
                                 <div class="traveler-package-slider-wrap">
-                                    <input id="traveler-package-budget" type="range" min="0" max="10000" step="100" value="${state.maxBudget}">
+                                    <input id="traveler-package-budget" type="range" min="0" max="100000" step="500" value="${state.maxBudget}">
                                 </div>
                                 <div class="traveler-package-slider-labels traveler-package-budget-labels">
-                                    <span>$0</span>
+                                    <span>₹0</span>
                                     <span class="active">${formatCurrency(state.maxBudget)}</span>
-                                    <span>$10,000</span>
+                                    <span>₹100,000</span>
                                 </div>
                                 <div class="traveler-package-checkbox-list">
-                                    ${renderBudgetCheck("under-500", "Under $500", state.selectedBudgets.has("under-500"))}
-                                    ${renderBudgetCheck("500-1000", "$500 - $1000", state.selectedBudgets.has("500-1000"))}
-                                    ${renderBudgetCheck("1000-2000", "$1000 - $2000", state.selectedBudgets.has("1000-2000"))}
-                                    ${renderBudgetCheck("above-2000", "Above $2000", state.selectedBudgets.has("above-2000"))}
+                                    ${renderBudgetCheck("under-500", "Under ₹500", state.selectedBudgets.has("under-500"))}
+                                    ${renderBudgetCheck("500-1000", "₹500 - ₹1000", state.selectedBudgets.has("500-1000"))}
+                                    ${renderBudgetCheck("1000-2000", "₹1000 - ₹2000", state.selectedBudgets.has("1000-2000"))}
+                                    ${renderBudgetCheck("above-2000", "Above ₹2000", state.selectedBudgets.has("above-2000"))}
                                 </div>
                             </div>
 
@@ -175,7 +207,8 @@ export async function renderTravelerPackageSearchPage(containerId) {
 
         container.querySelectorAll("[data-package-flight]").forEach((button) => {
             button.addEventListener("click", () => {
-                state.flightMode = button.dataset.packageFlight;
+                const mode = button.dataset.packageFlight;
+                state.flightMode = state.flightMode === mode ? "" : mode;
                 render();
             });
         });
@@ -209,15 +242,6 @@ export async function renderTravelerPackageSearchPage(containerId) {
             render();
         });
 
-        container.querySelector('[data-package-field="rooms"]')?.addEventListener("change", (event) => {
-            state.searchValues = normalizeSearchValues({
-                ...state.searchValues,
-                rooms: event.target.value
-            });
-            persistSearchValues(state.searchValues);
-            render();
-        });
-
         container.querySelector('[data-package-field="guestCount"]')?.addEventListener("change", (event) => {
             state.searchValues = normalizeSearchValues({
                 ...state.searchValues,
@@ -238,11 +262,13 @@ export async function renderTravelerPackageSearchPage(containerId) {
         });
 
         container.querySelectorAll("[data-package-details]").forEach((button) => {
-            button.addEventListener("click", () => {
+            button.addEventListener("click", (e) => {
+                e.preventDefault();
                 const packageId = button.getAttribute("data-package-details");
-                const selectedPackage = PACKAGE_RESULTS.find((item) => item.id === packageId);
+                const selectedPackage = PACKAGE_RESULTS.find((item) => String(item.id) === String(packageId));
                 if (selectedPackage && typeof localStorage !== "undefined") {
                     localStorage.setItem(SELECTED_PACKAGE_STORAGE_KEY, JSON.stringify(selectedPackage));
+                    localStorage.setItem("traveler_selected_package_id", String(packageId));
                 }
                 window.location.href = `./traveller_booking-details.html?plan=${encodeURIComponent(packageId)}`;
             });
@@ -255,41 +281,14 @@ export async function renderTravelerPackageSearchPage(containerId) {
 
 function attachPackageSearchAutocomplete(container) {
     const packageData = PACKAGE_RESULTS || [];
-
-    const fromInput = container?.querySelector('[data-package-field="fromCity"]');
     const destInput = container?.querySelector('[data-package-field="destination"]');
-
-    if (!fromInput && !destInput) return;
-
-    if (fromInput && !fromInput.id) fromInput.id = "package-from-search";
+    if (!destInput) return;
     if (destInput && !destInput.id) destInput.id = "package-dest-search";
 
-    // Dynamic supplier for From City:
-    // Only list origins that have at least one package going to the current destination value
-    function getFromSuggestions() {
-        const currentDest = normalizeText(destInput ? destInput.value : "");
-        const filtered = currentDest
-            ? packageData.filter(pkg => normalizeText(pkg.destination).includes(currentDest))
-            : packageData;
-        return [...new Set(filtered.map(pkg => pkg.origin).filter(Boolean))].sort();
-    }
-
-    // Dynamic supplier for Destination:
-    // Only list destinations that have at least one package coming from the current origin value
     function getDestSuggestions() {
-        const currentFrom = normalizeText(fromInput ? fromInput.value : "");
-        const filtered = currentFrom
-            ? packageData.filter(pkg => normalizeText(pkg.origin).includes(currentFrom))
-            : packageData;
-        return [...new Set(filtered.map(pkg => pkg.destination).filter(Boolean))].sort();
+        return [...new Set(packageData.map(pkg => pkg.destination).filter(Boolean))].sort();
     }
 
-    if (fromInput) {
-        attachLocationAutocomplete(fromInput.id, getFromSuggestions, (val) => {
-            fromInput.value = val;
-            fromInput.dispatchEvent(new Event("change", { bubbles: true }));
-        });
-    }
     if (destInput) {
         attachLocationAutocomplete(destInput.id, getDestSuggestions, (val) => {
             destInput.value = val;
@@ -300,12 +299,10 @@ function attachPackageSearchAutocomplete(container) {
 
 function getSearchValues() {
     const fallback = {
-        fromCity: "New Delhi",
-        destination: "Bali",
+        destination: "Kerala",
         departureDate: "",
-        rooms: "1",
         guestCount: "2",
-        guests: "1 Room, 2 Guests"
+        guests: "2 Guests"
     };
 
     if (typeof localStorage === "undefined") {
@@ -316,10 +313,8 @@ function getSearchValues() {
         const stored = JSON.parse(localStorage.getItem(SEARCH_STORAGE_KEY) || "{}");
         const values = stored.values?.packages || {};
         return normalizeSearchValues({
-            fromCity: values.fromCity || fallback.fromCity,
             destination: values.destination || fallback.destination,
             departureDate: values.departureDate || fallback.departureDate,
-            rooms: values.rooms || "1",
             guestCount: values.guestCount || "2",
             guests: values.guests || fallback.guests
         });
@@ -336,7 +331,7 @@ function persistSearchValues(searchValues) {
         stored.values = stored.values || {};
         stored.values.packages = {
             ...searchValues,
-            guests: formatRoomsGuests(searchValues.rooms, searchValues.guestCount)
+            guests: `${searchValues.guestCount} Guest${searchValues.guestCount > 1 ? 's' : ''}`
         };
         localStorage.setItem(SEARCH_STORAGE_KEY, JSON.stringify(stored));
     } catch (error) {
@@ -345,32 +340,28 @@ function persistSearchValues(searchValues) {
 }
 
 function normalizeSearchValues(values) {
-    const rooms = clampCount(values.rooms, 1, 8);
     const guestCount = clampCount(values.guestCount, 1, 8);
     return {
-        fromCity: String(values.fromCity || "").trim(),
         destination: String(values.destination || "").trim(),
         departureDate: values.departureDate || "",
-        rooms: String(rooms),
         guestCount: String(guestCount),
-        guests: formatRoomsGuests(rooms, guestCount)
+        guests: `${guestCount} Guest${guestCount > 1 ? 's' : ''}`
     };
 }
 
 function getFilteredPackages(state) {
-    const originTerm = normalizeText(state.searchValues.fromCity);
     const destinationTerm = normalizeText(state.searchValues.destination);
     const guestCount = Number.parseInt(state.searchValues.guestCount, 10) || 2;
 
     return PACKAGE_RESULTS
-        .filter((item) => !originTerm || normalizeText(item.origin).includes(originTerm))
         .filter((item) =>
             !destinationTerm ||
             normalizeText(item.destination).includes(destinationTerm) ||
+            destinationTerm.includes(normalizeText(item.destination)) ||
             normalizeText(item.title).includes(destinationTerm)
         )
         .filter((item) => item.nights >= state.minDuration)
-        .filter((item) => state.flightMode === "with" ? item.withFlight : !item.withFlight)
+        .filter((item) => !state.flightMode || (state.flightMode === "with" ? item.withFlight !== false : !item.withFlight))
         .filter((item) => item.pricePerPerson <= state.maxBudget)
         .filter((item) => !state.selectedBudgets.size || state.selectedBudgets.has(item.budgetBucket))
         .filter((item) => !state.selectedCategories.size || state.selectedCategories.has(String(item.hotelCategory)))
@@ -407,23 +398,17 @@ function renderDateField(field, label, value) {
 function renderOccupancyField(state) {
     return `
         <div class="traveler-package-toolbar-field traveler-package-occupancy-field ${state.occupancyOpen ? "open" : ""}">
-            <span class="traveler-package-toolbar-label">Rooms & Guests</span>
+            <span class="traveler-package-toolbar-label">Guests</span>
             <button type="button" class="traveler-package-toolbar-row traveler-package-occupancy-toggle" id="traveler-package-occupancy-toggle">
                 ${guestsIcon()}
-                <strong>${formatRoomsGuests(state.searchValues.rooms, state.searchValues.guestCount)}</strong>
+                <strong>${state.searchValues.guestCount} Guest${state.searchValues.guestCount == "1" ? "" : "s"}</strong>
             </button>
             ${state.occupancyOpen ? `
                 <div class="traveler-package-occupancy-panel">
                     <label>
-                        <span>Rooms</span>
-                        <select data-package-field="rooms">
-                            ${ROOM_OPTIONS.map((option) => `<option value="${option}" ${option === state.searchValues.rooms ? "selected" : ""}>${option}</option>`).join("")}
-                        </select>
-                    </label>
-                    <label>
                         <span>Guests</span>
                         <select data-package-field="guestCount">
-                            ${GUEST_OPTIONS.map((option) => `<option value="${option}" ${option === state.searchValues.guestCount ? "selected" : ""}>${option}</option>`).join("")}
+                            ${GUEST_OPTIONS.map((option) => `<option value="${option}" ${option === String(state.searchValues.guestCount) ? "selected" : ""}>${option} Guest${option === "1" ? "" : "s"}</option>`).join("")}
                         </select>
                     </label>
                 </div>
@@ -454,7 +439,8 @@ function renderPackageCard(item) {
 
     return `
         <article class="traveler-package-card">
-            <div class="traveler-package-card-media" style="background-image:url('${item.image}')">
+            <div class="traveler-package-card-media" style="${item.image ? `background-image:url('${item.image}')` : `background:#f5f5f5; display:flex; align-items:center; justify-content:center; color:#999;`}">
+                ${!item.image ? `<div style="position:absolute;">No Image</div>` : ""}
                 <button class="traveler-package-fav ${wishlisted ? "active" : ""}" type="button" data-package-wishlist="${item.id}" aria-label="Save package">
                     ${heartIcon()}
                 </button>
@@ -482,7 +468,7 @@ function renderPackageCard(item) {
                             <strong>${formatCurrency(item.pricePerPerson)}</strong>
                             <span class="traveler-package-total-copy">Total: ${formatCurrency(item.totalPriceDisplay)}</span>
                         </div>
-                        <p class="traveler-package-emi-copy">or EMI from ${formatCurrency(item.emi)}/month</p>
+
                     </div>
 
                     <button class="traveler-package-view-btn" type="button" data-package-details="${item.id}">View Details</button>

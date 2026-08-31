@@ -13,6 +13,8 @@ export class TravellerRepository {
       plang: ['English', 'Gujarati'],
       bio: 'Loves exploring local cultures and street food',
       interests: [Interest.FOOD, Interest.CULTURE],
+      gender: 'Female',
+      dob: '2001-08-15',
     },
   ];
 

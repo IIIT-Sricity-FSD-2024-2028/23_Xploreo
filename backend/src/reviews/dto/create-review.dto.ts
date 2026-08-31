@@ -18,10 +18,9 @@ export class CreateReviewDto {
   @IsEnum(ReviewTargetType)
   targetType!: ReviewTargetType;
 
-  @ApiProperty({ example: 10001 })
-  @Type(() => Number)
-  @IsInt()
-  targetId!: number;
+  @ApiProperty({ example: '10001' })
+  @IsString()
+  targetId!: string;
 
   @ApiProperty({ example: 5, minimum: 1, maximum: 5 })
   @Type(() => Number)
@@ -33,4 +32,8 @@ export class CreateReviewDto {
   @ApiProperty({ example: 'Excellent guide and a smooth experience.' })
   @IsString()
   comment!: string;
+
+  @ApiProperty({ example: 'photo.jpg', required: false })
+  @IsString()
+  image?: string;
 }

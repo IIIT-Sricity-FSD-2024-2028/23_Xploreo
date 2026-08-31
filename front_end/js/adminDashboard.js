@@ -1,29 +1,57 @@
-import { renderChart }    from "./modules/chart.js";
+import { renderChart } from "./modules/chart.js";
 import { renderPartners } from "./modules/partners.js";
-import { renderAlerts }   from "./modules/alerts.js";
+import { renderAlerts } from "./modules/alerts.js";
 import { renderActivity } from "./modules/activity.js";
-import { apiGetAndSync }  from "./utils/api.js";
 
-// safe fallbacks: -1 for numbers, # for strings
-const num = (v) => (v == null || isNaN(Number(v))) ? -1 : Number(v);
-
-async function loadDashboardData() {
-    const [users, partners] = await Promise.all([
-        apiGetAndSync("/auth/users", "users", []),
-        apiGetAndSync("/partners",   "partners", [])
-    ]);
-    return { users, partners };
+// TOTAL USERS
+function getTotalUsers() {
+    const users = JSON.parse(localStorage.getItem("users")) || [];
+    return users.length.toLocaleString();
 }
 
-export async function renderAdminDashboard(containerId) {
-    // Show/hide wrappers
+// TOTAL BOOKINGS (sum of partner bookings)
+function getTotalBookings() {
+    const partners = JSON.parse(localStorage.getItem("partners")) || [];
+
+    let total = 0;
+    partners.forEach(p => total += p.bookings);
+
+    return total.toLocaleString();
+}
+
+// TOTAL REVENUE (sum of partner revenue)
+function getTotalRevenue() {
+    const partners = JSON.parse(localStorage.getItem("partners")) || [];
+
+    let total = 0;
+    partners.forEach(p => total += p.revenue);
+
+    return "₹" + (total / 10000000).toFixed(3) + "Cr";
+}
+
+// ACTIVE PARTNERS (only top ones)
+function getActivePartners() {
+    const partners = JSON.parse(localStorage.getItem("partners")) || [];
+
+    const active = partners.filter(p => p.bookings > 500);
+    return active.length;
+}
+
+export function renderAdminDashboard(containerId) {
+    // 1. Force the Admin wrapper to be visible, and hide the Guide wrapper
     const adminWrapper = document.getElementById("admin-dashboard");
     const guideWrapper = document.getElementById("main");
-    if (adminWrapper) adminWrapper.style.display = "block";
-    if (guideWrapper) guideWrapper.style.display = "none";
 
-    // Header
+    if (adminWrapper) {
+        adminWrapper.style.display = "block"; 
+    }
+    if (guideWrapper) {
+        guideWrapper.style.display = "none"; 
+    }
+
+    // 2. Render the header
     const header = document.getElementById("admin-header");
+
     if (header) {
         header.innerHTML = `
             <div class="dashboard-header">
@@ -33,37 +61,62 @@ export async function renderAdminDashboard(containerId) {
         `;
     }
 
-    // Fetch live data
-    const { users, partners } = await loadDashboardData();
-
-    const totalUsers    = Array.isArray(users)    ? users.length    : -1;
-    const totalBookings = Array.isArray(partners)  ? partners.reduce((s, p) => s + num(p.bookings), 0) : -1;
-    const totalRevenue  = Array.isArray(partners)  ? partners.reduce((s, p) => s + num(p.revenue),  0) : -1;
-    const activePartners = Array.isArray(partners) ? partners.filter(p => num(p.bookings) > 500).length : -1;
-
-    const revenueStr = totalRevenue === -1
-        ? "#"
-        : "₹" + (totalRevenue / 10000000).toFixed(3) + "Cr";
-
+    // 3. Define Admin Data
     const adminData = [
-        { label: "TOTAL USERS",     value: totalUsers    === -1 ? -1 : totalUsers.toLocaleString(),    subtext: "↗ live from backend", subClass: "green",     color: "blue",       icon: "../../components/ui/users.png" },
-        { label: "GROSS REVENUE",   value: revenueStr,                                                  subtext: "live revenue",        subClass: "green",     color: "dark-green", icon: "../../components/ui/finance.png" },
-        { label: "TOTAL BOOKINGS",  value: totalBookings === -1 ? -1 : totalBookings.toLocaleString(), subtext: "live bookings",       subClass: "blue-text", color: "violet",     icon: "../../components/ui/operations.png" },
-        { label: "ACTIVE PARTNERS", value: activePartners,                                              subtext: "bookings > 500",      subClass: "",          color: "orange",     icon: "../../components/ui/users.png" }
+        {
+            label: "TOTAL USERS",
+            value: getTotalUsers(),
+            subtext: "↗ dynamic data",
+            subClass: "green",
+            color: "blue",
+            icon: "../components/ui/users.png"
+        },
+        {
+            label: "GROSS REVENUE",
+            value: getTotalRevenue(),
+            subtext: "dynamic revenue",
+            subClass: "green",
+            color: "dark-green",
+            icon: "../components/ui/finance.png"
+        },
+        {
+            label: "TOTAL BOOKINGS",
+            value: getTotalBookings(),
+            subtext: "dynamic bookings",
+            subClass: "blue-text",
+            color: "violet",
+            icon: "../components/ui/operations.png"
+        },
+        {
+            label: "ACTIVE PARTNERS",
+            value: getActivePartners(),
+            subtext: "based on guide users",
+            color: "orange",
+            icon: "../components/ui/users.png"
+        }
     ];
 
+    // 4. Render Admin Stats directly (bypassing stat-cards.js)
     const statsContainer = document.getElementById("admin-stats");
+    
     if (statsContainer) {
         statsContainer.innerHTML = adminData.map(stat => `
-            <div class="stat-card ${stat.color || "blue"}">
-                ${stat.icon ? `<div class="card-icon"><img src="${stat.icon}" alt="icon"></div>` : ""}
+            <div class="stat-card ${stat.color || 'blue'}">
+                ${stat.icon ? `
+                <div class="card-icon">
+                    <img src="${stat.icon}" alt="icon">
+                </div>
+                ` : ""}
                 <p class="stat-label">${stat.label}</p>
                 <h2 class="stat-value">${stat.value}</h2>
-                <p class="stat-subtext ${stat.subClass || ""}">${stat.subtext || ""}</p>
+                <p class="stat-subtext ${stat.subClass || ""}">
+                    ${stat.subtext || ""}
+                </p>
             </div>
-        `).join("");
+        `).join('');
     }
 
+    // 5. Render the rest of your modules
     renderChart("admin-chart");
     renderPartners("admin-partners");
     renderAlerts("admin-alerts");

@@ -1,323 +1,622 @@
-import { apiPost } from "./utils/api.js";
+import { registerWithApi } from "./api/services.js";
 
+/* GLOBAL STATE */
 let selectedRole = null;
+
+function navigateTo(relativePath) {
+    window.location.href = new URL(relativePath, window.location.href).href;
+}
+
+function setStep2RequestMessage(message = "", variant = "error") {
+    const step2 = document.querySelector(".step-2");
+    if (!step2) return;
+
+    let messageEl = step2.querySelector(".signup-request-message");
+    if (!messageEl) {
+        messageEl = document.createElement("div");
+        messageEl.className = "signup-request-message";
+        messageEl.style.marginTop = "12px";
+        messageEl.style.fontSize = "13px";
+        messageEl.style.fontWeight = "500";
+        messageEl.style.gridColumn = "1 / -1";
+        const actions = step2.querySelector(".form-actions");
+        if (actions) {
+            actions.parentNode.insertBefore(messageEl, actions);
+        }
+    }
+
+    messageEl.textContent = message;
+    messageEl.style.color = variant === "success" ? "#15803d" : "#dc2626";
+    messageEl.style.display = message ? "block" : "none";
+}
 
 window.togglePasswordVisibility = function (inputId, btn) {
     const input = document.getElementById(inputId);
     if (input.type === "password") {
         input.type = "text";
-        btn.innerHTML = '<img src="../../components/ui/eye.svg" alt="Hide Password" style="width:20px;height:20px;">';
+        btn.innerHTML = '<img src="../components/ui/eye.svg" alt="Hide Password" style="width: 20px; height: 20px;">';
     } else {
         input.type = "password";
-        btn.innerHTML = '<img src="../../components/ui/eye-closed.svg" alt="Show Password" style="width:20px;height:20px;">';
+        btn.innerHTML = '<img src="../components/ui/eye-closed.svg" alt="Show Password" style="width: 20px; height: 20px;">';
     }
 };
 
 export function initSignup() {
-    const cards        = document.querySelectorAll(".role-card");
+    /* ELEMENTS */
+    const cards = document.querySelectorAll(".role-card");
     const step1NextBtn = document.querySelector(".step-1 .next-btn");
     const step2NextBtn = document.querySelector(".step-2 .next-btn");
-    const backBtn      = document.querySelector(".step-2 .back-btn");
+    const backBtn = document.querySelector(".step-2 .back-btn");
 
-    /* ── role selection ── */
-    cards.forEach((card) => {
-        card.addEventListener("click", () => {
-            cards.forEach((c) => c.classList.remove("selected"));
+    /* ROLE SELECTION */
+    cards.forEach(function (card) {
+        card.addEventListener("click", function () {
+            cards.forEach(c => c.classList.remove("selected"));
             card.classList.add("selected");
             selectedRole = card.querySelector("h4").innerText.trim();
+            console.log("Selected Role:", selectedRole);
         });
     });
 
-    /* ── step 1 → step 2 ── */
+    /* STEP 1 → STEP 2 */
     if (step1NextBtn) {
-        step1NextBtn.addEventListener("click", () => {
-            if (!selectedRole) { alert("Please select a role first"); return; }
-            if (selectedRole === "Service Partner") showStep("1-partner");
-            else showStep(2);
+        step1NextBtn.addEventListener("click", function () {
+            if (!selectedRole) {
+                alert("Please select a role first");
+                return;
+            }
+            if (selectedRole === "Service Partner") {
+                showStep("1-partner");
+            } else {
+                showStep(2);
+            }
         });
     }
 
-    /* ── service partner sub-type ── */
+    /* STEP 1.5 (PARTNER TYPE) NAVIGATORS */
     const step1PartnerNextBtn = document.querySelector(".step1-partner-next-btn");
     const step1PartnerBackBtn = document.querySelector(".step1-partner-back-btn");
-    const partnerTypeCards    = document.querySelectorAll(".partner-type-card");
-
-    partnerTypeCards.forEach((card) => {
-        card.addEventListener("click", () => {
-            partnerTypeCards.forEach((c) => c.classList.remove("selected"));
-            card.classList.add("selected");
-            selectedRole = card.querySelector("h4").innerText.trim();
-        });
-    });
 
     if (step1PartnerNextBtn) {
-        step1PartnerNextBtn.addEventListener("click", () => {
-            if (selectedRole === "Service Partner") { alert("Please choose a Service Type (Hotel or Experiences)"); return; }
+        step1PartnerNextBtn.addEventListener("click", function () {
+            // Must have selected Hotel or Experiences
+            if (selectedRole === "Service Partner") {
+                alert("Please choose a Service Type (Hotel or Experiences)");
+                return;
+            }
             showStep(2);
         });
     }
+
     if (step1PartnerBackBtn) {
-        step1PartnerBackBtn.addEventListener("click", () => {
-            selectedRole = "Service Partner";
+        step1PartnerBackBtn.addEventListener("click", function () {
+            selectedRole = "Service Partner"; // Reset sub-role logically
             showStep(1);
-            cards.forEach((c) => c.classList.remove("selected"));
-            const pc = Array.from(cards).find((c) => c.querySelector("h4").innerText === "Service Partner");
-            if (pc) pc.classList.add("selected");
+            
+            // Re-select Service Partner visually
+            cards.forEach(c => c.classList.remove("selected"));
+            const partnerCard = Array.from(cards).find(c => c.querySelector("h4").innerText === "Service Partner");
+            if (partnerCard) partnerCard.classList.add("selected");
         });
     }
 
-    /* ── step 2 back ── */
-    if (backBtn) backBtn.addEventListener("click", () => showStep(1));
+    /* STEP 1.5 SELECTION (HOTEL OR EXPERIENCES) */
+    const partnerTypeCards = document.querySelectorAll(".partner-type-card");
+    partnerTypeCards.forEach(function (card) {
+        card.addEventListener("click", function () {
+            partnerTypeCards.forEach(c => c.classList.remove("selected"));
+            card.classList.add("selected");
+            selectedRole = card.querySelector("h4").innerText.trim();
+            console.log("Selected Sub-Role:", selectedRole);
+        });
+    });
 
-    /* ── step 2 next ── */
+    /* BACK BUTTON */
+    if (backBtn) {
+        backBtn.addEventListener("click", function () {
+            showStep(1);
+        });
+    }
+
+    /* STEP 2 SUBMIT */
     if (step2NextBtn) {
-        step2NextBtn.addEventListener("click", () => {
+        step2NextBtn.addEventListener("click", function () {
             setStep2RequestMessage("");
-            if (validateStep2()) showRoleStep3(selectedRole);
+            if (validateStep2()) {
+                showRoleStep3(selectedRole);
+            }
         });
     }
 
-    /* ── step 3 traveler ── */
-    const step3BackBtn     = document.querySelector(".step3-back-btn");
+    /* ================================
+       STEP 3 — TRAVELER
+    ================================ */
+    const step3BackBtn = document.querySelector(".step3-back-btn");
     const step3CompleteBtn = document.querySelector(".step3-traveler-complete-btn");
-    if (step3BackBtn)     step3BackBtn.addEventListener("click", () => showStep(2));
+
+    if (step3BackBtn) {
+        step3BackBtn.addEventListener("click", function () {
+            showStep(2);
+        });
+    }
+
     if (step3CompleteBtn) {
-        step3CompleteBtn.addEventListener("click", async () => {
+        step3CompleteBtn.addEventListener("click", async function () {
             if (!validateStep3()) return;
             step3CompleteBtn.disabled = true;
-            try { await submitRegistration(); showStep4(); }
-            catch (err) { alert("Signup failed: " + err.message); }
-            finally { step3CompleteBtn.disabled = false; }
+            try {
+                await submitFullRegistration(selectedRole);
+                showStep4();
+            } catch (err) {
+                alert("Signup failed: " + err.message);
+                // Return to step 2 to show validation errors if needed
+                if (/exists|required|invalid/i.test(err.message)) showStep(2);
+            } finally {
+                step3CompleteBtn.disabled = false;
+            }
         });
     }
 
-    /* ── step 3 guide ── */
-    const guideBackBtn     = document.querySelector(".guide-back-btn");
+    /* ================================
+       GUIDE STEP 3
+    ================================ */
+    const guideBackBtn = document.querySelector(".guide-back-btn");
     const guideCompleteBtn = document.querySelector(".guide-complete-btn");
-    if (guideBackBtn)     guideBackBtn.addEventListener("click", () => showStep(2));
+
+    if (guideBackBtn) {
+        guideBackBtn.addEventListener("click", function () {
+            showStep(2);
+        });
+    }
+
     if (guideCompleteBtn) {
-        guideCompleteBtn.addEventListener("click", async () => {
+        guideCompleteBtn.addEventListener("click", async function () {
             if (!validateStep3()) return;
             guideCompleteBtn.disabled = true;
-            try { await submitRegistration(); showStep4(); }
-            catch (err) { alert("Signup failed: " + err.message); }
-            finally { guideCompleteBtn.disabled = false; }
+            try {
+                await submitFullRegistration(selectedRole);
+                showStep4();
+            } catch (err) {
+                alert("Signup failed: " + err.message);
+                if (/exists|required|invalid/i.test(err.message)) showStep(2);
+            } finally {
+                guideCompleteBtn.disabled = false;
+            }
         });
     }
 
-    /* ── step 3 partner ── */
-    const partnerBackBtn     = document.getElementById("partner-back-btn");
+    /* ================================
+       PARTNER STEP 3
+    ================================ */
+    const partnerBackBtn = document.getElementById("partner-back-btn");
     const partnerCompleteBtn = document.getElementById("partner-complete-btn");
-    if (partnerBackBtn)     partnerBackBtn.addEventListener("click", () => showStep(2));
+
+    if (partnerBackBtn) {
+        partnerBackBtn.addEventListener("click", () => showStep(2));
+    }
+
     if (partnerCompleteBtn) {
         partnerCompleteBtn.addEventListener("click", async () => {
             if (!validateStep3()) return;
             partnerCompleteBtn.disabled = true;
-            try { await submitRegistration(); showStep4(); }
-            catch (err) { alert("Signup failed: " + err.message); }
-            finally { partnerCompleteBtn.disabled = false; }
+            try {
+                await submitFullRegistration(selectedRole);
+                showStep4();
+            } catch (err) {
+                alert("Signup failed: " + err.message);
+                if (/exists|required|invalid/i.test(err.message)) showStep(2);
+            } finally {
+                partnerCompleteBtn.disabled = false;
+            }
         });
     }
 
-    /* ── step 4 buttons ── */
+    /* STEP 4 BUTTONS */
     const step4LoginBtn = document.querySelector(".step4-login-btn");
-    const step4HomeBtn  = document.querySelector(".step4-home-btn");
-    if (step4LoginBtn) step4LoginBtn.addEventListener("click", () => { window.location.href = "./login.html"; });
-    if (step4HomeBtn)  step4HomeBtn.addEventListener("click",  () => { window.location.href = "../../index.html"; });
+    const step4HomeBtn = document.querySelector(".step4-home-btn");
+
+    if (step4LoginBtn) {
+        step4LoginBtn.addEventListener("click", () => {
+            navigateTo("./login.html");
+        });
+    }
+
+    if (step4HomeBtn) {
+        step4HomeBtn.addEventListener("click", () => {
+            navigateTo("../index.html");
+        });
+    }
 }
 
-/* ── core registration (API + localStorage) ── */
-async function submitRegistration() {
-    const roleMap = {
-        "Traveler":        "traveller",
-        "Local Guide":     "guide",
-        "Hotel":           "hotel",
-        "Experiences":     "experience",
-        "Service Partner": "partner",
-    };
-
-    const username = document.getElementById("username")?.value.trim();
-    const password = document.getElementById("password")?.value;
-    const name     = document.getElementById("fullName")?.value.trim();
-    const email    = document.getElementById("email")?.value.trim();
-    const phone    = document.getElementById("phone")?.value.replace(/\D/g, "");
-    const dob      = document.getElementById("dob")?.value;
-    const gender   = document.getElementById("gender")?.value;
-
-    const role = roleMap[selectedRole] || "traveller";
-
-    const payload = { username, password, name, email, phone, dob, gender, role };
-
-    const res = await apiPost("/auth/register", payload);
-    const userData = res.success ? (res.data.data || res.data) : payload;
-
-    // Sync to localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    users.push(userData);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("currentUser", JSON.stringify(userData));
-    if (userData.id) localStorage.setItem("userID", userData.id);
-    if (userData.role) localStorage.setItem("userRole", userData.role);
-}
-
-/* ── step navigation ── */
+/* STEP NAVIGATION */
 function showStep(stepNumber) {
-    document.querySelectorAll(".signup-step").forEach((s) => s.classList.add("hidden"));
-    document.querySelector(".step-" + stepNumber)?.classList.remove("hidden");
-    document.querySelector(".signup-card")?.classList.remove("step4-active");
-}
-
-function showRoleStep3(role) {
-    document.querySelectorAll(".signup-step").forEach((s) => s.classList.add("hidden"));
-    document.querySelector(".signup-card")?.classList.remove("step4-active");
-    if (role === "Traveler")       document.querySelector(".step-3-traveler")?.classList.remove("hidden");
-    else if (role === "Local Guide") document.querySelector(".step-3-guide")?.classList.remove("hidden");
-    else                           document.querySelector(".step-3-partner")?.classList.remove("hidden");
+    document.querySelectorAll(".signup-step").forEach(step => step.classList.add("hidden"));
+    document.querySelector(".step-" + stepNumber).classList.remove("hidden");
+    const signupCard = document.querySelector(".signup-card");
+    if (signupCard) signupCard.classList.remove("step4-active");
 }
 
 function showStep4() {
-    document.querySelectorAll(".signup-step").forEach((s) => s.classList.add("hidden"));
-    document.querySelector(".step-4")?.classList.remove("hidden");
-    document.querySelector(".signup-card")?.classList.add("step4-active");
+    document.querySelectorAll(".signup-step").forEach(step => step.classList.add("hidden"));
+
+    const step4 = document.querySelector(".step-4");
+    if (step4) step4.classList.remove("hidden");
+
+    const signupCard = document.querySelector(".signup-card");
+    if (signupCard) signupCard.classList.add("step4-active");
 
     const heroContent = document.querySelector(".signup-hero-content");
     if (heroContent) {
-        heroContent.innerHTML = `<h1>Congratulations</h1>
-        <p style="font-family:'Pacifico',cursive;font-size:32px;font-weight:normal;margin-top:-10px;">Start your journey</p>`;
+        heroContent.innerHTML = `
+            <h1>Congratulations</h1>
+            <p style="font-family: 'Pacifico', cursive; font-size: 32px; font-weight: normal; margin-top: -10px;">Start your journey</p>
+        `;
     }
 
-    const username = document.getElementById("username")?.value.trim() || "explorer";
-    document.getElementById("step4-dynamic-subtitle")?.innerText.replace("", `Welcome to Xploreo! Your ${selectedRole?.toLowerCase()} account is ready.`);
-    if (document.getElementById("step4-dynamic-subtitle")) document.getElementById("step4-dynamic-subtitle").innerText = `Welcome to Xploreo! Your ${(selectedRole || "").toLowerCase()} account is ready.`;
-    if (document.getElementById("step4-username"))         document.getElementById("step4-username").innerText = username;
-    if (document.getElementById("step4-role"))             document.getElementById("step4-role").innerText = selectedRole || "";
-}
+    const roleCapitalized = selectedRole || "Traveler";
+    const usernameInput = document.getElementById("username") ? document.getElementById("username").value : "traveler_explorer";
+    const usernameVal = usernameInput.trim() || "traveler_explorer";
 
-/* ── validation ── */
-function setStep2RequestMessage(message = "", variant = "error") {
-    const step2 = document.querySelector(".step-2");
-    if (!step2) return;
-    let el = step2.querySelector(".signup-request-message");
-    if (!el) {
-        el = document.createElement("div");
-        el.className = "signup-request-message";
-        el.style.cssText = "margin-top:12px;font-size:13px;font-weight:500;grid-column:1/-1;";
-        step2.querySelector(".form-actions")?.before(el);
-    }
-    el.textContent = message;
-    el.style.color = variant === "success" ? "#15803d" : "#dc2626";
-    el.style.display = message ? "block" : "none";
+    const subtitleEl = document.getElementById("step4-dynamic-subtitle");
+    if (subtitleEl) subtitleEl.innerText = `Welcome to Xploreo! Your ${roleCapitalized.toLowerCase()} account is ready.`;
+
+    const userEl = document.getElementById("step4-username");
+    if (userEl) userEl.innerText = usernameVal;
+
+    const roleEl = document.getElementById("step4-role");
+    if (roleEl) roleEl.innerText = roleCapitalized;
 }
 
 function showError(input, message) {
     input.style.borderColor = "#FF4D4D";
-    let target = input;
-    if (input.parentElement.classList.contains("password-wrapper") ||
-        input.parentElement.classList.contains("phone-input-wrapper")) {
-        target = input.parentElement;
+    let insertAfterElement = input;
+    if (input.parentElement.classList.contains('password-wrapper') || input.parentElement.classList.contains('phone-input-wrapper')) {
+        insertAfterElement = input.parentElement;
     }
-    let errorEl = target.nextElementSibling;
-    if (!errorEl || !errorEl.classList.contains("validation-error-msg")) {
+    let errorEl = insertAfterElement.nextElementSibling;
+    if (!errorEl || !errorEl.classList.contains('validation-error-msg')) {
         errorEl = document.createElement("small");
         errorEl.className = "validation-error-msg";
-        errorEl.style.cssText = "color:#FF4D4D;font-size:12px;margin-top:4px;display:block;";
-        target.parentNode.insertBefore(errorEl, target.nextSibling);
+        errorEl.style.color = "#FF4D4D";
+        errorEl.style.fontSize = "12px";
+        errorEl.style.marginTop = "4px";
+        errorEl.style.display = "block";
+        insertAfterElement.parentNode.insertBefore(errorEl, insertAfterElement.nextSibling);
     }
     errorEl.innerText = message;
 }
 
 function clearError(input) {
     input.style.borderColor = "";
-    let check = input;
-    if (input.parentElement.classList.contains("password-wrapper") ||
-        input.parentElement.classList.contains("phone-input-wrapper")) {
-        check = input.parentElement;
+    let checkElement = input;
+    if (input.parentElement.classList.contains('password-wrapper') || input.parentElement.classList.contains('phone-input-wrapper')) {
+        checkElement = input.parentElement;
     }
-    const errorEl = check.nextElementSibling;
-    if (errorEl?.classList.contains("validation-error-msg")) errorEl.remove();
+    let errorEl = checkElement.nextElementSibling;
+    if (errorEl && errorEl.classList.contains('validation-error-msg')) {
+        errorEl.remove();
+    }
 }
 
 function validateStep2() {
-    let isValid = true, firstInvalid = null;
-    ["fullName","username","email","phone","dob","gender","password","confirmPassword"].forEach((id) => {
+    let isValid = true;
+    let firstInvalid = null;
+
+    const ids = ["fullName", "username", "email", "phone", "dob", "gender", "password", "confirmPassword"];
+    ids.forEach(id => {
         const input = document.getElementById(id);
-        if (!input) return;
-        if (!input.dataset.listenerAttached) {
-            input.addEventListener("input", () => clearError(input));
-            input.dataset.listenerAttached = "true";
-        }
-        clearError(input);
-        if (!input.value.trim()) {
-            isValid = false;
-            showError(input, "This field is required");
-            if (!firstInvalid) firstInvalid = input;
+        if (input) {
+            // Setup real-time red-state wiping upon keystroke natively
+            if (!input.dataset.listenerAttached) {
+                input.addEventListener("input", () => clearError(input));
+                input.dataset.listenerAttached = "true";
+            }
+            clearError(input);
+            let val = input.value.trim();
+            if (!val) {
+                isValid = false;
+                showError(input, "This field is required");
+                if (!firstInvalid) firstInvalid = input;
+            }
         }
     });
 
-    const un = document.getElementById("username");
-    if (un?.value.trim() && !/^[A-Za-z]{6,}$/.test(un.value.trim())) {
+    const usernameInput = document.getElementById("username");
+    if (usernameInput && usernameInput.value.trim() && !/^[A-Za-z]{6,}$/.test(usernameInput.value.trim())) {
         isValid = false;
-        showError(un, "Username: letters only, min 6 characters.");
-        if (!firstInvalid) firstInvalid = un;
+        showError(usernameInput, "Username can only contain alphabets (no numbers/special chars), min 6 characters.");
+        if (!firstInvalid) firstInvalid = usernameInput;
     }
 
-    const em = document.getElementById("email");
-    if (em?.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.value.trim())) {
-        isValid = false;
-        showError(em, "Please enter a valid email address.");
-        if (!firstInvalid) firstInvalid = em;
-    }
-
-    const ph = document.getElementById("phone");
-    if (ph?.value.trim()) {
-        const pv = ph.value.replace(/\D/g, "");
-        if (!/^\d{10}$/.test(pv)) {
+    const emailInput = document.getElementById("email");
+    if (emailInput && emailInput.value.trim()) {
+        const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+        if (!emailRegex.test(emailInput.value.trim())) {
             isValid = false;
-            showError(ph, "Please enter a valid 10-digit phone number.");
-            if (!firstInvalid) firstInvalid = ph;
+            showError(emailInput, "Please enter a valid email address (e.g., example@domain.com, .in).");
+            if (!firstInvalid) firstInvalid = emailInput;
         }
     }
 
-    const dob = document.getElementById("dob");
-    if (dob?.value) {
-        const age = Math.floor((Date.now() - new Date(dob.value)) / (365.25 * 24 * 3600 * 1000));
+    const phoneInput = document.getElementById("phone");
+
+    if (phoneInput && phoneInput.value.trim()) {
+        const phoneVal = phoneInput.value
+            .replace(/\s/g, '')   // remove spaces
+            .replace(/-/g, '');   // remove dashes
+
+        console.log("Phone value:", phoneVal);
+        console.log("Length:", phoneVal.length);
+
+        if (!/^\d{10}$/.test(phoneVal) || /^0{10}$/.test(phoneVal)) {
+            isValid = false;
+            showError(phoneInput, "Please enter a valid 10-digit phone number");
+            if (!firstInvalid) firstInvalid = phoneInput;
+        }
+    }
+
+    const dobInput = document.getElementById("dob");
+    if (dobInput && dobInput.value.trim()) {
+        const dobDate = new Date(dobInput.value);
+        const today = new Date();
+        let age = today.getFullYear() - dobDate.getFullYear();
+        const monthDiff = today.getMonth() - dobDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+            age--;
+        }
         if (age < 18) {
             isValid = false;
-            showError(dob, "You must be at least 18 years old.");
-            if (!firstInvalid) firstInvalid = dob;
+            showError(dobInput, "You must be at least 18 years old to sign up.");
+            if (!firstInvalid) firstInvalid = dobInput;
         }
     }
 
-    const pw  = document.getElementById("password");
-    const cpw = document.getElementById("confirmPassword");
-    if (pw?.value && cpw?.value && pw.value !== cpw.value) {
+    const passwordInput = document.getElementById("password");
+    const confirmPasswordInput = document.getElementById("confirmPassword");
+    if (passwordInput && confirmPasswordInput && passwordInput.value && confirmPasswordInput.value && passwordInput.value !== confirmPasswordInput.value) {
         isValid = false;
-        showError(cpw, "Passwords should match.");
-        if (!firstInvalid) firstInvalid = cpw;
+        showError(confirmPasswordInput, "Passwords should match");
+        if (!firstInvalid) firstInvalid = confirmPasswordInput;
     }
 
-    if (!isValid && firstInvalid) firstInvalid.focus();
+    if (!isValid && firstInvalid) {
+        firstInvalid.focus();
+    }
+
     return isValid;
 }
 
 function validateStep3() {
-    let isValid = true, firstInvalid = null;
+    let isValid = true;
+    let firstInvalid = null;
     let container = null;
-    if (selectedRole === "Traveler")       container = document.querySelector(".step-3-traveler");
-    else if (selectedRole === "Local Guide") container = document.querySelector(".step-3-guide");
-    else                                   container = document.querySelector(".step-3-partner");
+
+    if (selectedRole === "Traveler") {
+        container = document.querySelector(".step-3-traveler");
+    } else if (selectedRole === "Local Guide") {
+        container = document.querySelector(".step-3-guide");
+    } else if (selectedRole === "Service Partner" || selectedRole === "Hotel" || selectedRole === "Experiences") {
+        container = document.querySelector(".step-3-partner");
+    }
+
     if (!container) return false;
 
-    container.querySelectorAll("input:not([type='file']):not([type='checkbox']):not([type='radio']), select, textarea").forEach((input) => {
+    const inputs = container.querySelectorAll("input:not([type='file']):not([type='time']):not([type='checkbox']):not([type='radio']), select, textarea");
+
+    inputs.forEach(input => {
         clearError(input);
-        if (input.placeholder?.includes("Coastal")) return; // optional field
-        if (!input.value.trim() || input.value.trim().startsWith("Select ")) {
+
+        // Skip the optional Preferred Destination Types input
+        if (input.placeholder && input.placeholder.includes("Coastal")) {
+            return;
+        }
+
+        const val = input.value.trim();
+
+        if (!val || val.startsWith("Select ")) {
             isValid = false;
             showError(input, "This field is required");
             if (!firstInvalid) firstInvalid = input;
         }
     });
 
-    if (!isValid && firstInvalid) firstInvalid.focus();
+    if (!isValid && firstInvalid) {
+        firstInvalid.focus();
+    }
+
     return isValid;
+}
+
+/* FULL REGISTRATION FLOW */
+async function submitFullRegistration(role) {
+    // 1. Create User
+    const userData = await createUser(role);
+    
+    // 2. Login to get token
+    const token = await loginUser(userData.username, document.getElementById("password").value);
+    
+    // 3. Create Profile based on role
+    await createProfile(role, token);
+}
+
+/* SAVE USER */
+async function createUser(role) {
+    const name = document.getElementById("fullName").value.trim();
+    const username = document.getElementById("username").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const phoneInput = document.getElementById("phone").value.trim();
+    const password = document.getElementById("password").value;
+
+    const phoneVal = phoneInput.replace(/\s/g, '').replace(/-/g, '');
+
+    const roleMap = {
+        "Traveler": "traveller",
+        "Local Guide": "guide",
+        "Hotel": "hotel",
+        "Experiences": "experience"
+    };
+    const mappedRole = roleMap[role] || "traveller";
+    
+    const response = await fetch("http://localhost:3000/api/auth/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name: name,
+            username: username,
+            email: email,
+            phone: phoneVal,
+            password: password,
+            role: mappedRole
+        })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+        let msg = data.message || "Unknown error";
+        if (Array.isArray(msg)) msg = msg.join(", ");
+        throw new Error(msg);
+    }
+    
+    return { username: username, role: mappedRole };
+}
+
+/* LOGIN TO GET TOKEN */
+async function loginUser(username, password) {
+    const response = await fetch("http://localhost:3000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+    });
+    
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error("Failed to login after registration");
+    }
+    return data.token;
+}
+
+/* CREATE PROFILE */
+async function createProfile(role, token) {
+    // Collect specific data based on role
+    let endpoint = "";
+    let payload = {};
+
+    if (role === "Traveler") {
+        endpoint = "http://localhost:3000/api/traveller";
+        const nameParts = document.getElementById("fullName").value.trim().split(" ");
+        
+        const interests = [];
+        document.querySelectorAll(".step3-traveler-interest-card input:checked").forEach(checkbox => {
+            interests.push(checkbox.parentElement.innerText.trim().toUpperCase());
+        });
+        
+        payload = {
+            fname: nameParts[0] || "",
+            lname: nameParts.slice(1).join(" ") || "Doe",
+            email: document.getElementById("email").value.trim(),
+            phno: Number(document.getElementById("phone").value.replace(/\D/g, '')),
+            plang: ["English"],
+            bio: "New Traveler",
+            interests: interests.length ? interests : undefined
+        };
+    } else {
+        // Simplified fallback for other roles for now.
+        // In a complete implementation, gather Guide/Hotel specific inputs here.
+        console.log("Profile creation skipped for non-traveler in this demo.");
+        return;
+    }
+
+    if (endpoint) {
+        const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            let msg = data.message || "Profile creation failed";
+            if (Array.isArray(msg)) msg = msg.join(", ");
+            console.error("Profile error:", msg);
+            // Optionally throw, or just log if profile is optional
+        }
+    }
+}
+
+/* ROLE STEP 3 ROUTING */
+function showRoleStep3(role) {
+    document.querySelectorAll(".signup-step").forEach(step => step.classList.add("hidden"));
+
+    const signupCard = document.querySelector(".signup-card");
+    if (signupCard) signupCard.classList.remove("step4-active");
+
+    if (role === "Traveler") {
+        document.querySelector(".step-3-traveler").classList.remove("hidden");
+    } else if (role === "Local Guide") {
+        document.querySelector(".step-3-guide").classList.remove("hidden");
+    } else if (role === "Service Partner" || role === "Hotel" || role === "Experiences") {
+        document.querySelector(".step-3-partner").classList.remove("hidden");
+    }
+}
+
+/* TRAVELER PREFERENCES */
+function saveTravelerPreferences() {
+    const interests = [];
+    document.querySelectorAll(".step3-traveler-interest-card input:checked").forEach(checkbox => {
+        interests.push(checkbox.parentElement.innerText.trim());
+    });
+    
+    const homeLocation = document.getElementById("homeLocation") ? document.getElementById("homeLocation").value.trim() : "";
+    const language = document.getElementById("prefLanguage") ? document.getElementById("prefLanguage").value.trim() : "";
+    const activityStyle = document.getElementById("activityStyle") ? document.getElementById("activityStyle").value : "";
+    const budgetRange = document.getElementById("budgetRange") ? document.getElementById("budgetRange").value : "";
+    const transportPref = document.getElementById("transportPref") ? document.getElementById("transportPref").value : "";
+    const accommodationPref = document.getElementById("accommodationPref") ? document.getElementById("accommodationPref").value : "";
+    const bio = document.getElementById("bio") ? document.getElementById("bio").value.trim() : "";
+
+    const name = document.getElementById("fullName").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const dob = document.getElementById("dob") ? document.getElementById("dob").value : "";
+    const gender = document.getElementById("gender") ? document.getElementById("gender").value : "";
+
+    const travelerProfile = {
+        fullName: name,
+        email: email,
+        phone: phone,
+        location: homeLocation,
+        language: language || "English (US)",
+        gender: gender,
+        dob: dob,
+        bio: bio,
+        reputation: "New Explorer",
+        level: 1,
+        totalTrips: 0,
+        countries: 0,
+        preferences: {
+            transport: transportPref,
+            stay: accommodationPref,
+            budget: budgetRange,
+            activityStyle: activityStyle
+        },
+        hobbies: interests,
+        security: {
+            twoFactorAuth: false,
+            emailNotifications: true,
+            publicProfile: true
+        }
+    };
+
+    localStorage.setItem("traveler_workspace_profile", JSON.stringify(travelerProfile));
+    console.log("Traveler Preferences & Profile Saved:", travelerProfile);
+}
+
+function redirectToDashboard() {
+    // Left empty: User gets sent to login explicitly at step 4 interface
+    navigateTo("./login.html");
 }

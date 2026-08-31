@@ -20,6 +20,12 @@ type ItineraryContext = {
   endDate?: string;
   includesFlight?: boolean;
   hotelStars?: number;
+  airline?: string;
+  flightNumber?: string;
+  fromAirportCode?: string;
+  toAirportCode?: string;
+  departureTime?: string;
+  arrivalTime?: string;
 };
 
 export function normalizeStructuredItinerary(
@@ -187,16 +193,22 @@ function mapLegacyItinerary(
   const destination = context.destination || 'Destination';
   const originCity = context.originCity || 'Origin';
 
+  const day1Item = items.find((item) => getDayNumber(item.day) === 1);
   const flight = context.includesFlight
     ? {
         id: `${context.idPrefix}-flight-1`,
-        airline: 'TBD',
-        flightNumber: 'TBD',
-        fromAirport: originCity,
-        toAirport: destination,
-        departureAt: `${startDate}T09:00:00.000Z`,
-        arrivalAt: `${startDate}T11:00:00.000Z`,
+        airline: context.airline || 'TBD',
+        flightNumber: context.flightNumber || 'TBD',
+        fromAirport: context.fromAirportCode || originCity,
+        toAirport: context.toAirportCode || destination,
+        departureAt: context.departureTime
+          ? `${startDate}T${context.departureTime}:00.000Z`
+          : `${startDate}T09:00:00.000Z`,
+        arrivalAt: context.arrivalTime
+          ? `${startDate}T${context.arrivalTime}:00.000Z`
+          : `${startDate}T11:00:00.000Z`,
         status: ItineraryItemStatus.PLANNED,
+        description: `Flight from ${context.fromAirportCode || originCity} to ${context.toAirportCode || destination}`,
       }
     : null;
 
@@ -219,6 +231,7 @@ function mapLegacyItinerary(
         startsAt: `${startDate}T10:00:00.000Z`,
         endsAt: `${startDate}T12:00:00.000Z`,
         status: ItineraryItemStatus.PLANNED,
+        description: item.detail,
       });
 
       return days;
@@ -233,8 +246,9 @@ function mapLegacyItinerary(
         vehicleType: 'TBD',
         pickupLocation: originCity,
         dropoffLocation: destination,
-        pickupAt: `${startDate}T12:30:00.000Z`,
+        pickupAt: `${startDate}T11:00:00.000Z`,
         status: ItineraryItemStatus.PLANNED,
+        description: day1Item?.detail || 'Arrival and transfer',
       },
       hotel: {
         id: `${context.idPrefix}-hotel-1`,

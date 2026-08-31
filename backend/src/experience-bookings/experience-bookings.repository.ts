@@ -42,4 +42,23 @@ export class ExperienceBookingsRepository {
       .filter((booking) => ids.has(booking.experienceId))
       .map((booking) => ({ ...booking }));
   }
+
+  updateStatus(
+    id: string,
+    status: ExperienceBookingStatus,
+  ): ExperienceBooking | null {
+    const bookingIndex = this.bookings.findIndex(
+      (booking) => booking.id === id,
+    );
+    if (bookingIndex === -1) {
+      return null;
+    }
+
+    this.bookings[bookingIndex] = {
+      ...this.bookings[bookingIndex],
+      status,
+    };
+
+    return { ...this.bookings[bookingIndex] };
+  }
 }

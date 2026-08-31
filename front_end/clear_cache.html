@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clearing Cache...</title>
+</head>
+<body>
+    <h1>Clearing your trips data...</h1>
+    <script>
+        // Clear trips and session state
+        localStorage.removeItem("tours");
+        localStorage.removeItem("traveler_my_trips");
+        localStorage.removeItem("traveler_confirmed_booking");
+        
+        // Redirect back to My Trips
+        alert("Cache cleared successfully! Redirecting back to My Trips...");
+        window.location.href = "./pages/traveller_mytrips.html";
+    </script>
+</body>
+</html>

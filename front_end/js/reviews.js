@@ -1,166 +1,162 @@
-import { apiGetAndSync, apiPostAndSync, apiDeleteAndSync, apiPatchAndSync } from "./utils/api.js";
+import { apiGet, apiPost } from "./api/http.js";
 
-function getStorage(key) { try { return JSON.parse(localStorage.getItem(key) || "[]"); } catch { return []; } }
-function setStorage(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+/**
+ * Guide Reviews Page
+ * ─────────────────────────────────────────────────────────
+ * Shows reviews received BY the logged-in guide.
+ * Reviews are written by travellers after a confirmed trip.
+ * Guides see their average rating, review cards (read-only).
+ * ─────────────────────────────────────────────────────────
+ */
+export async function renderReviewsPage(containerId, currentUser) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
 
-function showMessage(messageEl, text, isSuccess = false) {
-    messageEl.textContent = text;
-    messageEl.hidden = false;
-    messageEl.classList.toggle("success", isSuccess);
-}
+  const guideId = currentUser.id || currentUser.userId;
+  const guideName = currentUser.name || currentUser.username || "Guide";
 
-function clearMessage(messageEl) {
-    messageEl.textContent = "";
-    messageEl.hidden = true;
-}
-
-export function renderReviewsPage(containerId, currentUser = {}) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    container.innerHTML = `
-        <div class="crud-page">
-            <header class="crud-page-header">
-                <div>
-                    <h1>Reviews</h1>
-                    <p>Add reviews, filter by target, and manage feedback.</p>
-                </div>
-            </header>
-            <section class="crud-panel">
-                <h2 id="formTitle">Add Review</h2>
-                <div id="crudMessage" class="crud-message" hidden></div>
-                <form id="reviewForm" class="crud-form">
-                    <input type="hidden" id="reviewId">
-                    <label>User ID<input id="userId" type="number" required></label>
-                    <label>Target type<select id="targetType"><option value="guide">Guide</option><option value="hotel">Hotel</option><option value="experience">Experience</option></select></label>
-                    <label>Target ID<input id="targetId" type="number" required></label>
-                    <label>Rating<select id="rating"><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select></label>
-                    <label class="crud-full">Comment<textarea id="comment" required></textarea></label>
-                    <div class="crud-actions crud-full">
-                        <button type="submit" class="crud-btn crud-primary">Save Review</button>
-                        <button type="button" id="resetBtn" class="crud-btn">Clear</button>
-                    </div>
-                </form>
-            </section>
-            <section class="crud-panel">
-                <div class="crud-toolbar">
-                    <h2>All Reviews</h2>
-                    <select id="targetFilter">
-                        <option value="">All targets</option>
-                        <option value="guide">Guide</option>
-                        <option value="hotel">Hotel</option>
-                        <option value="experience">Experience</option>
-                    </select>
-                </div>
-                <div id="reviewList" class="crud-grid"></div>
-            </section>
+  container.innerHTML = `
+    <div class="guide-page-wrapper">
+      <div class="guide-page-header">
+        <div class="guide-page-header-left">
+          <div class="guide-page-avatar">${guideName[0].toUpperCase()}</div>
+          <div>
+            <h1 class="guide-page-title">Welcome, ${guideName}!</h1>
+            <p class="guide-page-subtitle">What travellers are saying about your tours</p>
+          </div>
         </div>
+        <div class="rv-avg-block" id="rv-avg"></div>
+      </div>
+      <div id="rv-list" class="rv-list">
+        <div class="rv-loading">Loading reviews…</div>
+      </div>
+    </div>
+  `;
+
+  injectReviewStyles();
+
+  let reviews = [];
+  try {
+    const result = await apiGet(`/reviews?targetType=guide&targetId=${guideId}`);
+    reviews = Array.isArray(result) ? result : (result.data || result.items || []);
+  } catch (e) {
+    console.warn("Failed to load guide reviews", e);
+  }
+
+  renderAvg(reviews);
+  renderReviewList(reviews);
+}
+
+function renderAvg(reviews) {
+  const el = document.getElementById("rv-avg");
+  if (!el) return;
+  if (!reviews.length) {
+    el.innerHTML = `<span class="rv-no-avg">No reviews yet</span>`;
+    return;
+  }
+  const avg = reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / reviews.length;
+  el.innerHTML = `
+    <div class="rv-avg-left">
+      <div class="rv-avg-num">${avg.toFixed(1)}</div>
+    </div>
+    <div class="rv-avg-right">
+      <div class="rv-avg-stars">${starBar(avg)}</div>
+      <div class="rv-avg-count">${reviews.length} review${reviews.length !== 1 ? "s" : ""}</div>
+    </div>
+  `;
+}
+
+function renderReviewList(reviews) {
+  const list = document.getElementById("rv-list");
+  if (!list) return;
+  if (!reviews.length) {
+    list.innerHTML = `
+      <div class="rv-empty">
+        <div class="rv-empty-icon">⭐</div>
+        <p>No reviews yet. Reviews will appear here after travellers complete trips with you.</p>
+      </div>
     `;
+    return;
+  }
 
-    const form = document.getElementById("reviewForm");
-    const list = document.getElementById("reviewList");
-    const message = document.getElementById("crudMessage");
-    const formTitle = document.getElementById("formTitle");
-    const targetFilter = document.getElementById("targetFilter");
-    let reviews = [];
+  list.innerHTML = reviews
+    .slice()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .map((r) => {
+      const reviewer = r.reviewerName || r.userName || `Traveller #${r.userId}`;
+      const date = r.createdAt
+        ? new Date(r.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+        : "";
+      const rating = Number(r.rating) || 0;
+      return `
+        <div class="rv-card">
+          <div class="rv-card-top">
+            <div class="rv-reviewer-avatar">${String(reviewer)[0].toUpperCase()}</div>
+            <div class="rv-reviewer-info">
+              <div class="rv-reviewer-name">${escHtml(reviewer)}</div>
+              <div class="rv-reviewer-date">${date}</div>
+            </div>
+            <div class="rv-card-stars">${starBar(rating)}</div>
+          </div>
+          <p class="rv-comment">${escHtml(r.comment || "")}</p>
+        </div>
+      `;
+    })
+    .join("");
+}
 
-    const getPayload = () => ({
-        userId: Number(document.getElementById("userId").value),
-        targetType: document.getElementById("targetType").value,
-        targetId: Number(document.getElementById("targetId").value),
-        rating: Number(document.getElementById("rating").value),
-        comment: document.getElementById("comment").value.trim()
-    });
+function starBar(rating) {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
+  let html = "";
+  for (let i = 0; i < 5; i++) {
+    if (i < full) html += `<span class="rv-star rv-star-full">★</span>`;
+    else if (i === full && half) html += `<span class="rv-star rv-star-half">★</span>`;
+    else html += `<span class="rv-star rv-star-empty">☆</span>`;
+  }
+  return html;
+}
 
-    const resetForm = () => {
-        form.reset();
-        document.getElementById("reviewId").value = "";
-        document.getElementById("userId").value = currentUser?.id || currentUser?.userId || "";
-        formTitle.textContent = "Add Review";
-        clearMessage(message);
-    };
+function escHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-    const fillForm = (review) => {
-        document.getElementById("reviewId").value = review.id;
-        document.getElementById("userId").value = review.userId;
-        document.getElementById("targetType").value = review.targetType;
-        document.getElementById("targetId").value = review.targetId;
-        document.getElementById("rating").value = review.rating;
-        document.getElementById("comment").value = review.comment || "";
-        formTitle.textContent = `Edit Review ${review.id}`;
-    };
+function injectReviewStyles() {
+  if (document.getElementById("rv-styles")) return;
+  const s = document.createElement("style");
+  s.id = "rv-styles";
+  s.textContent = `
+    .rv-avg-block { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.14); border-radius: 12px; padding: 12px 24px; border: 1px solid rgba(255,255,255,0.15); min-width: 120px; color: #fff; height: 72px; box-sizing: border-box; }
+    .rv-avg-left { display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 16px; }
+    .rv-avg-right { display: flex; flex-direction: column; justify-content: center; }
+    .rv-avg-num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+    .rv-avg-stars { font-size: 16px; letter-spacing: 2px; line-height: 1; }
+    .rv-avg-count { font-size: 11px; opacity: 0.8; margin-top: 4px; display: block; }
+    .rv-no-avg { font-size: 14px; font-weight: 500; opacity: 0.9; }
 
-    const renderReviews = () => {
-        const filter = targetFilter.value;
-        const visible = filter ? reviews.filter((review) => review.targetType === filter) : reviews;
-        list.innerHTML = visible.length ? visible.map((review) => `
-            <article class="crud-card">
-                <h3>${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)}</h3>
-                <div class="crud-meta">
-                    <strong>ID:</strong> ${review.id}<br>
-                    <strong>User ID:</strong> ${review.userId}<br>
-                    <strong>Target:</strong> ${review.targetType} #${review.targetId}<br>
-                    <strong>Rating:</strong> ${review.rating}/5<br>
-                    <strong>Created:</strong> ${review.createdAt ? new Date(review.createdAt).toLocaleString() : "-"}
-                </div>
-                <p class="crud-meta">${review.comment || ""}</p>
-                <div class="crud-card-actions">
-                    <button class="crud-btn" data-action="edit" data-id="${review.id}">Edit</button>
-                    <button class="crud-btn crud-danger" data-action="delete" data-id="${review.id}">Delete</button>
-                </div>
-            </article>
-        `).join("") : '<p class="crud-meta">No reviews found.</p>';
-    };
+    .rv-list { display: flex; flex-direction: column; gap: 14px; }
+    .rv-loading { text-align: center; color: #94a3b8; padding: 48px; font-size: 15px; }
+    .rv-empty { text-align: center; color: #94a3b8; padding: 56px 24px; background: #fff; border-radius: 14px; border: 1.5px dashed #e2e8f0; }
+    .rv-empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .rv-empty p { font-size: 15px; max-width: 360px; margin: 0 auto; line-height: 1.6; }
 
-    const loadReviews = async () => {
-        try {
-            clearMessage(message);
-            reviews = await apiGetAndSync("/reviews", "reviews");
-            if (!Array.isArray(reviews)) reviews = getStorage("reviews");
-            renderReviews();
-        } catch (error) {
-            showMessage(message, error.message);
-            list.innerHTML = '<p class="crud-meta">Unable to load reviews.</p>';
-        }
-    };
+    .rv-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; transition: box-shadow 0.2s, transform 0.2s; }
+    .rv-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+    .rv-card-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .rv-reviewer-avatar { width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; border: 2px solid #dbeafe; }
+    .rv-reviewer-info { flex: 1; }
+    .rv-reviewer-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .rv-reviewer-date { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .rv-card-stars { font-size: 18px; }
+    .rv-comment { margin: 0; font-size: 14px; color: #475569; line-height: 1.65; border-top: 1px solid #f1f5f9; padding-top: 12px; }
 
-    form.onsubmit = async (event) => {
-        event.preventDefault();
-        const id = document.getElementById("reviewId").value;
-        try {
-            const data = getPayload();
-            if (id) {
-                await apiPatchAndSync(`/reviews/${id}`, data, "reviews");
-            } else {
-                await apiPostAndSync("/reviews", data, "reviews");
-            }
-            showMessage(message, "Review saved successfully.", true);
-            resetForm();
-            await loadReviews();
-        } catch (error) {
-            showMessage(message, error.message);
-        }
-    };
-
-    list.onclick = async (event) => {
-        const button = event.target.closest("button");
-        if (!button) return;
-        const id = button.dataset.id;
-        const review = reviews.find((item) => String(item.id) === String(id));
-        if (button.dataset.action === "edit" && review) fillForm(review);
-        if (button.dataset.action === "delete") {
-            try {
-                await apiDeleteAndSync(`/reviews/${id}`, "reviews", id);
-                showMessage(message, "Review deleted successfully.", true);
-                await loadReviews();
-            } catch (error) {
-                showMessage(message, error.message);
-            }
-        }
-    };
-
-    targetFilter.onchange = renderReviews;
-    document.getElementById("resetBtn").onclick = resetForm;
-    resetForm();
-    void loadReviews();
+    .rv-star-full { color: #f59e0b; }
+    .rv-star-half { color: #fbbf24; opacity: 0.7; }
+    .rv-star-empty { color: #d1d5db; }
+  `;
+  document.head.appendChild(s);
 }

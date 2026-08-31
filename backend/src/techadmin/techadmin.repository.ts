@@ -5,7 +5,14 @@ import { createId } from '../common/utils/id';
 @Injectable()
 export class TechadminRepository {
   private admins: Techadmin[] = [
-    { adminId: 'seed-tech-1', fname: 'Dev', lname: 'Mehta', email: 'dev@xploreo.com', phone_number: 9876543210, location: 'Bangalore' },
+    {
+      adminId: 'seed-tech-1',
+      fname: 'Dev',
+      lname: 'Mehta',
+      email: 'dev@xploreo.com',
+      phone_number: 9876543210,
+      location: 'Bangalore',
+    },
   ];
 
   create(data: Omit<Techadmin, 'adminId'>): Techadmin {
@@ -14,7 +21,9 @@ export class TechadminRepository {
     return admin;
   }
 
-  findAll(): Techadmin[] { return this.admins; }
+  findAll(): Techadmin[] {
+    return this.admins;
+  }
 
   findById(id: string): Techadmin | undefined {
     return this.admins.find((a) => a.adminId === id);

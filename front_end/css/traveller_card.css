@@ -26,7 +26,9 @@ body {
 }
 
 .flight-card-demo-frame {
-    width: 1440px;
+    width: 100%;
+    padding: 0 40px;
+    box-sizing: border-box;
     margin: 0 auto;
 }
 

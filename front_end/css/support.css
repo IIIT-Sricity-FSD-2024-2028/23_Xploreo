@@ -187,13 +187,103 @@ textarea.input-field { min-height: 100px; resize: vertical; }
 .ticket-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.75rem; }
 
 .status-pill {
-    padding: 2px 8px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.status-pill.resolved { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.status-pill.open { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.status-pill.pending { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.status-pill.in-progress { background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; }
+
+/* Priority Tags */
+.priority-tag {
+    padding: 3px 8px;
     border-radius: 6px;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
 }
-.status-pill.resolved { background: #dcfce7; color: #166534; }
-.status-pill.open { background: #fef9c3; color: #854d0e; }
+.priority-tag.high { background: #fee2e2; color: #991b1b; }
+.priority-tag.medium { background: #ffedd5; color: #9a3412; }
+.priority-tag.low { background: #f3f4f6; color: #374151; }
+
+/* Ticket Resolution Box */
+.ticket-resolution-box {
+    margin-top: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: #f0fdf4;
+    border-left: 4px solid #10b981;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    color: #166534;
+}
+.ticket-resolution-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.ticket-resolution-text {
+    color: #15803d;
+    line-height: 1.45;
+    margin: 0;
+}
+.ticket-resolution-meta {
+    font-size: 0.75rem;
+    color: #4ade80;
+    margin-top: 4px;
+}
+
+/* User Badge Chip */
+.user-role-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #dbeafe;
+    border-radius: 9999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+/* Alert Messages */
+.support-alert {
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.3s ease;
+}
+.support-alert.success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.support-alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* Empty State */
+.empty-tickets-state {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--bg-light);
+    border-radius: 1rem;
+    border: 1px dashed var(--border-color);
+}
+.empty-tickets-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 0.75rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
 
 /* Response Time Card */
 .response-time {

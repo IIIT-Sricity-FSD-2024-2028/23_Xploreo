@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -21,10 +22,23 @@ import { BookingsModule } from './bookings/bookings.module';
 import { PartnersModule } from './partners/partners.module';
 import { ExperienceBookingsModule } from './experience-bookings/experience-bookings.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { LoggerModule } from './common/logger/logger.module';
+import { MiddlewareModule } from './common/middleware/middleware.module';
+import { GuideApplicationsModule } from './guide-applications/guide-applications.module';
+import { GuideAssignmentsModule } from './guide-assignments/guide-assignments.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
+    LoggerModule,
+    MiddlewareModule,
     AuthModule,
     TravellerModule,
     GuideModule,
@@ -44,6 +58,9 @@ import { TicketsModule } from './tickets/tickets.module';
     TicketsModule,
     LocationModule,
     CitiesModule,
+    UploadModule,
+    GuideApplicationsModule,
+    GuideAssignmentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

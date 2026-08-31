@@ -1,4 +1,4 @@
-const travelerData = (() => { try { return JSON.parse(localStorage.getItem("travelerData") || "{}"); } catch { return {}; } })();
+import { travelerData } from "../api/legacyData.js";
 
 export const TRAVELER_BOOKING_KEYS = {
     selectedPackage: [
@@ -100,8 +100,10 @@ export function saveTravelerBookingConfirmation(record) {
             title: normalized.packageData.title,
             destination: normalized.packageData.destination,
             location: normalized.packageData.destination,
-            plan_iternary: [],
-            itinerary: [],
+            plan_iternary: (normalized.packageData.itinerary || []).flatMap(day => 
+                (day.items && day.items.length > 0) ? day.items.map(item => item.name) : [day.title || day.day]
+            ),
+            itinerary: normalized.packageData.itinerary || [],
             currentloction: null,
             dateTime: `${normalized.packageData.departureDate || "Date TBD"} | 10:00 AM`,
             status: "pending",
@@ -119,6 +121,131 @@ export function saveTravelerBookingConfirmation(record) {
             allTours.push(newTour);
             localStorage.setItem("tours", JSON.stringify(allTours));
         }
+
+        const myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]");
+        if (!myTrips.find(t => String(t.id) === String(newTour.id) || String(t.bookingId) === String(newTour.id))) {
+            myTrips.push(newTour);
+            localStorage.setItem("traveler_my_trips", JSON.stringify(myTrips));
+        }
+
+        // Sync with NTA activity & bookings
+        const ntaActivity = JSON.parse(localStorage.getItem("ntaActivity") || "[]");
+        ntaActivity.unshift({
+            type: "booking",
+            action: "New Package Booking",
+            detail: `${newTour.customer} booked ${newTour.title} (${newTour.destination})`,
+            timestamp: new Date().toISOString()
+        });
+        localStorage.setItem("ntaActivity", JSON.stringify(ntaActivity));
+
+        const ntaBookings = JSON.parse(localStorage.getItem("ntaBookings") || "[]");
+        if (!ntaBookings.find(b => String(b.id) === String(newTour.id))) {
+            ntaBookings.unshift({
+                id: newTour.id,
+                packageName: newTour.title,
+                traveller: newTour.customer,
+                date: normalized.packageData.departureDate || new Date().toISOString().slice(0, 10),
+                status: "Confirmed",
+                amount: newTour.amount,
+                destination: newTour.destination
+            });
+            localStorage.setItem("ntaBookings", JSON.stringify(ntaBookings));
+        }
+
+        // Sync with Hotel partner bookings & activity
+        const hotelBookings = JSON.parse(localStorage.getItem("hotelBookings") || "[]");
+        const hotelCheckIn = normalized.packageData.departureDate || new Date().toISOString().slice(0, 10);
+        const nights = normalized.packageData.nights || 3;
+        const hotelCheckOut = new Date(Date.now() + 86400000 * nights).toISOString().slice(0, 10);
+        if (!hotelBookings.find(hb => String(hb.id) === String(newTour.id) || String(hb.bookingId) === String(newTour.id))) {
+            hotelBookings.unshift({
+                id: newTour.id,
+                hotelId: normalized.packageData.hotelId || "delhi-boutique",
+                customer: newTour.customer,
+                guestName: newTour.customer,
+                email: normalized.travelers[0]?.email || "traveler@xploreo.com",
+                phone: normalized.travelers[0]?.phone || "+91 9876543210",
+                checkIn: hotelCheckIn,
+                checkOut: hotelCheckOut,
+                room: normalized.packageData.stayLine || "Deluxe Room",
+                roomType: "Deluxe Room",
+                guests: normalized.travelerCount,
+                totalAmount: Math.round(normalized.totalPrice * 0.45),
+                status: "CONFIRMED",
+                hotel: {
+                    name: normalized.packageData.stayLine || `${normalized.packageData.destination} Heritage Stay`,
+                    city: normalized.packageData.destination
+                }
+            });
+            localStorage.setItem("hotelBookings", JSON.stringify(hotelBookings));
+        }
+
+        const hotelActivity = JSON.parse(localStorage.getItem("hotelActivity") || "[]");
+        hotelActivity.unshift({
+            text: `New reservation for ${newTour.customer} (${normalized.packageData.stayLine || 'Deluxe Room'})`,
+            time: "Just now"
+        });
+        localStorage.setItem("hotelActivity", JSON.stringify(hotelActivity));
+
+        // Sync with Experience partner bookings
+        const expBookings = JSON.parse(localStorage.getItem("experienceBookings") || "[]");
+        const itinerary = normalized.packageData.itinerary || [];
+        const expDate = normalized.packageData.departureDate || new Date().toISOString().slice(0, 10);
+
+        let addedExp = false;
+        itinerary.forEach((day, dIdx) => {
+            (day.items || []).forEach((item, iIdx) => {
+                const expTitle = item.name || `${normalized.packageData.destination} Guided Experience`;
+                let group = expBookings.find(g => g.title === expTitle && g.date === expDate);
+                if (!group) {
+                    group = {
+                        title: expTitle,
+                        date: expDate,
+                        time: "10:00 AM",
+                        users: []
+                    };
+                    expBookings.unshift(group);
+                }
+                if (!group.users.find(u => String(u.id) === `${newTour.id}-${dIdx}-${iIdx}`)) {
+                    group.users.push({
+                        id: `${newTour.id}-${dIdx}-${iIdx}`,
+                        name: newTour.customer,
+                        email: "traveler@xploreo.com",
+                        phone: "+91 9876543210",
+                        seats: normalized.travelerCount,
+                        status: "confirmed",
+                        totalAmount: Math.round(normalized.totalPrice * 0.35)
+                    });
+                    addedExp = true;
+                }
+            });
+        });
+
+        if (!addedExp) {
+            const expTitle = `${normalized.packageData.destination} Sightseeing & Cultural Tour`;
+            let group = expBookings.find(g => g.title === expTitle && g.date === expDate);
+            if (!group) {
+                group = {
+                    title: expTitle,
+                    date: expDate,
+                    time: "10:00 AM",
+                    users: []
+                };
+                expBookings.unshift(group);
+            }
+            if (!group.users.find(u => String(u.id) === `exp-${newTour.id}`)) {
+                group.users.push({
+                    id: `exp-${newTour.id}`,
+                    name: newTour.customer,
+                    email: "traveler@xploreo.com",
+                    phone: "+91 9876543210",
+                    seats: normalized.travelerCount,
+                    status: "confirmed",
+                    totalAmount: Math.round(normalized.totalPrice * 0.35)
+                });
+            }
+        }
+        localStorage.setItem("experienceBookings", JSON.stringify(expBookings));
     }
 }
 
@@ -185,7 +312,7 @@ export function calculateTravelerBookingTotal(packageData, travelerCount) {
 export function formatBookingCurrency(value) {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "INR",
         maximumFractionDigits: 0
     }).format(Number(value) || 0);
 }
@@ -219,7 +346,8 @@ function normalizeBookingRecord(record) {
         travelerCount: travelers.length,
         totalPrice: calculateTravelerBookingTotal(packageData, travelers.length || 1),
         updatedAt: record.updatedAt || "",
-        confirmedAt: record.confirmedAt || ""
+        confirmedAt: record.confirmedAt || "",
+        assignedGuide: record.assignedGuide || null
     };
 }
 
@@ -245,7 +373,8 @@ function normalizePackage(packageData) {
         pricePerPerson: Number(source.pricePerPerson) || fallback.pricePerPerson,
         totalPrice: Number(source.totalPrice) || fallback.totalPrice,
         emi: Number(source.emi) || fallback.emi,
-        departureDate: source.departureDate || source.departure || ""
+        departureDate: source.departureDate || source.departure || "",
+        itinerary: source.itinerary || fallback.itinerary || []
     };
 }
 
@@ -280,10 +409,10 @@ function resolvePackageSelection(selection, catalog) {
 
 function createFallbackPackage() {
     return {
-        id: "package-bali-escape",
+        id: "package-goa-escape",
         origin: "New Delhi",
-        destination: "Bali",
-        title: "Magical Bali - Island Paradise Escape",
+        destination: "Goa",
+        title: "Magical Goa - Island Paradise Escape",
         image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1400",
         nights: 5,
         days: 6,

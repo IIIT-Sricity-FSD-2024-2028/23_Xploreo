@@ -7,6 +7,10 @@ import {
 import { StructuredItinerary } from '../common/entities/itinerary.entity';
 import { mergeStructuredItineraryPatch } from '../common/utils/itinerary-mapper';
 import { PlansRepository } from '../plans/plans.repository';
+import { BookingsRepository } from '../bookings/bookings.repository';
+import { ExperienceBookingsRepository } from '../experience-bookings/experience-bookings.repository';
+import { HotelsRepository } from '../hotels/hotels.repository';
+import { ExperiencesRepository } from '../experiences/experiences.repository';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripTrackingDto } from './dto/update-trip-tracking.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
@@ -18,6 +22,10 @@ export class TripsService {
   constructor(
     private readonly tripsRepository: TripsRepository,
     private readonly plansRepository: PlansRepository,
+    private readonly bookingsRepository: BookingsRepository,
+    private readonly experienceBookingsRepository: ExperienceBookingsRepository,
+    private readonly hotelsRepository: HotelsRepository,
+    private readonly experiencesRepository: ExperiencesRepository,
   ) {}
 
   create(dto: CreateTripDto) {
@@ -26,7 +34,7 @@ export class TripsService {
 
     const itinerary = dto.itinerary || plan.itinerary;
 
-    return this.tripsRepository.create({
+    const trip = this.tripsRepository.create({
       id: dto.id,
       travellerId: dto.travellerId,
       planId: dto.planId,
@@ -35,11 +43,91 @@ export class TripsService {
       totalAmount: this.calculateTotalAmount(itinerary, plan.pricePerPerson),
       currentDay: 1,
       currentStop: 'Not started',
-      currentLocation: itinerary.day1?.transport?.pickupLocation || plan.originCity,
+      currentLocation:
+        itinerary.day1?.transport?.pickupLocation || plan.originCity,
       trackingStatus: TripTrackingStatus.NOT_STARTED,
       progressPercentage: 0,
       lastUpdatedAt: new Date().toISOString(),
     });
+
+    // Create hotel booking entries
+    if (itinerary?.day1?.hotel?.hotelId) {
+      const hotelId = itinerary.day1.hotel.hotelId;
+      const hotel = this.hotelsRepository.findById(hotelId);
+      const checkIn =
+        itinerary.day1.hotel.checkInDate ||
+        new Date().toISOString().slice(0, 10);
+      const checkOut =
+        itinerary.day1.hotel.checkOutDate ||
+        new Date(Date.now() + 86400000 * (plan.durationNights || 1))
+          .toISOString()
+          .slice(0, 10);
+      const nights = plan.durationNights || 1;
+      const totalAmount = hotel
+        ? nights * (hotel.pricePerNight + hotel.taxesAndFees)
+        : 18000;
+
+      this.bookingsRepository.create({
+        hotelId,
+        travellerId: dto.travellerId,
+        guestName: `Traveller ${dto.travellerId}`,
+        email: `${dto.travellerId}@xploreo.com`,
+        phone: '+91 9876543210',
+        checkIn,
+        checkOut,
+        guests: 2,
+        roomType: itinerary.day1.hotel.roomType || 'Standard Room',
+        notes: `Booked via Package: ${plan.title}`,
+        totalAmount,
+      });
+
+      if (hotel && hotel.availableRooms > 0) {
+        this.hotelsRepository.update(hotel.id, {
+          availableRooms: hotel.availableRooms - 1,
+        });
+      }
+    }
+
+    // Create experience booking entries
+    if (Array.isArray(itinerary?.days)) {
+      for (const day of itinerary.days) {
+        if (Array.isArray(day.experiences)) {
+          for (const exp of day.experiences) {
+            if (exp.experienceId) {
+              const experience = this.experiencesRepository.findById(
+                exp.experienceId,
+              );
+              const date =
+                exp.startsAt?.split('T')[0] ||
+                new Date().toISOString().slice(0, 10);
+              const totalAmount = experience ? experience.price * 2 : 3500;
+
+              this.experienceBookingsRepository.create({
+                experienceId: exp.experienceId,
+                travellerId: dto.travellerId,
+                guestName: `Traveller ${dto.travellerId}`,
+                email: `${dto.travellerId}@xploreo.com`,
+                phone: '+91 9876543210',
+                date,
+                time: exp.startsAt?.includes('T')
+                  ? exp.startsAt.split('T')[1]?.slice(0, 5)
+                  : '10:00',
+                participants: 2,
+                totalAmount,
+              });
+
+              if (experience) {
+                this.experiencesRepository.update(experience.id, {
+                  booked: (experience.booked || 0) + 2,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return trip;
   }
 
   findAll() {
@@ -60,7 +148,11 @@ export class TripsService {
     return this.tripsRepository.findByGuide(guideId);
   }
 
-  update(id: string, dto: UpdateTripDto, actor?: { userId?: string; role?: string }) {
+  update(
+    id: string,
+    dto: UpdateTripDto,
+    actor?: { userId?: string; role?: string },
+  ) {
     const trip = this.findOne(id);
     const plan = this.plansRepository.findById(trip.planId);
     if (!plan) throw new NotFoundException(`Plan ${trip.planId} not found`);
@@ -69,7 +161,11 @@ export class TripsService {
       this.assertStatusTransition(trip, dto.status, actor);
     }
 
-    if (dto.guideId && actor?.role === 'guide' && dto.guideId !== actor.userId) {
+    if (
+      dto.guideId &&
+      actor?.role === 'guide' &&
+      dto.guideId !== actor.userId
+    ) {
       throw new ForbiddenException('Guide can only assign their own guideId');
     }
 
@@ -81,7 +177,9 @@ export class TripsService {
       guideId: dto.guideId ?? trip.guideId,
       status: dto.status ?? trip.status,
       itinerary,
-      totalAmount: dto.totalAmount ?? this.calculateTotalAmount(itinerary, plan.pricePerPerson),
+      totalAmount:
+        dto.totalAmount ??
+        this.calculateTotalAmount(itinerary, plan.pricePerPerson),
     });
 
     if (!updated) throw new NotFoundException(`Trip ${id} not found`);
@@ -109,14 +207,16 @@ export class TripsService {
     const isAssignedGuide = role === 'guide' && trip.guideId === actor?.userId;
 
     if (!isAdmin && !isAssignedGuide) {
-      throw new ForbiddenException('Only the assigned guide can update tracking');
+      throw new ForbiddenException(
+        'Only the assigned guide can update tracking',
+      );
     }
 
     const trackingStatus = dto.trackingStatus ?? trip.trackingStatus;
     const progressPercentage =
       trackingStatus === TripTrackingStatus.COMPLETED
         ? 100
-        : dto.progressPercentage ?? trip.progressPercentage;
+        : (dto.progressPercentage ?? trip.progressPercentage);
 
     const status =
       trackingStatus === TripTrackingStatus.COMPLETED
@@ -142,7 +242,9 @@ export class TripsService {
   experienceExistsOnTrip(tripId: string, experienceId: string): boolean {
     const trip = this.findOne(tripId);
     return trip.itinerary.days.some((day) =>
-      day.experiences.some((experience) => experience.experienceId === experienceId),
+      day.experiences.some(
+        (experience) => experience.experienceId === experienceId,
+      ),
     );
   }
 
@@ -152,7 +254,10 @@ export class TripsService {
     return { message: `Trip ${id} deleted` };
   }
 
-  private calculateTotalAmount(itinerary: StructuredItinerary, basePrice: number): number {
+  private calculateTotalAmount(
+    itinerary: StructuredItinerary,
+    basePrice: number,
+  ): number {
     const flightAmount = itinerary.day1.flight ? 12000 : 0;
     const hotelAmount = itinerary.day1.hotel ? 18000 : 0;
     const experienceAmount = itinerary.days.reduce(
@@ -188,7 +293,9 @@ export class TripsService {
       (actor?.role === 'traveller' || actor?.role === 'TRAVELLER')
     ) {
       if (trip.travellerId !== actor.userId) {
-        throw new ForbiddenException('Traveller can only confirm their own trip');
+        throw new ForbiddenException(
+          'Traveller can only confirm their own trip',
+        );
       }
       return;
     }

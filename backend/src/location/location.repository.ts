@@ -5,11 +5,31 @@ import { createId } from '../common/utils/id';
 @Injectable()
 export class LocationRepository {
   private locations: Location[] = [
-    { locationId: 'loc-mumbai-1', locationName: 'Juhu Beach', cityId: 'city-mumbai-1' },
-    { locationId: 'loc-delhi-1', locationName: 'India Gate', cityId: 'city-delhi-1' },
-    { locationId: 'loc-jaipur-1', locationName: 'Hawa Mahal', cityId: 'city-jaipur-1' },
-    { locationId: 'loc-goa-beach-1', locationName: 'Calangute Beach', cityId: 'city-goa-1' },
-    { locationId: 'loc-darjeeling-1', locationName: 'Tiger Hill', cityId: 'city-kerala-1' },
+    {
+      locationId: 'loc-mumbai-1',
+      locationName: 'Juhu Beach',
+      cityId: 'city-mumbai-1',
+    },
+    {
+      locationId: 'loc-delhi-1',
+      locationName: 'India Gate',
+      cityId: 'city-delhi-1',
+    },
+    {
+      locationId: 'loc-jaipur-1',
+      locationName: 'Hawa Mahal',
+      cityId: 'city-jaipur-1',
+    },
+    {
+      locationId: 'loc-goa-beach-1',
+      locationName: 'Calangute Beach',
+      cityId: 'city-goa-1',
+    },
+    {
+      locationId: 'loc-kerala-1',
+      locationName: 'Munnar',
+      cityId: 'city-kerala-1',
+    },
   ];
 
   create(data: Omit<Location, 'locationId'>): Location {
@@ -18,7 +38,9 @@ export class LocationRepository {
     return loc;
   }
 
-  findAll(): Location[] { return this.locations; }
+  findAll(): Location[] {
+    return this.locations;
+  }
 
   findById(id: string): Location | undefined {
     return this.locations.find((l) => l.locationId === id);

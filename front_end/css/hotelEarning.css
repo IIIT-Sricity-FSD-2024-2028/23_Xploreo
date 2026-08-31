@@ -1,0 +1,131 @@
+/* ===========================
+HOTEL EARNINGS STYLES
+Professional UI Refinement
+=========================== */
+
+/* Header Upgrade */
+.hotel-page-header h1 {
+    font-size: 36px !important;
+    font-weight: 800 !important;
+    background: linear-gradient(135deg, #1e293b, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+
+.hotel-page-header p {
+    font-size: 16px !important;
+    color: #64748b !important;
+}
+
+/* KPI Cards (Glass and Gradients) */
+.stat-card,
+.perf-card,
+.hotel-stats-grid .hotel-content-card,
+.hotel-content-card,
+#earning-revenue,
+#earning-refund,
+#earning-transactions,
+#earning-payout {
+    background: linear-gradient(145deg, #ffffff, #f8fafc) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05) !important;
+    border-radius: 20px !important;
+    padding: 24px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    margin-bottom: 24px !important;
+}
+
+.stat-card:hover,
+.perf-card:hover,
+.hotel-stats-grid .hotel-content-card:hover,
+.hotel-content-card:hover,
+#earning-revenue:hover,
+#earning-refund:hover,
+#earning-transactions:hover,
+#earning-payout:hover {
+    transform: translateY(-4px) !important;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1) !important;
+}
+
+.stat-card .stat-label {
+    font-size: 14px;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 8px;
+    margin-top: 10px;
+}
+
+.stat-card .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+}
+
+/* Revenue Rows */
+.revenue-row {
+    margin-bottom: 20px;
+}
+
+.revenue-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.revenue-total {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 2px dashed #e2e8f0;
+    font-size: 18px;
+}
+
+.revenue-total strong {
+    color: #1e293b;
+}
+
+.revenue-total span {
+    font-weight: 800;
+    color: #3b82f6;
+}
+
+/* Earning Progress Bars */
+.progress-bar {
+    height: 8px !important;
+    border-radius: 12px !important;
+    background: #e2e8f0 !important;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.progress-fill {
+    height: 100%;
+    border-radius: 12px !important;
+}
+
+.progress-fill.blue { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+.progress-fill.green { background: linear-gradient(90deg, #10b981, #34d399); }
+.progress-fill.red { background: linear-gradient(90deg, #ef4444, #f87171); }
+
+.refund-note {
+    background: #fef2f2;
+    padding: 16px;
+    border-radius: 12px;
+    color: #991b1b;
+    font-weight: 600;
+    margin-top: 20px;
+}
+.refund-note span {
+    font-weight: 400;
+    font-size: 14px;
+    color: #7f1d1d;
+}

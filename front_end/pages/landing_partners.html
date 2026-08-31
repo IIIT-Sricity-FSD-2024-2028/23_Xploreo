@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Xploreo - Partners</title>
+
+    <!-- CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/landing.css">
+    <style>
+        .page-content {
+            padding: 80px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .page-content h2 {
+            font-family: serif ;
+            font-size: 48px;
+            color: #1F2937;
+            margin-bottom: 20px;
+        }
+        .page-content p {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 18px;
+            color: #4B5563;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+        }
+        
+        /* Grid for Partner Benefits */
+        .benefits-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+        .benefit-card {
+            background: #F9FAFB;
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid #E5E7EB;
+            text-align: center;
+        }
+        .benefit-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px auto;
+            background: #E0F2FE;
+            color: #0284C7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        .benefit-card h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 20px;
+            color: #111827;
+            margin-bottom: 12px;
+        }
+        .benefit-card p {
+            font-size: 15px;
+            margin-bottom: 0;
+        }
+        
+        .cta-btn {
+            display: inline-block;
+            margin-top: 50px;
+            padding: 16px 40px;
+            background: #1F2937;
+            color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            border-radius: 30px;
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+        .cta-btn:hover {
+            opacity: 0.9;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Desktop Frame -->
+    <div class="desktop-container">
+
+        <!-- Top Navigation Bar is injected centrally here -->
+        <div id="navbar"></div>
+
+        <!-- Hero Section -->
+        <section class="hero" style="height: 40vh; min-height: 400px; background: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1500&q=80') center/cover no-repeat;">
+            <div class="hero-content">
+                <h1>Become a Partner</h1>
+                <p>Grow your hospitality or guiding business globally.</p>
+            </div>
+        </section>
+
+        <div class="page-content">
+            <h2>Partner With Us</h2>
+            <p>Xploreo bridges the gap between global travelers and trusted local service partners. Whether you manage a boutique hotel, a fleet of transport vehicles, or operate certified local tours, we give you the centralized tools to manage your bookings and elevate your reach.</p>
+
+            <div class="benefits-grid">
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">📈</div>
+                    <h3>Global Audience</h3>
+                    <p>Put your services directly in front of thousands of international travelers actively planning and booking itineraries every day.</p>
+                </div>
+                
+                <div class="benefit-card">
+                    <div class="benefit-icon">🖥️</div>
+                    <h3>Unified Dashboard</h3>
+                    <p>Easily manage inventory, room availability, dynamic pricing, and tour scheduling from one integrated platform.</p>
+                </div>
+
+                <div class="benefit-card">
+                    <div class="benefit-icon">🔒</div>
+                    <h3>Secure Payments</h3>
+                    <p>Rest easy with guaranteed payouts, transparent reporting, and dedicated backend analytics for all your earnings.</p>
+                </div>
+
+            </div>
+            
+        </div>
+        
+    </div>
+
+    <!-- NAVBAR INJECTION SCRIPT -->
+    <script type="module">
+        import { renderLandingNavbar } from "../components/layout/navbar_landing.js";
+        renderLandingNavbar();
+    </script>
+</body>
+</html>

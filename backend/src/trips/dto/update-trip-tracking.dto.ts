@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from 'class-validator';
 import { TripTrackingStatus } from '../entities/trip.entity';
 
 export class UpdateTripTrackingDto {
@@ -19,7 +26,10 @@ export class UpdateTripTrackingDto {
   @IsString()
   currentLocation?: string;
 
-  @ApiPropertyOptional({ enum: TripTrackingStatus, example: TripTrackingStatus.ONGOING })
+  @ApiPropertyOptional({
+    enum: TripTrackingStatus,
+    example: TripTrackingStatus.ONGOING,
+  })
   @IsOptional()
   @IsEnum(TripTrackingStatus)
   trackingStatus?: TripTrackingStatus;

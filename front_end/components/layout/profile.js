@@ -3,48 +3,38 @@ export function getProfile(user) {
     let profileLink = 'profile.html'; // Default fallback
     let supportLink = 'support.html';
     
-    // Compute base path: pages are 2 levels deep (pages/subfolder/page.html)
-    // so we need to go up 2 levels to reach front_end root, then navigate to target
-    const basePath = window.location.pathname.match(/\/pages\/[^/]+\//)
-        ? "../../pages/"
-        : "../pages/";
-
     if (user) {
-        if (user.role === 'traveller') {
-            profileLink = basePath + 'traveller/traveller_profile.html';
-            supportLink = basePath + 'traveller/traveller_support.html';
-        } else if (user.role === 'hotel') {
-            profileLink = basePath + 'hotels/hotelprofile.html';
-        } else if (user.role === 'superadmin') {
-            profileLink = basePath + 'superadmin/adminProfile.html';
-        } else if (user.role === 'guide') {
-            profileLink = basePath + 'mainpages/profile.html';
-            supportLink = basePath + 'mainpages/support.html';
-        } else if (user.role === 'experience') {
-            profileLink = basePath + 'mainpages/profile.html';
-            supportLink = basePath + 'mainpages/support.html';
-        } else if (user.role === 'techadmin' || user.role === 'nontechadmin') {
-            profileLink = basePath + 'mainpages/profile.html';
+        const rawRole = (user.role || '').toLowerCase().replace(/_/g, '');
+        if (rawRole === 'traveller') {
+            profileLink = 'traveller_profile.html';
+            supportLink = 'traveller_support.html';
+        } else if (rawRole === 'hotel') {
+            profileLink = 'hotelprofile.html';
+        } else if (rawRole === 'superadmin') {
+            profileLink = 'adminProfile.html'; // <-- Routes superadmin to the new page
+        } else if (rawRole === 'experience' || rawRole === 'guide' || rawRole === 'techadmin' || rawRole === 'nontechadmin') {
+            profileLink = 'profile.html';
         }
     }
 
-    // 2. Hide Support specifically for techadmin, superadmin, and nontechadmin
-    const supportItem = (user && user.role !== 'techadmin' && user.role !== 'superadmin' && user.role !== 'nontechadmin') ? `
+    // 2. Show Support for all user roles (traveller, guide, hotel, experience, nontechadmin, superadmin) except techadmin
+    const isTechAdmin = user && (user.role === 'techadmin' || user.role === 'TECH_ADMIN' || user.role === 'TECHADMIN' || user.role === 'tech_admin');
+    const supportItem = (user && !isTechAdmin) ? `
               <div class="dropdown-item" onclick="window.location.href='${supportLink}'">
-                <img src="../../components/ui/support.svg" class="dropdown-icon">
+                <img src="../components/ui/support.svg" class="dropdown-icon">
                 <span>Support</span>
               </div>
     ` : '';
 
     // 3. Render the dropdown (Profile is now back for everyone)
     return `
-        <div class="profile" onclick="toggleProfileMenu()">
+        <div class="profile" onclick="fileMenu()">
             <span class="profile-name">${user ? user.name : 'User'}</span>
-            <img src="../../components/ui/profile.png" alt="user" class="profile-img"/>
+            <img src="${(user && user.profilePic) ? user.profilePic : '../components/ui/profile.png'}" alt="user" class="profile-img"/>
             <div class="profile-dropdown hidden" id="profile-dropdown">
               
               <div class="dropdown-item" onclick="window.location.href='${profileLink}'">
-                <img src="../../components/ui/user.svg" class="dropdown-icon">
+                <img src="../components/ui/user.svg" class="dropdown-icon">
                 <span>Profile</span>
               </div>
               
@@ -52,7 +42,7 @@ export function getProfile(user) {
               
               <hr class="dropdown-divider">
               <div class="dropdown-item logout-item" onclick="logout()">
-                <img src="../../components/ui/logout.svg" class="dropdown-icon">
+                <img src="../components/ui/logout.svg" class="dropdown-icon">
                 <span>Logout</span>
               </div>
             </div>
@@ -76,20 +66,6 @@ window.addEventListener("click", function (e) {
 // Handle Logout
 window.logout = function () {
   localStorage.removeItem("currentUser");
-  const depth = (window.location.pathname.match(/\/pages\/[^/]+\//) ? 2 : window.location.pathname.includes("/pages/") ? 1 : 0);
-  if (depth === 2) {
-    window.location.href = "../../pages/mainpages/login.html";
-  } else if (depth === 1) {
-    window.location.href = "../pages/mainpages/login.html";
-  } else {
-    window.location.href = "pages/mainpages/login.html";
-  }
+  const isPages = window.location.pathname.includes("/pages/");
+  window.location.href = isPages ? "login.html" : "pages/login.html";
 };
-
-window.toggleProfileMenu = function() {
-    const dropdown = document.getElementById("profile-dropdown");
-
-    if (dropdown) {
-        dropdown.classList.toggle("show");
-    }
-}

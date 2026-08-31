@@ -46,6 +46,7 @@ export class TravellerController {
     return this.travellerService.findAll();
   }
 
+  @Roles(Role.TRAVELLER, Role.SUPERADMIN, Role.NONTECHADMIN, Role.GUIDE)
   @Get(':id')
   @ApiOperation({ summary: 'Get traveller by ID' })
   @ApiReadEndpoint()

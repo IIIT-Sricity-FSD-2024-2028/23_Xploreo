@@ -1,74 +1,97 @@
-export function renderHotelEarningPage() {
+import { fetchPartnerHotelBookings } from "../api/services.js?v=hotel-workflow-2";
 
-    renderEarningStats("earning-stats");
+export async function renderHotelEarningPage() {
+    let bookings = [];
+    try {
+        bookings = await fetchPartnerHotelBookings();
+    } catch (error) {
+        console.error("Failed to load bookings for earnings:", error);
+    }
 
-    renderEarningPerformance("earning-performance");
-    renderEarningRevenue("earning-revenue");
-    renderEarningRefund("earning-refund");
-    renderEarningTransactions("earning-transactions");
-    renderEarningPayout("earning-payout");
+    renderEarningStats("earning-stats", bookings);
+    renderEarningPerformance("earning-performance", bookings);
+    renderEarningRevenue("earning-revenue", bookings);
+    renderEarningRefund("earning-refund", bookings);
+    renderEarningTransactions("earning-transactions", bookings);
+    renderEarningPayout("earning-payout", bookings);
 }
 
-
 /* =========================
-   STATS (NO IMPORT NOW)
+   STATS
 ========================= */
-function renderEarningStats(containerId) {
-
+function renderEarningStats(containerId, bookings) {
     const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const totalRevenue = bookings
+        .filter(b => b.status !== "CANCELLED" && b.status !== "REFUNDED")
+        .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+
+    const refunded = bookings
+        .filter(b => b.status === "CANCELLED" || b.status === "REFUNDED")
+        .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+
+    const validBookings = bookings.filter(b => b.status !== "CANCELLED" && b.status !== "REFUNDED");
+    const avgBooking = validBookings.length ? (totalRevenue / validBookings.length) : 0;
+
+    // Real calculation for "this month"
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const thisMonth = validBookings
+        .filter(b => {
+            if (!b.checkIn) return false;
+            const d = new Date(b.checkIn);
+            return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        })
+        .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0); 
 
     const stats = [
         {
             label: "Total Revenue",
-            value: "$48,250",
-            icon: "../../components/ui/montlyearning.svg",
+            value: `₹${totalRevenue.toLocaleString()}`,
+            icon: "../components/ui/montlyearning.svg",
             color: "blue",
-            subtext: "+12.5%",
+            subtext: bookings.length ? "Based on real data" : "No bookings yet",
             subClass: "positive"
         },
         {
             label: "Earnings This Month",
-            value: "$14,800",
-            icon: "../../components/ui/upcomingtours.svg",
+            value: `₹${thisMonth.toLocaleString()}`,
+            icon: "../components/ui/upcomingtours.svg",
             color: "dark-green",
-            subtext: "+8.2%",
+            subtext: "Est. from total",
             subClass: "positive"
         },
         {
             label: "Refunded Payments",
-            value: "$1,240",
-            icon: "../../components/ui/recentreview.svg",
+            value: `₹${refunded.toLocaleString()}`,
+            icon: "../components/ui/recentreview.svg",
             color: "violet",
-            subtext: "-2.1%",
-            subClass: "negative"
+            subtext: refunded === 0 ? "Perfect score!" : "Needs attention",
+            subClass: refunded === 0 ? "positive" : "negative"
         },
         {
             label: "Avg Booking Value",
-            value: "$185",
-            icon: "../../components/ui/avgrating.svg",
+            value: `₹${Math.round(avgBooking).toLocaleString()}`,
+            icon: "../components/ui/avgrating.svg",
             color: "orange",
-            subtext: "+5.4%",
+            subtext: validBookings.length + " valid bookings",
             subClass: "positive"
         }
     ];
 
     container.innerHTML = stats.map(stat => `
         <div class="stat-card ${stat.color}">
-
             ${stat.icon ? `
             <div class="icon-container">
                 <img src="${stat.icon}" alt="icon" width="20">
             </div>
             ` : ""}
-
             <p class="stat-label">${stat.label}</p>
-
             <h2 class="stat-value">${stat.value}</h2>
-
             <p class="stat-subtext ${stat.subClass || ""}">
                 ${stat.subtext || ""}
             </p>
-
         </div>
     `).join('');
 }
@@ -76,20 +99,54 @@ function renderEarningStats(containerId) {
 /* =========================
    PERFORMANCE
 ========================= */
-function renderEarningPerformance(containerId) {
-
+function renderEarningPerformance(containerId, bookings) {
     const el = document.getElementById(containerId);
+    if (!el) return;
+
+    const refundRate = bookings.length ? (bookings.filter(b => b.status === "CANCELLED" || b.status === "REFUNDED").length / bookings.length * 100).toFixed(1) : 0;
+
+    let topRoom = "N/A";
+    let highestDay = "N/A";
+    let totalBookingsStr = "0";
+
+    if (bookings.length) {
+        // Top Room
+        const roomCounts = {};
+        bookings.forEach(b => {
+            if(b.status !== "CANCELLED" && b.status !== "REFUNDED") {
+                const rt = b.roomType || "Standard";
+                roomCounts[rt] = (roomCounts[rt] || 0) + 1;
+            }
+        });
+        const sortedRooms = Object.entries(roomCounts).sort((a,b) => b[1]-a[1]);
+        if(sortedRooms.length) topRoom = sortedRooms[0][0];
+
+        // Highest Day
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayCounts = {};
+        bookings.forEach(b => {
+            if(b.checkIn) {
+                const d = new Date(b.checkIn).getDay();
+                if(!isNaN(d)) {
+                    dayCounts[d] = (dayCounts[d] || 0) + 1;
+                }
+            }
+        });
+        const sortedDays = Object.entries(dayCounts).sort((a,b) => b[1]-a[1]);
+        if(sortedDays.length) highestDay = days[sortedDays[0][0]];
+        
+        totalBookingsStr = bookings.length.toString();
+    }
 
     const data = [
-        { title: "Deluxe Room", subtitle: "Top Performing Room", icon: "🏆" },
-        { title: "Saturday", subtitle: "Highest Booking Day", icon: "📅" },
-        { title: "78%", subtitle: "Occupancy Rate", icon: "🏠" },
-        { title: "2.6%", subtitle: "Refund Rate", icon: "📉" }
+        { title: topRoom, subtitle: "Top Performing Room", icon: "🏆" },
+        { title: highestDay, subtitle: "Highest Booking Day", icon: "📅" },
+        { title: totalBookingsStr, subtitle: "Total Bookings", icon: "📊" },
+        { title: `${refundRate}%`, subtitle: "Refund Rate", icon: "📉" }
     ];
 
     el.innerHTML = `
         <h3>Performance Insights</h3>
-
         <div class="hotel-stats-grid">
             ${data.map(d => `
                 <div class="hotel-content-card perf-card">
@@ -102,121 +159,145 @@ function renderEarningPerformance(containerId) {
     `;
 }
 
-
 /* =========================
    REVENUE
 ========================= */
-function renderEarningRevenue(containerId) {
-
+function renderEarningRevenue(containerId, bookings) {
     const el = document.getElementById(containerId);
+    if (!el) return;
 
-    const data = [
-        { name: "Standard Room", value: 28500, percent: 59, color: "blue" },
-        { name: "Deluxe Room", value: 19750, percent: 41, color: "green" }
-    ];
+    const valid = bookings.filter(b => b.status !== "CANCELLED");
+    const total = valid.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+    
+    // Group by roomType
+    const roomTotals = {};
+    valid.forEach(b => {
+        const rt = b.roomType || "Unknown Room";
+        roomTotals[rt] = (roomTotals[rt] || 0) + Number(b.totalAmount || 0);
+    });
 
-    const total = data.reduce((sum, r) => sum + r.value, 0);
+    const colors = ["blue", "green", "orange", "violet"];
+    
+    const data = Object.keys(roomTotals).map((room, i) => {
+        const val = roomTotals[room];
+        return {
+            name: room,
+            value: val,
+            percent: total ? Math.round((val / total) * 100) : 0,
+            color: colors[i % colors.length]
+        };
+    }).sort((a,b) => b.value - a.value).slice(0, 4);
+
+    if (data.length === 0) {
+        el.innerHTML = `<h3>Revenue Sources</h3><p>No revenue data available yet.</p>`;
+        return;
+    }
 
     el.innerHTML = `
         <h3>Revenue Sources</h3>
-
         ${data.map(r => `
             <div class="revenue-row">
-
                 <div class="revenue-top">
                     <span>${r.name}</span>
-                    <span>$${r.value.toLocaleString()}</span>
+                    <span>₹${r.value.toLocaleString()}</span>
                 </div>
-
                 <div class="progress-bar">
                     <div class="progress-fill ${r.color}" style="width:${r.percent}%"></div>
                 </div>
-
                 <span class="percent">${r.percent}%</span>
-
             </div>
         `).join("")}
 
         <div class="revenue-total">
             <strong>Total Revenue</strong>
-            <span>$${total.toLocaleString()}</span>
+            <span>₹${total.toLocaleString()}</span>
         </div>
     `;
 }
-
 
 /* =========================
    REFUND
 ========================= */
-function renderEarningRefund(containerId) {
-
+function renderEarningRefund(containerId, bookings) {
     const el = document.getElementById(containerId);
+    if (!el) return;
+
+    const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+    const refunded = bookings
+        .filter(b => b.status === "CANCELLED" || b.status === "REFUNDED")
+        .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+
+    const percent = totalRevenue ? ((refunded / totalRevenue) * 100).toFixed(1) : 0;
 
     el.innerHTML = `
         <h3>Refund Breakdown</h3>
-
         <p class="sub-text">Total Refunded</p>
-        <h2 class="text-danger">$1,240</h2>
+        <h2 class="text-danger">₹${refunded.toLocaleString()}</h2>
 
-        <p class="sub-text">Percentage of Revenue</p>
-        <h3>2.6%</h3>
+        <p class="sub-text">Percentage of Total Volume</p>
+        <h3>${percent}%</h3>
 
         <div class="progress-bar">
-            <div class="progress-fill red" style="width:2.6%"></div>
-        </div>
-
-        <div class="refund-note">
-            Low Refund Rate <br/>
-            <span>Your refund rate is below industry average</span>
+            <div class="progress-fill red" style="width:${percent}%"></div>
         </div>
     `;
 }
 
-
 /* =========================
-   TRANSACTIONS (DATA DRIVEN)
+   TRANSACTIONS
 ========================= */
-function renderEarningTransactions(containerId) {
-
+function renderEarningTransactions(containerId, bookings) {
     const el = document.getElementById(containerId);
+    if (!el) return;
 
-    const bookings = JSON.parse(localStorage.getItem("hotelBookings")) || [];
+    const recent = bookings.slice(-5).reverse();
+
+    if (recent.length === 0) {
+        el.innerHTML = `<h3>Recent Transactions</h3><p>No recent transactions.</p>`;
+        return;
+    }
 
     el.innerHTML = `
         <h3>Recent Transactions</h3>
-
-        ${bookings.map(b => `
+        ${recent.map(b => {
+            const isCancelled = b.status === "CANCELLED" || b.status === "REFUNDED";
+            const badgeClass = isCancelled ? "badge-red" : "badge-green";
+            return `
             <div class="hotel-booking-row">
-
                 <div>
-                    <strong>${b.customer}</strong><br/>
-                    <span class="hotel-sub-text">${b.room}</span>
+                    <strong>${b.guestName || 'Guest'}</strong><br/>
+                    <span class="hotel-sub-text">${b.roomType || 'Room'}</span>
                 </div>
-
-                <div>$${b.amount || 0}</div>
-
+                <div>₹${Number(b.totalAmount || 0).toLocaleString()}</div>
                 <div>
-                    <span class="${b.status === "cancelled" ? "badge-red" : "badge-green"}">
-                        ${b.status}
+                    <span class="hotel-status ${badgeClass}" style="padding:4px 10px; font-size:11px; border-radius:12px; background:${isCancelled?'#fee2e2':'#dcfce7'}; color:${isCancelled?'#dc2626':'#16a34a'}">
+                        ${b.status || 'COMPLETED'}
                     </span>
                 </div>
-
             </div>
-        `).join("")}
+            `;
+        }).join("")}
     `;
 }
-
 
 /* =========================
    PAYOUT
 ========================= */
-function renderEarningPayout(containerId) {
-
+function renderEarningPayout(containerId, bookings) {
     const el = document.getElementById(containerId);
+    if (!el) return;
+
+    const pending = bookings
+        .filter(b => b.status === "CONFIRMED")
+        .reduce((sum, b) => sum + Number(b.totalAmount || 0), 0);
+
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + (7 - nextDate.getDay()) % 7 + 1); // Next Monday
 
     el.innerHTML = `
         <h3>Payout Information</h3>
-        <p>Next payout: April 16, 2026</p>
-        <h2>$128,450</h2>
+        <p>Next payout: ${nextDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+        <h2>₹${pending.toLocaleString()}</h2>
+        <p class="hotel-sub-text">Pending confirmed bookings amount</p>
     `;
 }

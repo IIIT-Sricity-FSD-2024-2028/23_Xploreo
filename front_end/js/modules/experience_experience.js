@@ -1,4 +1,4 @@
-const experienceCatalog = (() => { try { return JSON.parse(localStorage.getItem("experiences") || "[]"); } catch { return []; } })();
+import { experiences as experienceCatalog } from "../api/legacyData.js";
 import {
     attachModalDismissals,
     clearFieldErrors,
@@ -12,9 +12,31 @@ import {
     setFormMessage,
     writeStorage
 } from "./experience_shared.js";
+import { createExperience, updateExperience, deleteExperience, fetchExperiences } from "../api/services.js";
 
-export function renderExperienceCatalogPage() {
-    let experiences = readStorage("experienceCatalog", experienceCatalog);
+export async function renderExperienceCatalogPage() {
+    let experiences = [];
+    try {
+        const backendExps = await fetchExperiences();
+        experiences = backendExps.map(exp => ({
+            id: exp.id || String(Date.now()),
+            title: exp.title,
+            description: exp.description || exp.title,
+            price: exp.price,
+            duration: `${exp.durationHours} hours`,
+            capacity: exp.capacity,
+            category: exp.category || "adventure",
+            status: "active",
+            image: exp.image || "",
+            images: exp.images || (exp.image ? [exp.image] : []),
+            booked: exp.booked || 0,
+            slots: exp.slots || []
+        }));
+        writeStorage("experienceCatalog", experiences);
+    } catch (error) {
+        console.warn("Failed to fetch experiences from backend", error);
+        experiences = readStorage("experienceCatalog", experienceCatalog);
+    }
     const container = document.getElementById("experienceList");
     const addExperienceButton = document.getElementById("openAddExperienceBtn");
     const addExperienceForm = document.getElementById("addExperienceForm");
@@ -45,6 +67,28 @@ export function renderExperienceCatalogPage() {
         writeStorage("experienceCatalog", experiences);
     }
 
+    function syncExperienceSlots(exp) {
+        updateExperience(String(exp.id), {
+            title: exp.title,
+            description: exp.description || exp.title,
+            destination: exp.destination || exp.title,
+            category: exp.category || "adventure",
+            price: Number(exp.price),
+            durationHours: parseInt(exp.duration) || 2,
+            capacity: Number(exp.capacity),
+            booked: Number(exp.booked || 0),
+            nextSlot: exp.nextSlot || "",
+            slots: (exp.slots || []).map(s => ({
+                id: String(s.id),
+                date: s.date,
+                time: s.time,
+                booked: Number(s.booked || 0),
+                capacity: Number(s.capacity),
+                available: Boolean(s.available)
+            }))
+        }).catch(e => console.warn("Failed to sync experience slots", e));
+    }
+
     function slotDateLabel(date) {
         return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
             weekday: "long",
@@ -70,18 +114,7 @@ export function renderExperienceCatalogPage() {
 
             return {
                 ...exp,
-                slots: importedSlots.length
-                    ? importedSlots
-                    : [
-                        {
-                            id: `${exp.id}-1`,
-                            date: "2026-03-27",
-                            time: exp.nextSlot || "10:00 AM",
-                            booked: exp.booked || 0,
-                            capacity: exp.capacity,
-                            available: true
-                        }
-                    ]
+                slots: importedSlots
             };
         });
 
@@ -95,7 +128,7 @@ export function renderExperienceCatalogPage() {
     }
 
     function getManagedExperience() {
-        return experiences.find((item) => item.id === currentManagedExperienceId) || null;
+        return experiences.find((item) => String(item.id) === String(currentManagedExperienceId)) || null;
     }
 
     function resetCatalogMessages() {
@@ -108,12 +141,18 @@ export function renderExperienceCatalogPage() {
     function validateExperiencePayload(prefix) {
         let isValid = true;
         const name = sanitizeValue(document.getElementById(`${prefix}Name`).value);
+        const description = sanitizeValue(document.getElementById(`${prefix}Description`).value);
         const price = Number(document.getElementById(`${prefix}Price`).value);
-        const duration = sanitizeValue(document.getElementById(`${prefix}Duration`).value);
-        const capacity = Number(document.getElementById(`${prefix}Capacity`).value);
+        const duration = Number(document.getElementById(`${prefix}Duration`).value);
+        const category = document.getElementById(`${prefix}Category`).value;
 
         if (!name || name.length < 3) {
             setFieldError(`${prefix}Name`, "Enter a name with at least 3 characters.");
+            isValid = false;
+        }
+
+        if (!description || description.length < 10) {
+            setFieldError(`${prefix}Description`, "Enter a description with at least 10 characters.");
             isValid = false;
         }
 
@@ -122,26 +161,16 @@ export function renderExperienceCatalogPage() {
             isValid = false;
         }
 
-        if (!duration) {
-            setFieldError(`${prefix}Duration`, "Duration is required.");
+        if (!Number.isInteger(duration) || duration <= 0) {
+            setFieldError(`${prefix}Duration`, "Enter a valid duration in hours greater than 0.");
             isValid = false;
         }
 
-        if (!Number.isInteger(capacity) || capacity <= 0) {
-            setFieldError(`${prefix}Capacity`, "Capacity must be a whole number above 0.");
-            isValid = false;
-        }
-
-        return { isValid, name, price, duration, capacity };
+        return { isValid, name, description, price, duration, category };
     }
 
     function validateAddImage() {
         const files = Array.from(imageInput?.files || []);
-
-        if (!files.length) {
-            setFieldError("expImage", "Please upload an experience image.");
-            return false;
-        }
 
         if (files.some((file) => !file.type.startsWith("image/"))) {
             setFieldError("expImage", "Only image files are allowed.");
@@ -160,6 +189,16 @@ export function renderExperienceCatalogPage() {
         if (!date) {
             setFieldError("slotDate", "A slot date is required.");
             isValid = false;
+        } else {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const slotDateObj = new Date(date);
+            slotDateObj.setHours(0, 0, 0, 0);
+            
+            if (slotDateObj <= today) {
+                setFieldError("slotDate", "Slots can only be created for tomorrow or later.");
+                isValid = false;
+            }
         }
 
         if (!time) {
@@ -168,7 +207,7 @@ export function renderExperienceCatalogPage() {
         }
 
         if (!Number.isInteger(capacity) || capacity <= 0) {
-            setFieldError("slotCapacity", "Capacity must be a whole number above 0.");
+            setFieldError("slotCapacity", "Capacity must be a positive integer.");
             isValid = false;
         }
 
@@ -204,16 +243,40 @@ export function renderExperienceCatalogPage() {
     function refreshImagePreview() {
         const files = Array.from(imageInput?.files || []);
         selectedThumbnailIndex = 0;
-        uploadedImageUrls = files.map((file) => URL.createObjectURL(file));
-        renderImagePreviewGrid();
+        uploadedImageUrls = [];
+        
+        if (!files.length) {
+            renderImagePreviewGrid();
+            return;
+        }
+
+        let loaded = 0;
+        files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedImageUrls[index] = e.target.result;
+                loaded++;
+                if (loaded === files.length) {
+                    renderImagePreviewGrid();
+                }
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     function timeToMinutes(value) {
-        const match = String(value).trim().match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
-        if (!match) return Number.MAX_SAFE_INTEGER;
-        let hour = Number(match[1]) % 12;
-        const minute = Number(match[2]);
-        const period = match[3].toUpperCase();
+        const str = String(value).trim();
+        
+        const match24 = str.match(/^(\d{1,2}):(\d{2})$/);
+        if (match24) {
+            return Number(match24[1]) * 60 + Number(match24[2]);
+        }
+        
+        const match12 = str.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+        if (!match12) return Number.MAX_SAFE_INTEGER;
+        let hour = Number(match12[1]) % 12;
+        const minute = Number(match12[2]);
+        const period = match12[3].toUpperCase();
         if (period === "PM") hour += 12;
         return hour * 60 + minute;
     }
@@ -331,23 +394,29 @@ export function renderExperienceCatalogPage() {
     }
 
     function openSlotEditor(mode, expId, slotId = null) {
-        const exp = experiences.find((item) => item.id === expId);
+        const exp = experiences.find((item) => String(item.id) === String(expId));
         if (!exp) return;
 
         currentManagedExperienceId = expId;
         currentSlotId = slotId;
         slotModalMode = mode;
 
-        const slot = exp.slots.find((item) => item.id === slotId);
+        const slot = exp.slots.find((item) => String(item.id) === String(slotId));
         if (slotsModalTitle) slotsModalTitle.textContent = mode === "edit" ? "Edit Slot" : "Add New Slot";
         if (slotsSubmitBtn) {
             slotsSubmitBtn.textContent = mode === "edit" ? "Save Changes" : "Add Slot";
         }
         resetCatalogMessages();
 
-        document.getElementById("slotDate").value = slot?.date || exp.slots[0]?.date || "2026-03-27";
-        document.getElementById("slotTime").value = slot?.time || exp.nextSlot || "10:00 AM";
-        document.getElementById("slotCapacity").value = slot?.capacity || exp.capacity;
+        const dateInput = document.getElementById("slotDate");
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split("T")[0];
+        dateInput.value = slot?.date || exp.slots[0]?.date || tomorrowStr;
+        dateInput.min = tomorrowStr;
+        
+        document.getElementById("slotTime").value = slot?.time || "10:00";
+        document.getElementById("slotCapacity").value = slot?.capacity || exp.capacity || 10;
 
         openModal("slotsModal");
     }
@@ -370,10 +439,34 @@ export function renderExperienceCatalogPage() {
     }
 
     function renderCatalog() {
-        container.innerHTML = experiences.map((exp) => `
+        if (!experiences || experiences.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px; color: #617084; background: #ffffff; border-radius: 12px; border: 1px dashed #d9e0ea;">
+                    <svg style="width: 48px; height: 48px; margin-bottom: 16px; color: #a9b7c8;" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <h3 style="margin: 0 0 8px; font-size: 18px; color: #273248;">No experiences right now</h3>
+                    <p style="margin: 0; font-size: 14px;">You haven't added any experiences yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = experiences.map((exp) => {
+            const sortedSlots = Array.isArray(exp.slots) ? sortSlots(exp.slots) : [];
+            const nextSlotObj = sortedSlots.find(s => s.available) || sortedSlots[0] || null;
+            
+
+            const nextSessionDisplay = nextSlotObj 
+                ? `Next session: ${nextSlotObj.date} at ${nextSlotObj.time} • ${nextSlotObj.booked}/${nextSlotObj.capacity} seats booked`
+                : exp.slots && exp.slots.length === 0
+                    ? `No slots created yet`
+                    : `No upcoming sessions`;
+
+            return `
             <article class="card experience-catalog-card">
                 <div class="experience-card-row">
-                    <img src="${exp.image}" class="exp-img" alt="${exp.title}" onerror="this.src='https://via.placeholder.com/180x120'" />
+                    ${exp.image ? `<img src="${exp.image}" class="exp-img" alt="${exp.title}" onerror="this.style.display='none'" />` : `<div class="exp-img" style="display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#999; border-radius:8px; font-size:12px;">No Image</div>`}
                     <div class="exp-content">
                         <div class="experience-card-header-line catalog-card-header">
                             <div class="catalog-title-block">
@@ -392,11 +485,11 @@ export function renderExperienceCatalogPage() {
                             </div>
                             <div class="exp-detail-item">
                                 <p>Capacity per session</p>
-                                <h3><span class="detail-icon">◌</span>${exp.capacity} guests</h3>
+                                <h3><span class="detail-icon">◌</span>${nextSlotObj ? `${nextSlotObj.capacity} guests` : (exp.capacity ? `${exp.capacity} guests` : "Set in slots")}</h3>
                             </div>
                         </div>
                         <div class="slot-bar">
-                            <span>Next session: ${exp.nextSlot} • ${exp.booked}/${exp.capacity} seats booked</span>
+                            <span>${nextSessionDisplay}</span>
                         </div>
                         <div class="actions catalog-actions">
                             <button class="primary-btn" type="button" data-action="open-slots" data-id="${exp.id}">Manage Slots</button>
@@ -407,7 +500,8 @@ export function renderExperienceCatalogPage() {
                     </div>
                 </div>
             </article>
-        `).join("");
+        `;
+        }).join("");
     }
 
     ensureExperienceSlots();
@@ -416,13 +510,13 @@ export function renderExperienceCatalogPage() {
         const actionButton = event.target.closest("[data-action]");
         if (!actionButton) return;
 
-        const expId = Number(actionButton.dataset.id);
-        const selectedExperience = experiences.find((item) => item.id === expId);
+        const expId = actionButton.dataset.id;
+        const selectedExperience = experiences.find((item) => String(item.id) === String(expId));
 
         if (actionButton.dataset.action === "view-bookings") {
             const params = new URLSearchParams();
             if (selectedExperience) params.set("experience", selectedExperience.title);
-            window.location.href = `./experience_bookings.html${params.toString() ? `?${params.toString()}` : ""}`;
+            window.location.href = `../pages/experience_bookings.html${params.toString() ? `?${params.toString()}` : ""}`;
             return;
         }
 
@@ -431,9 +525,10 @@ export function renderExperienceCatalogPage() {
         if (actionButton.dataset.action === "edit-experience") {
             currentEditId = expId;
             document.getElementById("editName").value = selectedExperience.title;
+            document.getElementById("editDescription").value = selectedExperience.description || selectedExperience.title;
             document.getElementById("editPrice").value = selectedExperience.price;
-            document.getElementById("editDuration").value = selectedExperience.duration;
-            document.getElementById("editCapacity").value = selectedExperience.capacity;
+            document.getElementById("editDuration").value = parseInt(selectedExperience.duration) || 2;
+            document.getElementById("editCategory").value = selectedExperience.category || "adventure";
             resetCatalogMessages();
             openModal("editModal");
         }
@@ -448,6 +543,9 @@ export function renderExperienceCatalogPage() {
 
             persistExperiences();
             renderCatalog();
+            
+            // Sync to backend
+            deleteExperience(expId).catch(e => console.warn("Failed to sync experience deletion", e));
             return;
         }
 
@@ -467,7 +565,7 @@ export function renderExperienceCatalogPage() {
             if (!exp) return;
 
             const slotId = actionButton.dataset.slotId;
-            const slot = exp.slots.find((item) => item.id === slotId);
+            const slot = exp.slots.find((item) => String(item.id) === String(slotId));
             if (!slot) return;
 
             if (actionButton.dataset.slotAction === "edit") {
@@ -478,6 +576,7 @@ export function renderExperienceCatalogPage() {
             if (actionButton.dataset.slotAction === "delete") {
                 exp.slots = exp.slots.filter((item) => item.id !== slot.id);
                 persistExperiences();
+                syncExperienceSlots(exp);
                 renderCatalog();
                 renderSlotsManager();
                 return;
@@ -486,18 +585,29 @@ export function renderExperienceCatalogPage() {
             if (actionButton.dataset.slotAction === "decrease") {
                 if (slot.capacity > Math.max(1, slot.booked)) {
                     slot.capacity -= 1;
+                    slot.available = slot.booked < slot.capacity;
                 }
             }
 
             if (actionButton.dataset.slotAction === "increase") {
                 slot.capacity += 1;
+                slot.available = slot.booked < slot.capacity;
             }
 
             if (actionButton.dataset.slotAction === "toggle") {
                 slot.available = !slot.available;
             }
 
+            exp.slots = sortSlots(exp.slots);
+            const nextOpenSlot = exp.slots.find((s) => s.available) || exp.slots[0];
+            if (nextOpenSlot) {
+                exp.nextSlot = nextOpenSlot.time;
+                exp.booked = nextOpenSlot.booked;
+                exp.capacity = nextOpenSlot.capacity;
+            }
+
             persistExperiences();
+            syncExperienceSlots(exp);
             renderCatalog();
             renderSlotsManager();
         };
@@ -554,30 +664,37 @@ export function renderExperienceCatalogPage() {
         }
 
         const newExperienceId = Date.now();
-        experiences.push({
+        const expPayload = {
             id: newExperienceId,
             title: payload.name,
+            description: payload.description,
             price: payload.price,
-            duration: payload.duration,
-            capacity: payload.capacity,
+            duration: `${payload.duration} hours`,
+            capacity: 0,
+            category: payload.category,
             status: "active",
             image: uploadedImageUrls[selectedThumbnailIndex] || uploadedImageUrls[0],
             images: [...uploadedImageUrls],
-            nextSlot: "10:00 AM",
             booked: 0,
-            slots: [
-                {
-                    id: `${newExperienceId}-1`,
-                    date: "2026-03-27",
-                    time: "10:00 AM",
-                    booked: 0,
-                    capacity: payload.capacity,
-                    available: true
-                }
-            ]
-        });
+            slots: []
+        };
+        experiences.push(expPayload);
 
         persistExperiences();
+        
+        // Sync to backend
+        createExperience({
+            id: String(newExperienceId),
+            title: payload.name,
+            description: payload.description, 
+            destination: payload.name, 
+            category: payload.category,
+            price: Number(payload.price),
+            durationHours: parseInt(payload.duration) || 2,
+            capacity: 0,
+            image: expPayload.image
+        }).catch(e => console.warn("Failed to sync experience creation", e));
+
         closeModal("addModal");
         renderCatalog();
         setFormMessage("addExperienceMessage", "Experience added successfully.", "success");
@@ -593,19 +710,28 @@ export function renderExperienceCatalogPage() {
             return;
         }
 
-        const exp = experiences.find((item) => item.id === currentEditId);
+        const exp = experiences.find((item) => String(item.id) === String(currentEditId));
         if (!exp) return;
 
         exp.title = payload.name;
+        exp.description = payload.description;
         exp.price = payload.price;
-        exp.duration = payload.duration;
-        exp.capacity = payload.capacity;
-        exp.slots = exp.slots.map((slot) => ({
-            ...slot,
-            capacity: Math.max(slot.booked, payload.capacity)
-        }));
+        exp.duration = `${payload.duration} hours`;
+        exp.category = payload.category;
 
         persistExperiences();
+        
+        // Sync to backend
+        updateExperience(String(currentEditId), {
+            title: payload.name,
+            description: payload.description,
+            destination: payload.name,
+            category: payload.category,
+            price: Number(payload.price),
+            durationHours: parseInt(payload.duration) || 2,
+            capacity: exp.capacity || 0
+        }).catch(e => console.warn("Failed to sync experience update", e));
+
         closeModal("editModal");
         renderCatalog();
 
@@ -629,12 +755,25 @@ export function renderExperienceCatalogPage() {
         const exp = getManagedExperience();
         if (!exp) return;
 
+        const isDuplicate = exp.slots.some(
+            (item) => item.date === payload.date && 
+                      item.time === payload.time && 
+                      (slotModalMode === "add" || String(item.id) !== String(currentSlotId))
+        );
+
+        if (isDuplicate) {
+            setFieldError("slotTime", "A session already exists for this date and time.");
+            setFormMessage("slotsMessage", "Please fix the highlighted fields before saving.");
+            return;
+        }
+
         if (slotModalMode === "edit") {
-            const slot = exp.slots.find((item) => item.id === currentSlotId);
+            const slot = exp.slots.find((item) => String(item.id) === String(currentSlotId));
             if (!slot) return;
             slot.date = payload.date;
             slot.time = payload.time;
             slot.capacity = Math.max(slot.booked, payload.capacity);
+            slot.available = slot.booked < slot.capacity;
         } else {
             exp.slots.push({
                 id: `${exp.id}-${Date.now()}`,
@@ -659,6 +798,7 @@ export function renderExperienceCatalogPage() {
         }
 
         persistExperiences();
+        syncExperienceSlots(exp);
         closeModal("slotsModal");
         renderCatalog();
         renderSlotsManager();

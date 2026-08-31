@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Experience Profile</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="../css/experiencestyles.css">
+</head>
+
+<body class="experience-page experience-profile-page">
+
+<div id="navbar"></div>
+
+<main class="experience-shell">
+<div class="profile-container">
+
+    <div class="profile-header">
+        <div class="profile-left">
+            <div class="profile-icon">EXP</div>
+            <div>
+                <p class="experience-eyebrow">Business Profile</p>
+                <h2 id="companyName">Loading...</h2>
+                <p id="location">Loading...</p>
+            </div>
+        </div>
+
+        <button id="editBtn" class="btn btn-primary">Edit Profile</button>
+        <button id="saveBtn" class="btn btn-primary hidden">Save</button>
+    </div>
+
+    <div class="profile-grid">
+
+        <!-- LEFT -->
+        <div>
+
+            <form id="experienceProfileForm" class="content-card experience-card profile-form-card" novalidate>
+                <h3>Experience Details</h3>
+
+                <label class="field-group" for="title">
+                    <span>Title</span>
+                    <input id="title" placeholder="Title" disabled required maxlength="80">
+                    <small class="field-error" data-error-for="title"></small>
+                </label>
+                <label class="field-group" for="region">
+                    <span>Region</span>
+                    <input id="region" placeholder="Region" disabled required maxlength="60">
+                    <small class="field-error" data-error-for="region"></small>
+                </label>
+                <label class="field-group" for="description">
+                    <span>Description</span>
+                    <textarea id="description" placeholder="Description" disabled required maxlength="220"></textarea>
+                    <small class="field-error" data-error-for="description"></small>
+                </label>
+
+                <div class="row-3">
+                    <label class="field-group" for="category">
+                        <span>Category</span>
+                        <input id="category" placeholder="Category" disabled required maxlength="40">
+                        <small class="field-error" data-error-for="category"></small>
+                    </label>
+                    <label class="field-group" for="duration">
+                        <span>Duration</span>
+                        <input id="duration" placeholder="Duration" disabled required maxlength="40">
+                        <small class="field-error" data-error-for="duration"></small>
+                    </label>
+                    <label class="field-group" for="groupSize">
+                        <span>Group Size</span>
+                        <input id="groupSize" placeholder="Group Size" disabled required maxlength="20">
+                        <small class="field-error" data-error-for="groupSize"></small>
+                    </label>
+                </div>
+            </form>
+
+            <div class="content-card experience-card">
+                <h3>Contact</h3>
+                <label class="field-group" for="phone">
+                    <span>Phone</span>
+                    <input id="phone" placeholder="Phone" disabled required>
+                    <small class="field-error" data-error-for="phone"></small>
+                </label>
+                <label class="field-group" for="email">
+                    <span>Email</span>
+                    <input id="email" placeholder="Email" disabled required>
+                    <small class="field-error" data-error-for="email"></small>
+                </label>
+            </div>
+
+            <div class="content-card experience-card">
+                <h3>Business</h3>
+                <label class="field-group" for="gst">
+                    <span>GST</span>
+                    <input id="gst" placeholder="GST" disabled required maxlength="30">
+                    <small class="field-error" data-error-for="gst"></small>
+                </label>
+                <label class="field-group" for="bank">
+                    <span>Bank</span>
+                    <input id="bank" placeholder="Bank" disabled required maxlength="30">
+                    <small class="field-error" data-error-for="bank"></small>
+                </label>
+            </div>
+
+            <div class="content-card experience-card">
+                <h3>Experience Settings</h3>
+
+                <label class="field-group">
+                    <span>Active Days</span>
+                    <div id="days" class="days-container"></div>
+                    <small class="field-error" data-error-for="days"></small>
+                </label>
+
+                <label class="field-group">
+                    <span>Session Slots</span>
+                    <div id="slots" class="slots-container"></div>
+                    <small class="field-error" data-error-for="slots"></small>
+                </label>
+
+                <div class="slot-input-row">
+                    <label class="field-group slot-input-group" for="profileSlotInput">
+                        <span>Add Slot</span>
+                        <input id="profileSlotInput" placeholder="e.g. 2:00 PM" disabled>
+                        <small class="field-error" data-error-for="profileSlotInput"></small>
+                    </label>
+                    <button id="addSlot" type="button">+ Add Slot</button>
+                </div>
+
+                <label class="toggle-row" for="instant">
+                    <span>Instant Booking</span>
+                    <input type="checkbox" id="instant" disabled>
+                </label>
+
+                <p id="profileFormMessage" class="form-message" role="alert"></p>
+            </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div class="sidebar">
+
+            <div class="content-card experience-card">
+                <h3>Status</h3>
+                <span class="profile-status-badge">Active & Verified</span>
+            </div>
+
+            <div class="content-card experience-card">
+                <h3>Stats</h3>
+                <p id="profileExperienceCount">Total Experiences: 0</p>
+                <p id="profileBookingCount">Active Bookings: 0</p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+</main>
+
+<script type="module" src="../js/app.js"></script>
+
+</body>
+</html>

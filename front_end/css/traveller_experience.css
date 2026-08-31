@@ -30,11 +30,11 @@
 
 .traveler-experience-toolbar-field {
     display: grid;
-    gap: 10px;
-    min-height: 84px;
-    padding: 16px 20px 14px;
+    gap: 6px;
+    min-height: 60px;
+    padding: 10px 16px;
     border: 1px solid #d9e0ea;
-    border-radius: 18px;
+    border-radius: 12px;
     background: #f8faff;
     box-sizing: border-box;
 }
@@ -99,21 +99,20 @@
 .traveler-experience-search-btn,
 .traveler-experience-view-btn {
     border: none;
-    cursor: pointer;
-    font: inherit;
-    background: linear-gradient(90deg, #1fb8b1 0%, #2d62eb 100%);
+    border-radius: 12px;
+    background: #2d62eb;
     color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
 }
 
 .traveler-experience-search-btn {
-    min-height: 84px;
-    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    font-size: 17px;
-    font-weight: 800;
+    gap: 10px;
     letter-spacing: 0.02em;
 }
 
@@ -215,7 +214,7 @@
 
 .traveler-experience-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 28px;
 }
 
@@ -394,12 +393,13 @@
 }
 
 .traveler-experience-view-btn {
-    min-width: 194px;
-    min-height: 88px;
-    padding: 18px 28px;
-    border-radius: 20px;
-    font-size: 17px;
-    font-weight: 800;
+    min-width: 120px;
+    min-height: 44px;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 
 .traveler-experience-empty {
@@ -502,7 +502,7 @@
 .traveler-experience-detail-page {
     min-height: calc(100vh - 72px);
     background: #eef3fb;
-    padding: 28px 0 48px;
+    padding: 16px 12px 24px;
 }
 
 .traveler-experience-detail-frame,
@@ -515,10 +515,11 @@
 }
 
 .traveler-experience-detail-header {
-    width: min(1440px, calc(100vw - 32px));
-    margin: 0 auto 24px;
-    padding: 28px 32px;
-    border-radius: 28px;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0 auto 14px;
+    padding: 18px 24px;
+    border-radius: 20px;
 }
 
 .traveler-experience-detail-top,
@@ -555,10 +556,10 @@
 }
 
 .traveler-experience-meta {
-    margin-top: 14px;
+    margin-top: 8px;
     align-items: center;
     color: #617084;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }
 
@@ -584,7 +585,7 @@
 }
 
 .traveler-experience-pill-row {
-    margin-top: 18px;
+    margin-top: 10px;
 }
 
 .traveler-experience-pill {
@@ -627,11 +628,12 @@
 }
 
 .traveler-experience-detail-layout {
-    width: min(1440px, calc(100vw - 32px));
+    width: 100%;
+    max-width: 1440px;
     margin: 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1.35fr) 360px;
-    gap: 28px;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    gap: 40px;
     align-items: start;
 }
 
@@ -639,21 +641,21 @@
 .traveler-experience-sections,
 .traveler-experience-info-grid {
     display: grid;
-    gap: 24px;
+    gap: 14px;
 }
 
 .traveler-experience-gallery-block {
     display: grid;
-    gap: 14px;
+    gap: 10px;
 }
 
 .traveler-experience-hero-media {
     position: relative;
     overflow: hidden;
-    border-radius: 28px;
-    aspect-ratio: 16 / 10;
+    border-radius: 20px;
+    aspect-ratio: 16 / 7;
     min-height: 0;
-    max-height: 520px;
+    max-height: 280px;
 }
 
 .traveler-experience-hero-media img,
@@ -669,7 +671,7 @@
     width: 100%;
     height: 100%;
     min-height: 0;
-    max-height: 520px;
+    max-height: 280px;
     object-position: center;
 }
 
@@ -711,7 +713,7 @@
 }
 
 .traveler-experience-thumb img {
-    height: 120px;
+    height: 80px;
 }
 
 .traveler-experience-tabs {
@@ -739,8 +741,8 @@
 }
 
 .traveler-experience-detail-card {
-    border-radius: 24px;
-    padding: 26px 28px;
+    border-radius: 20px;
+    padding: 18px 20px;
 }
 
 .traveler-experience-detail-card > p {
@@ -898,16 +900,16 @@
 
 .traveler-experience-sidebar {
     position: sticky;
-    top: 110px;
-    border-radius: 24px;
-    padding: 26px 24px;
+    top: 88px;
+    border-radius: 20px;
+    padding: 18px 18px;
 }
 
 .traveler-experience-price {
-    margin-top: 14px;
+    margin-top: 8px;
     color: #273248;
     font-family: "Plus Jakarta Sans", sans-serif;
-    font-size: 34px;
+    font-size: 26px;
     font-weight: 800;
 }
 
@@ -925,8 +927,8 @@
 .traveler-experience-side-field,
 .traveler-experience-selected-option {
     display: grid;
-    gap: 10px;
-    margin-top: 22px;
+    gap: 6px;
+    margin-top: 12px;
 }
 
 .traveler-experience-side-label {
@@ -938,10 +940,10 @@
 
 .traveler-experience-side-input {
     width: 100%;
-    height: 50px;
+    height: 42px;
     border: 1px solid #d9e0ea;
-    border-radius: 16px;
-    padding: 0 14px;
+    border-radius: 12px;
+    padding: 0 12px;
     box-sizing: border-box;
     font: inherit;
     color: #273248;
@@ -950,21 +952,21 @@
 
 .traveler-experience-side-stepper {
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    grid-template-columns: 42px minmax(0, 1fr) 42px;
     align-items: center;
     border: 1px solid #d9e0ea;
-    border-radius: 16px;
+    border-radius: 12px;
     overflow: hidden;
     background: #f8faff;
 }
 
 .traveler-experience-side-stepper button {
-    height: 50px;
+    height: 42px;
     border: none;
     background: transparent;
     color: #273248;
     font: inherit;
-    font-size: 22px;
+    font-size: 20px;
     cursor: pointer;
 }
 
@@ -977,9 +979,9 @@
 
 .traveler-experience-side-total-row,
 .traveler-experience-side-total {
-    margin-top: 22px;
+    margin-top: 12px;
     color: #617084;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }
 
@@ -989,24 +991,30 @@
 }
 
 .traveler-experience-side-total {
-    padding-top: 18px;
+    padding-top: 12px;
     border-top: 1px solid #e8edf5;
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 700;
 }
 
 .traveler-experience-continue-btn {
     width: 100%;
-    margin-top: 24px;
-    min-height: 58px;
+    margin-top: 14px;
+    min-height: 48px;
     border: none;
-    border-radius: 18px;
+    border-radius: 14px;
     background: linear-gradient(90deg, #1fb8b1 0%, #2d62eb 100%);
     color: #ffffff;
     font: inherit;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 800;
     cursor: pointer;
+}
+
+.traveler-experience-continue-btn:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
 }
 
 .traveler-experience-gallery-modal {

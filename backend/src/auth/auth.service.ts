@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { AuthRepository } from './auth.repository';
 import { RegisterDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
@@ -11,6 +12,8 @@ import { UpdateAuthDto } from './dto/update-auth.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly saltRounds = 12;
+
   constructor(private readonly authRepository: AuthRepository) {}
 
   async register(dto: RegisterDto) {
@@ -20,10 +23,12 @@ export class AuthService {
     const existingEmail = await this.authRepository.findByEmail(dto.email);
     if (existingEmail) throw new ConflictException('Email already exists');
 
+    const hashedPassword = await bcrypt.hash(dto.password, this.saltRounds);
+
     const user = await this.authRepository.create({
       userId: dto.username,
       username: dto.username,
-      password: dto.password,
+      password: hashedPassword,
       role: dto.role,
       name: dto.name,
       email: dto.email,
@@ -39,7 +44,7 @@ export class AuthService {
     const user =
       this.authRepository.findByUsername(dto.username) ??
       this.authRepository.findByEmail(dto.username);
-    if (!user || user.password !== dto.password) {
+    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
@@ -66,7 +71,11 @@ export class AuthService {
   }
 
   async update(id: string, dto: UpdateAuthDto) {
-    const updated = await this.authRepository.update(id, dto);
+    const updateData = { ...dto };
+    if (dto.password) {
+      updateData.password = await bcrypt.hash(dto.password, this.saltRounds);
+    }
+    const updated = await this.authRepository.update(id, updateData);
     if (!updated) throw new NotFoundException(`User ${id} not found`);
     const { password: _pw, ...safe } = updated;
     return safe;

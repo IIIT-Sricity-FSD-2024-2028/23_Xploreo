@@ -1,20 +1,19 @@
-import { getStatsHTML }    from './stats.js';
-import { getLedgerHTML }   from './ledger.js';
-import { getRevenueHTML }  from './revenue.js';
+import { getStatsHTML } from './stats.js';
+import { getLedgerHTML } from './ledger.js';
+import { getRevenueHTML } from './revenue.js';
 import { getDisputesHTML } from './disputes.js';
-import { getModalsHTML }   from './modals.js';
+import { getModalsHTML } from './modals.js';
 
-// All data is prefetched and passed in — template stays purely sync
-export function getOperationsHTML({ opsStats = [], ledgerItems = [], refundItems = [] } = {}) {
+export function getOperationsHTML() {
     return `
         <div class="page-header">
-            <h1 class="page-title" style="margin-top:0;font-size:24px;">Operations Hub</h1>
-            <p class="page-subtitle" style="margin:5px 0 0;font-size:14px;">Global real-time booking intelligence and lifecycle management.</p>
+            <h1 class="page-title" style="margin-top: 0; font-size: 24px;">Operations Hub</h1>
+            <p class="page-subtitle" style="margin: 5px 0 0; font-size: 14px;">Global real-time booking intelligence and lifecycle management.</p>
         </div>
         
-        ${getStatsHTML(opsStats)}
-        ${getLedgerHTML(ledgerItems)}
-        ${getRevenueHTML(refundItems)}
+        ${getStatsHTML()}
+        ${getLedgerHTML()}
+        ${getRevenueHTML()}
         ${getDisputesHTML()}
         ${getModalsHTML()}
     `;

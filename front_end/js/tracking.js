@@ -7,7 +7,7 @@ let isPaused = false;
 
 // Base coordinates only used for plotting the itinerary stops roughly, since we lack a real backend geocoder
 const BASE_COORDINATES = {
-  "paris": { lat: 48.8566, lng: 2.3522 },
+  "delhi": { lat: 48.8566, lng: 2.3522 },
   "kyoto": { lat: 35.0116, lng: 135.7681 },
   "santorini": { lat: 36.3932, lng: 25.4615 },
   "pondy": { lat: 11.9416, lng: 79.8083 },

@@ -7,7 +7,7 @@ export function renderAlerts(containerId) {
             <!-- HEADER -->
             <div class="alerts-header">
                 <div class="alerts-title">
-                    <img src="../../components/ui/warning.svg" class="icon-img"/>
+                    <img src="../components/ui/warning.svg" class="icon-img"/>
                     <span>CRITICAL ALERTS</span>
                 </div>
 
@@ -18,7 +18,7 @@ export function renderAlerts(containerId) {
             <div class="alert-main">
 
                 <div class="alert-icon">
-                    <img src="../../components/ui/hammer.svg" class="icon-img"/>
+                    <img src="../components/ui/hammer.svg" class="icon-img"/>
                 </div>
 
                 <div class="alert-content">

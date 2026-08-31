@@ -1,6 +1,4 @@
-import { apiGetAndSync, apiFetch } from "./api.js";
-
-const travelerWorkspaceSeed = (() => { try { return JSON.parse(localStorage.getItem("travelerWorkspaceSeed") || "{}"); } catch { return {}; } })();
+import { users, travelerWorkspaceSeed } from "../api/legacyData.js";
 
 const STORAGE_KEYS = {
     plans: "traveler_workspace_plans",
@@ -12,15 +10,87 @@ const STORAGE_KEYS = {
 };
 
 function clone(value) {
-    if (value === undefined || value === null) {
-        return value;
-    }
     return JSON.parse(JSON.stringify(value));
 }
 
 function getTravelerProfilePreset(user) {
-    
-    const fallback = clone(travelerWorkspaceSeed.profile);
+    const presets = {
+        "20001": {
+            fullName: "Anjali Sharma",
+            email: "anjali@xploreo.com",
+            phone: "+91 91234 56780",
+            location: "Mumbai, Maharashtra",
+            language: "English (IN)",
+            gender: "Female",
+            dob: "2001-08-15",
+            bio: "Avid explorer and photography enthusiast who loves experiencing premium heritage stays, local culinary trails, and beach retreats across India.",
+            reputation: "Elite Explorer",
+            level: 4,
+            totalTrips: 18,
+            countries: 0,
+            preferences: {
+                transport: "First Class Trains / Flights",
+                stay: "5-Star Resorts / Heritage Villas",
+                budget: "Premium (Rs30k - Rs70k / day)",
+                activityStyle: "Sightseeing / Food Walks / Spa"
+            },
+            interestPreferences: ["Beach", "Heritage", "Food"],
+            hobbies: ["Photography", "Nature trails", "Wellness retreats", "Historical tours"],
+            security: {
+                twoFactorAuth: true,
+                emailNotifications: true,
+                publicProfile: true
+            }
+        },
+        "20002": {
+            fullName: "Meera Iyer",
+            email: "meera@xploreo.com",
+            phone: "+91 88776 65544",
+            location: "Chennai, Tamil Nadu",
+            language: "English (US)",
+            gender: "Female",
+            dob: "2002-04-12",
+            bio: "Curious traveller and culture-first planner who loves coastal getaways, heritage neighborhoods, boutique stays, and thoughtfully paced itineraries.",
+            reputation: "Explorer Status",
+            level: 5,
+            totalTrips: 11,
+            countries: 9,
+            preferences: {
+                transport: "Premium Economy / Trains",
+                stay: "Boutique Hotels / Heritage Stays",
+                budget: "Premium (Rs30k - Rs80k / day)",
+                activityStyle: "Culture / Food / Nature"
+            },
+            interestPreferences: ["Culture", "Food"],
+            hobbies: ["Photography", "Food trails", "Wellness retreats", "Temple visits", "Beach escapes", "Art museums"],
+            security: {
+                twoFactorAuth: true,
+                emailNotifications: true,
+                publicProfile: false
+            }
+        }
+    };
+
+    if (user?.id && presets[user.id]) {
+        return clone(presets[user.id]);
+    }
+
+    const fallback = clone(travelerWorkspaceSeed.profile || {
+        fullName: "Alex Rivera",
+        email: "alex@xploreo.com",
+        phone: "+91 91234 56789",
+        location: "Mumbai, Maharashtra",
+        language: "English (US)",
+        gender: "Female",
+        dob: "1995-01-01",
+        bio: "Curious explorer...",
+        reputation: "Explorer",
+        level: 1,
+        totalTrips: 0,
+        countries: 0,
+        interestPreferences: [],
+        hobbies: []
+    });
 
     if (!user) {
         return fallback;
@@ -36,13 +106,11 @@ function getTravelerProfilePreset(user) {
     return fallback;
 }
 
-export async function ensureTravelerSession() {
+export function ensureTravelerSession() {
     let currentUser = JSON.parse(localStorage.getItem("currentUser"));
 
     if (!currentUser || !currentUser.role) {
-        // Try to get from API, fall back to localStorage users
-        const users = await apiGetAndSync("/auth/users", "users", []);
-        currentUser = (Array.isArray(users) ? users : []).find((user) => user.role === "traveller") || {
+        currentUser = users.find((user) => user.role === "traveller") || {
             id: "traveller-fallback",
             name: "Alex Rivera",
             email: "alex@gmail.com",
@@ -63,11 +131,11 @@ export function isTravellerRole(user) {
     return user && user.role === "traveller";
 }
 
-export async function seedTravelerWorkspace() {
-    const currentUser = await ensureTravelerSession();
+export function seedTravelerWorkspace() {
+    const currentUser = ensureTravelerSession();
 
     if (!localStorage.getItem(STORAGE_KEYS.plans)) {
-        localStorage.setItem(STORAGE_KEYS.plans, JSON.stringify(clone(travelerWorkspaceSeed.plans)));
+        localStorage.setItem(STORAGE_KEYS.plans, JSON.stringify(clone(travelerWorkspaceSeed.plans || [])));
     }
 
     // Bookings are now seeded via app.js initializeData into "tours"
@@ -75,6 +143,7 @@ export async function seedTravelerWorkspace() {
     const storedProfile = JSON.parse(localStorage.getItem(STORAGE_KEYS.profile) || "null");
     const nextProfile = getTravelerProfilePreset(currentUser);
     const hasLegacyDefaultProfile = storedProfile
+        && travelerWorkspaceSeed.profile
         && storedProfile.fullName === travelerWorkspaceSeed.profile.fullName
         && storedProfile.email === travelerWorkspaceSeed.profile.email;
 
@@ -91,8 +160,8 @@ export function saveTravelerPlans(plans) {
     localStorage.setItem(STORAGE_KEYS.plans, JSON.stringify(plans));
 }
 
-export async function getTravelerBookings() {
-    const allTours = await apiGetAndSync("/trips", "tours", []);
+export function getTravelerBookings() {
+    const allTours = JSON.parse(localStorage.getItem("tours") || "[]");
     const currentUser = JSON.parse(localStorage.getItem("currentUser"));
     
     if (!currentUser) return [];

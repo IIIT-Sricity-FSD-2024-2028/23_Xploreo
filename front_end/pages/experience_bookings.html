@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bookings</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/experiencestyles.css">
+</head>
+
+<body class="experience-page experience-bookings-page">
+
+<div id="navbar"></div>
+
+<main class="experience-shell">
+  <section class="page-header experience-toolbar">
+    <div>
+      <p class="experience-eyebrow">Guest Operations</p>
+      <h1 class="page-title">Bookings</h1>
+      <p class="page-subtitle">Manage all your experience bookings with quick filters and status actions.</p>
+    </div>
+  </section>
+
+  <section class="content-card experience-card filter-panel">
+    <div class="filter-bar bookings-filter-bar">
+      <label class="experience-select-shell" for="experienceFilter">
+        <span>Experience</span>
+        <select id="experienceFilter">
+          <option value="all">All Experiences</option>
+        </select>
+      </label>
+
+      <label class="experience-select-shell" for="statusFilter">
+        <span>Status</span>
+        <select id="statusFilter">
+          <option value="all">All Status</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="checked">Checked-In</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section id="bookingList" class="experience-bookings-stack"></section>
+</main>
+
+<div id="bookingModal" class="modal">
+  <div class="modal-box booking-modal-box">
+
+    <div class="modal-header">
+      <div>
+        <h2 id="modalName"></h2>
+        <div class="modal-sub">
+          <span id="modalId"></span>
+          <span id="modalStatus" class="status-badge"></span>
+        </div>
+      </div>
+
+      <button type="button" class="close" id="bookingModalClose" aria-label="Close booking details">✕</button>
+    </div>
+
+    <hr />
+
+    <!-- EXPERIENCE -->
+    <div class="section">
+      <h3>Experience Details</h3>
+
+      <p class="label">Experience</p>
+      <p id="modalExperience"></p>
+
+      <div class="grid-3">
+        <div>
+          <p class="label">Date</p>
+          <p id="modalDate"></p>
+        </div>
+
+        <div>
+          <p class="label">Time</p>
+          <p id="modalTime"></p>
+        </div>
+
+        <div>
+          <p class="label">Guests</p>
+          <p id="modalGuests"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER -->
+    <div class="section">
+      <h3>Customer Information</h3>
+
+      <p class="label">Name</p>
+      <p id="modalCustomer"></p>
+
+      <div class="grid-2">
+        <div>
+          <p class="label">Phone</p>
+          <p id="modalPhone"></p>
+        </div>
+
+        <div>
+          <p class="label">Email</p>
+          <p id="modalEmail"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYMENT -->
+    <div class="section">
+      <h3>Payment</h3>
+
+      <div class="payment-box">
+        <div>
+          <p class="label">Total Amount</p>
+          <h2 id="modalAmount"></h2>
+        </div>
+
+        <span id="modalPaymentStatus" class="paid-badge"></span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module" src="../js/app.js"></script>
+
+</body>
+</html>

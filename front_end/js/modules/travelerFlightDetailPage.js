@@ -4,7 +4,7 @@ const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const CONFIRMED_BOOKING_KEY = "traveler_confirmed_booking";
 const CONFIRMED_BOOKING_SESSION_KEY = "traveler_confirmed_booking_session";
 const DEFAULT_HERO_IMAGE = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?auto=format&fit=crop&q=80&w=1600";
-const travelerData = (() => { try { return JSON.parse(localStorage.getItem("travelerData") || "{}"); } catch { return {}; } })();
+import { travelerData } from "../api/legacyData.js";
 
 export function renderTravelerFlightDetailPage(containerId) {
     const container = document.getElementById(containerId);
@@ -85,16 +85,16 @@ export function renderTravelerFlightDetailPage(containerId) {
                             <h2>Fare Details</h2>
                             <div class="fare-line-item">
                                 <span>Base Fare</span>
-                                <strong>$${selectedFlight.price}</strong>
+                                <strong>₹${selectedFlight.price}</strong>
                             </div>
                             <div class="fare-line-item">
                                 <span>Taxes & Fees</span>
-                                <strong>$${selectedFlight.taxes}</strong>
+                                <strong>₹${selectedFlight.taxes}</strong>
                             </div>
                             <div class="flight-detail-divider"></div>
                             <div class="fare-line-item total">
                                 <span>Total Amount</span>
-                                <strong>$${totalAmount}</strong>
+                                <strong>₹${totalAmount}</strong>
                             </div>
                         </article>
                     </div>
@@ -102,12 +102,12 @@ export function renderTravelerFlightDetailPage(containerId) {
                     <aside class="flight-detail-side">
                         <article class="flight-price-card">
                             <div class="price-row">
-                                <strong>$${selectedFlight.price}</strong>
+                                <strong>₹${selectedFlight.price}</strong>
                                 <span>per person</span>
                             </div>
                             <div class="price-save-row">
-                                <span class="old-price">$${selectedFlight.originalFare}</span>
-                                <span class="save-amount">Save $${selectedFlight.originalFare - selectedFlight.price}</span>
+                                <span class="old-price">₹${selectedFlight.originalFare}</span>
+                                <span class="save-amount">Save ₹${selectedFlight.originalFare - selectedFlight.price}</span>
                             </div>
 
                             <div class="passenger-box">

@@ -19,6 +19,7 @@ import { PlansService } from './plans.service';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { Roles } from '../common/decorators/roles.decorator';
+import { Public } from '../common/decorators/public.decorator';
 import { Role } from '../auth/entities/auth.entity';
 import { NonEmptyStringPipe } from '../common/pipes/non-empty-string.pipe';
 import {
@@ -33,6 +34,7 @@ import {
 @ApiProtectedResource()
 @Roles(
   Role.TRAVELLER,
+  Role.TRAVELLER_ACTOR,
   Role.GUIDE,
   Role.SUPERADMIN,
   Role.NONTECHADMIN,
@@ -57,6 +59,7 @@ export class PlansController {
   }
 
   @Get()
+  @Public()
   @ApiOperation({
     summary: 'Get all plans with optional pagination & filtering',
   })
@@ -79,6 +82,7 @@ export class PlansController {
   }
 
   @Get(':id')
+  @Public()
   @ApiOperation({ summary: 'Get plan by ID' })
   @ApiReadEndpoint()
   findOne(@Param('id', NonEmptyStringPipe) id: string) {

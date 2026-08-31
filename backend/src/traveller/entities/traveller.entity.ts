@@ -15,4 +15,6 @@ export class Traveller {
   plang!: string[];
   bio!: string;
   interests!: Interest[];
+  gender?: string;
+  dob?: string;
 }

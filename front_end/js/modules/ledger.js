@@ -1,49 +1,42 @@
-import { apiGetAndSync } from "../utils/api.js";
+import { getLedgerData } from '../api/legacyData.js';
 
-const N = (v) => (v == null || isNaN(Number(v))) ? -1 : Number(v);
-const S = (v) => (v == null || v === "") ? "#" : String(v);
+export function getLedgerHTML() {
+    // 1. Get the pre-processed data from the data folder
+    const ledgerItems = getLedgerData();
 
-export async function prefetchLedger() {
-    const data = await apiGetAndSync("/finance/ledger", "ledger", []);
-    return Array.isArray(data) ? data : [];
-}
-
-export function getLedgerHTML(ledgerItems = []) {
-    if (!Array.isArray(ledgerItems) || ledgerItems.length === 0) {
-        try { ledgerItems = JSON.parse(localStorage.getItem("ledger") || "[]"); } catch { ledgerItems = []; }
-    }
-
+    // 2. Map over the data to build the rows
     const tableRows = ledgerItems.map(entry => `
         <tr>
-            <td><a href="#" class="id-link">${S(entry.id) === "#" ? "#" : entry.id}</a></td>
+            <td><a href="#" class="id-link">${entry.id || "N/A"}</a></td>
             <td>
                 <div class="cell-flex">
-                    <div class="avatar ${S(entry.avatarColor) === "#" ? "avatar-light-blue" : entry.avatarColor}">${S(entry.initials) === "#" ? "??" : entry.initials}</div>
+                    <div class="avatar ${entry.avatarColor || "avatar-light-blue"}">${entry.initials || "??"}</div>
                     <div class="text-stack">
-                        <span class="main-text">${S(entry.traveler) === "#" ? "#" : entry.traveler}</span>
-                        <span class="sub-text">${S(entry.tier) === "#" ? "#" : entry.tier}</span>
+                        <span class="main-text">${entry.traveler || "Unknown User"}</span>
+                        <span class="sub-text">${entry.tier || "Standard"}</span>
                     </div>
                 </div>
             </td>
             <td>
                 <div class="text-stack">
-                    <span class="main-text">${S(entry.service) === "#" ? "#" : entry.service}</span>
-                    <span class="sub-text">${S(entry.serviceTier) === "#" ? "#" : entry.serviceTier}</span>
+                    <span class="main-text">${entry.service || "General Booking"}</span>
+                    <span class="sub-text">${entry.serviceTier || "-"}</span>
                 </div>
             </td>
-            <td class="date-text">${S(entry.date) === "#" ? "#" : entry.date}</td>
+            <td class="date-text">${entry.date || "N/A"}</td>
             <td>
                 <div class="cell-flex">
-                    <div class="avatar avatar-light-gray">${S(entry.guideInitials) === "#" ? "??" : entry.guideInitials}</div>
-                    <span class="main-text">${S(entry.guide) === "#" ? "#" : entry.guide}</span>
+                    <div class="avatar avatar-light-gray">${entry.guideInitials || "??"}</div>
+                    <span class="main-text">${entry.guide || "Unassigned"}</span>
                 </div>
             </td>
-            <td><span class="status-badge ${S(entry.statusClass) === "#" ? "status-pending" : entry.statusClass}">${S(entry.status) === "#" ? "#" : entry.status}</span></td>
+            <td><span class="status-badge ${entry.statusClass || "status-pending"}">${entry.status || "PENDING"}</span></td>
         </tr>
     `).join("");
 
+    // 3. Return the clean HTML structure
     return `
-        <div class="section-header" style="margin-top:40px;">
+        <div class="section-header" style="margin-top: 40px;">
             <h2>Comprehensive Ledger</h2>
             <p>Detailed transactional audit of every journey across the network.</p>
         </div>
@@ -60,7 +53,7 @@ export function getLedgerHTML(ledgerItems = []) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${tableRows || "<tr><td colspan='6' style='text-align:center;padding:24px;color:#9CA3AF;'>No ledger data available.</td></tr>"}
+                    ${tableRows}
                 </tbody>
             </table>
         </div>

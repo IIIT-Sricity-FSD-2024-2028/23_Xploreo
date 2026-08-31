@@ -1,25 +1,11 @@
-import { apiGetAndSync } from "../utils/api.js";
+import { chartData, financeStats, payoutData } from '../api/legacyData.js';
 import { buildFinanceHTML } from './finance-ui.js';
 
-const N = (v) => (v == null || isNaN(Number(v))) ? -1 : Number(v);
-const S = (v) => (v == null || v === "") ? "#" : String(v);
-
-export async function initFinance() {
+export function initFinance() {
     const mainContainer = document.getElementById("main");
     if (!mainContainer) return;
 
-    // Fetch all finance data from backend, fallback to localStorage
-    const [financeStats, payoutData, chartDataArr] = await Promise.all([
-        apiGetAndSync("/finance/stats",    "financeStats",      []),
-        apiGetAndSync("/finance/payouts",  "financePayoutData", []),
-        apiGetAndSync("/finance/chart",    "financeChartData",  {})
-    ]);
-
-    // chartData may be an object {monthly:{...}, weekly:{...}} or array — handle both
-    const chartData = Array.isArray(chartDataArr)
-        ? (JSON.parse(localStorage.getItem("financeChartData") || "{}"))
-        : (chartDataArr || {});
-
+    // 2. Passed payoutData into the builder function!
     mainContainer.innerHTML = buildFinanceHTML(financeStats, payoutData);
 
     // =======================

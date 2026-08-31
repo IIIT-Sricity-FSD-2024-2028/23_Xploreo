@@ -15,7 +15,7 @@ import {
     renderFieldError,
     showWorkspaceToast
 } from "./travelerWorkspaceUI.js";
-const travelerData = (() => { try { return JSON.parse(localStorage.getItem("travelerData") || "{}"); } catch { return {}; } })();
+import { travelerData } from "../api/legacyData.js";
 
 const TRANSPORTS = ["Flight", "Train", "Bus", "Private Car"];
 

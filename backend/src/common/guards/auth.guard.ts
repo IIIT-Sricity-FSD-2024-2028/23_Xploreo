@@ -17,9 +17,9 @@ export class AuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
 
     const request = context.switchToHttp().getRequest();
+
     const rawRole =
       request.headers['x-user-role'] ??
       request.headers['role'] ??
@@ -32,14 +32,16 @@ export class AuthGuard implements CanActivate {
     const role = normalizeRole(Array.isArray(rawRole) ? rawRole[0] : rawRole);
     const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId;
 
+    request.user = {
+      userId: userId ? String(userId) : undefined,
+      role: role || undefined,
+    };
+
+    if (isPublic) return true;
+
     if (!role) {
       throw new ForbiddenException('x-user-role header is required');
     }
-
-    request.user = {
-      userId: userId ? String(userId) : undefined,
-      role,
-    };
 
     return true;
   }
@@ -47,6 +49,24 @@ export class AuthGuard implements CanActivate {
 
 function normalizeRole(value: unknown): Role | null {
   const rawRole = String(value || '').trim();
+  const role = rawRole.toUpperCase();
+
+  if (rawRole === Role.PARTNER) return Role.PARTNER;
+  if (
+    rawRole === Role.TRAVELLER_ACTOR ||
+    rawRole === 'TRAVELLER' ||
+    rawRole === 'TRAVELER'
+  ) {
+    return Role.TRAVELLER_ACTOR;
+  }
+  if (rawRole === Role.ADMIN) {
+    return Role.ADMIN;
+  }
+  if (rawRole === Role.TECH_ADMIN) return Role.TECH_ADMIN;
+  if (rawRole === Role.EXPERIENCE_PARTNER) {
+    return Role.EXPERIENCE_PARTNER;
+  }
+
   const legacyRole = rawRole.toLowerCase();
   if (legacyRole === Role.SUPERADMIN) return Role.SUPERADMIN;
   if (legacyRole === Role.TRAVELLER || legacyRole === 'traveler') {
@@ -57,6 +77,8 @@ function normalizeRole(value: unknown): Role | null {
   if (legacyRole === Role.NONTECHADMIN) return Role.NONTECHADMIN;
   if (legacyRole === Role.HOTEL) return Role.HOTEL;
   if (legacyRole === Role.EXPERIENCE) return Role.EXPERIENCE;
+  if (legacyRole === 'partner') return Role.PARTNER;
+  if (legacyRole === 'experience_partner') return Role.EXPERIENCE_PARTNER;
 
   return null;
 }

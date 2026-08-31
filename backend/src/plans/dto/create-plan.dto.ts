@@ -19,7 +19,10 @@ export class CreatePlanDto {
   @IsString()
   title!: string;
 
-  @ApiProperty({ example: 'Temple trails, tea ceremony, and a relaxed final evening in Gion.' })
+  @ApiProperty({
+    example:
+      'Temple trails, tea ceremony, and a relaxed final evening in Gion.',
+  })
   @IsString()
   description!: string;
 

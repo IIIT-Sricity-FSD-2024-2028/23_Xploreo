@@ -12,8 +12,9 @@ import {
     renderFieldError,
     showWorkspaceToast
 } from "./travelerWorkspaceUI.js";
+import { fetchTravellerProfile, updateTravellerProfile, createTravellerProfile } from "../api/services.js";
 
-export function initTravelerProfilePage(containerId) {
+export async function initTravelerProfilePage(containerId) {
     const container = document.getElementById(containerId);
     const user = ensureTravelerSession();
 
@@ -22,6 +23,31 @@ export function initTravelerProfilePage(containerId) {
     }
 
     seedTravelerWorkspace();
+
+    // Try to load from backend and update local state
+    try {
+        const backendProfile = await fetchTravellerProfile(user.id);
+        if (backendProfile) {
+            const currentLocal = getTravelerProfile();
+            const fullName = `${backendProfile.fname || ''} ${backendProfile.lname || ''}`.trim() || currentLocal.fullName;
+            const merged = { 
+                ...currentLocal, 
+                ...backendProfile, 
+                fullName: fullName,
+                phone: backendProfile.phno ? String(backendProfile.phno) : currentLocal.phone
+            };
+            if (backendProfile.dob) {
+                try {
+                    merged.dob = new Date(backendProfile.dob).toISOString().split('T')[0];
+                } catch (e) {
+                    merged.dob = currentLocal.dob;
+                }
+            }
+            saveTravelerProfile(merged);
+        }
+    } catch (e) {
+        console.log("Could not load backend traveler profile, falling back to local.", e);
+    }
 
     const state = {
         editing: false,
@@ -63,11 +89,6 @@ export function initTravelerProfilePage(containerId) {
                             <div>${profile.email}</div>
                             <div>${profile.phone}</div>
                         </div>
-                    </div>
-                    <div class="traveler-stat-grid">
-                        <article><span>Reputation</span><strong>${profile.reputation}</strong><small>Level ${profile.level || 1}</small></article>
-                        <article><span>Traveller rating</span><strong>${profile.totalTrips > 0 ? "4.7 / 5" : "New"}</strong><small>${profile.totalTrips > 0 ? "Based on guides and partners" : "No ratings yet"}</small></article>
-                        <article><span>Experience</span><strong>${profile.totalTrips || 0} trips</strong><small>${profile.countries || 0} countries explored</small></article>
                     </div>
                 </div>
 
@@ -119,6 +140,14 @@ export function initTravelerProfilePage(containerId) {
                     <span class="label">Phone Number</span>
                     <input class="input-field" value="${profile.phone}" disabled>
                 </div>
+                <div class="input-group">
+                    <span class="label">Gender</span>
+                    <input class="input-field" value="${profile.gender || 'Not provided'}" disabled>
+                </div>
+                <div class="input-group">
+                    <span class="label">Date of Birth</span>
+                    <input class="input-field" value="${profile.dob || 'Not provided'}" disabled>
+                </div>
                 <div class="input-group full">
                     <span class="label">Preferred language</span>
                     <input class="input-field" value="${profile.language}" disabled>
@@ -147,6 +176,19 @@ export function initTravelerProfilePage(containerId) {
                     <div class="input-group full">
                         <span class="label">Phone Number</span>
                         <input type="text" name="phone" class="input-field" value="${profile.phone}">
+                    </div>
+                    <div class="input-group">
+                        <span class="label">Gender</span>
+                        <select name="gender" class="input-field">
+                            <option value="">Select</option>
+                            <option value="Male" ${profile.gender === 'Male' ? 'selected' : ''}>Male</option>
+                            <option value="Female" ${profile.gender === 'Female' ? 'selected' : ''}>Female</option>
+                            <option value="Other" ${profile.gender === 'Other' ? 'selected' : ''}>Other</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <span class="label">Date of Birth</span>
+                        <input type="date" name="dob" class="input-field" value="${profile.dob || ''}">
                     </div>
                     <div class="input-group full">
                         <span class="label">Preferred language</span>
@@ -190,7 +232,7 @@ export function initTravelerProfilePage(containerId) {
             render();
         });
 
-        container.querySelector("#profile-edit-form")?.addEventListener("submit", (event) => {
+        container.querySelector("#profile-edit-form")?.addEventListener("submit", async (event) => {
             event.preventDefault();
             const form = event.currentTarget;
             const profile = getTravelerProfile();
@@ -198,15 +240,23 @@ export function initTravelerProfilePage(containerId) {
             const lastName = form.elements.lastName.value.trim();
             const hobbiesRaw = form.elements.hobbies.value.split(",").map((h) => h.trim()).filter(Boolean);
             const preferenceOptions = Array.from(form.elements.interestPreferences.selectedOptions || []).map((option) => option.value);
+            
+            const dob = form.elements.dob?.value;
+            const gender = form.elements.gender?.value;
+
             const payload = {
                 ...profile,
                 fullName: `${firstName} ${lastName}`.trim(),
+                name: `${firstName} ${lastName}`.trim(),
                 email: form.elements.email.value.trim(),
                 phone: form.elements.phone.value.trim(),
+                phno: form.elements.phone.value.trim(),
                 language: form.elements.language.value.trim(),
                 bio: form.elements.bio.value.trim(),
                 hobbies: hobbiesRaw,
-                interestPreferences: preferenceOptions
+                interestPreferences: preferenceOptions,
+                dob: dob,
+                gender: gender
             };
 
             const errors = validateProfile(payload);
@@ -216,6 +266,31 @@ export function initTravelerProfilePage(containerId) {
                 showWorkspaceToast("Please correct the profile form.", "error");
                 render();
                 return;
+            }
+
+            try {
+                // Save to backend
+                const backendPayload = {
+                    fname: firstName,
+                    lname: lastName,
+                    email: payload.email,
+                    phno: Number(String(payload.phone).replace(/\D/g, '')) || 0,
+                    gender: payload.gender || "Other",
+                    dob: payload.dob ? new Date(payload.dob).toISOString() : undefined
+                };
+                
+                try {
+                    await updateTravellerProfile(user.id, backendPayload);
+                } catch (e) {
+                    if (e.status === 404 || e.message?.includes("not found")) {
+                        await createTravellerProfile(backendPayload);
+                    } else {
+                        throw e;
+                    }
+                }
+            } catch (err) {
+                console.warn("Failed to save profile to backend", err);
+                showWorkspaceToast("Saved locally, but failed to sync to server.", "warning");
             }
 
             saveTravelerProfile(payload);

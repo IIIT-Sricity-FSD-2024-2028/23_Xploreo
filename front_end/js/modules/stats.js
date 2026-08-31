@@ -1,31 +1,21 @@
-import { apiGetAndSync } from "../utils/api.js";
+import { getOpsData } from '../api/legacyData.js';
 
-const N = (v) => (v == null || isNaN(Number(v))) ? -1 : Number(v);
-const S = (v) => (v == null || v === "") ? "#" : String(v);
-
-// Called by operations.js before rendering
-export async function prefetchOpsStats() {
-    const data = await apiGetAndSync("/finance/stats", "opsData", []);
-    return Array.isArray(data) ? data : [];
-}
-
-export function getStatsHTML(opsStats = []) {
-    if (!Array.isArray(opsStats) || opsStats.length === 0) {
-        try { opsStats = JSON.parse(localStorage.getItem("opsData") || "[]"); } catch { opsStats = []; }
-    }
+export function getStatsHTML() {
+    // We call getOpsData() here so it recalculates fresh numbers every time the page loads!
+    const currentStats = getOpsData();
 
     return `
-        <div id="ops-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px;">
-            ${opsStats.map(stat => `
-                <div class="stat-card ${S(stat.color)}">
+        <div id="ops-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px;">
+            ${currentStats.map(stat => `
+                <div class="stat-card ${stat.color}">
                     <div class="card-icon">
-                        <img src="${S(stat.icon)}" alt="icon">
+                        <img src="${stat.icon}" alt="icon">
                     </div>
-                    <p class="stat-label">${S(stat.label)}</p>
-                    <h2 class="stat-value">${stat.value == null ? -1 : stat.value}</h2>
-                    <p class="stat-subtext ${S(stat.subClass)}">${S(stat.subtext)}</p>
+                    <p class="stat-label">${stat.label}</p>
+                    <h2 class="stat-value">${stat.value}</h2>
+                    <p class="stat-subtext ${stat.subClass || ""}">${stat.subtext}</p>
                 </div>
-            `).join("")}
+            `).join('')}
         </div>
     `;
 }

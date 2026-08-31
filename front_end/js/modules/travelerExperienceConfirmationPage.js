@@ -100,7 +100,7 @@ function getExperienceConfirmation() {
 function formatCurrency(value) {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "INR",
         maximumFractionDigits: 0
     }).format(Number(value) || 0);
 }

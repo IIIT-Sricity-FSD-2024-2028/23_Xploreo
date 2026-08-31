@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Xploreo - Support</title>
+
+    <!-- CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../css/landing.css">
+    <style>
+        .page-content {
+            padding: 80px 40px;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .page-content h2 {
+            font-family: serif ;
+            font-size: 48px;
+            color: #1F2937;
+            margin-bottom: 20px;
+        }
+        .page-content p {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 18px;
+            color: #4B5563;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+        
+        .faq-box {
+            background: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 12px;
+            text-align: left;
+            margin-bottom: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .faq-title {
+            background: #F9FAFB;
+            padding: 20px 24px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+            font-size: 18px;
+            color: #111827;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .faq-body {
+            padding: 20px 24px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            color: #4B5563;
+            line-height: 1.6;
+        }
+        
+        .contact-card {
+            background: #ECFDF5;
+            padding: 40px;
+            border-radius: 20px;
+            margin-top: 60px;
+            border: 1px dashed #10B981;
+        }
+        .contact-card h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 24px;
+            color: #065F46;
+            margin-bottom: 10px;
+        }
+        .contact-card p {
+            margin-bottom: 0;
+            color: #047857;
+        }
+        .contact-email {
+            font-weight: 700;
+            font-size: 20px;
+            color: #059669;
+            margin-top: 20px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Desktop Frame -->
+    <div class="desktop-container">
+
+        <!-- Top Navigation Bar is injected centrally here -->
+        <div id="navbar"></div>
+
+        <!-- Hero Section -->
+        <section class="hero" style="height: 40vh; min-height: 400px; background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1500&q=80') center/cover no-repeat;">
+            <div class="hero-content">
+                <h1>Help & Support</h1>
+                <p>We're here to help you navigate your journey.</p>
+            </div>
+        </section>
+
+        <div class="page-content">
+            <h2>Frequently Asked Questions</h2>
+            <p>Find quick answers to our most common inquiries regarding bookings, accounts, and partnership policies.</p>
+
+            <div class="faq-box">
+                <div class="faq-title">How do I cancel or modify my itinerary booking?</div>
+                <div class="faq-body">You can modify or cancel your booking directly from your Traveler Dashboard under the "My Trips" tab. Please note that cancellations made within 48 hours of the tour's start time may be subject to a nominal cancellation fee as per our provider policy.</div>
+            </div>
+
+            <div class="faq-box">
+                <div class="faq-title">I'm a Local Guide. How do payouts work?</div>
+                <div class="faq-body">Payouts are processed securely upon the completion of a scheduled tour. They are credited to your designated bank account attached to your Guide profile within 2-3 business days. You can track all historic and pending revenue via your Earnings Dashboard.</div>
+            </div>
+
+            <div class="faq-box">
+                <div class="faq-title">I forgot my password. How do I reset it?</div>
+                <div class="faq-body">Simply click "Login" at the top right of the application, and hit "Forgot Password?". The system will ask for your registered email address and immediately guide you through creating a new, secure password offline.</div>
+            </div>
+
+            <div class="contact-card">
+                <h3>Still need assistance?</h3>
+                <p>Our dedicated support team is available 24/7 to help resolve your issues.</p>
+                <div class="contact-email">support@xploreo.com</div>
+            </div>
+
+        </div>
+        
+    </div>
+
+    <!-- NAVBAR INJECTION SCRIPT -->
+    <script type="module">
+        import { renderLandingNavbar } from "../components/layout/navbar_landing.js";
+        renderLandingNavbar();
+    </script>
+</body>
+</html>

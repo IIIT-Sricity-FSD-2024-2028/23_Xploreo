@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Param, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '../auth/entities/auth.entity';
 import {
@@ -19,7 +19,7 @@ export class ExperienceBookingsController {
   ) {}
 
   @Post()
-  @Roles(Role.TRAVELLER)
+  @Roles(Role.TRAVELLER_ACTOR)
   @ApiOperation({ summary: 'Traveller books an experience' })
   @ApiCreateEndpoint(CreateExperienceBookingDto)
   create(@Body() dto: CreateExperienceBookingDto, @Req() req: any) {
@@ -27,17 +27,42 @@ export class ExperienceBookingsController {
   }
 
   @Get()
-  @Roles(Role.TRAVELLER, Role.SUPERADMIN, Role.EXPERIENCE)
+  @Roles(
+    Role.TRAVELLER_ACTOR,
+    Role.TRAVELLER,
+    Role.ADMIN,
+    Role.EXPERIENCE_PARTNER,
+  )
   @ApiOperation({ summary: 'View experience bookings' })
   @ApiReadEndpoint()
   findAll(@Req() req: any) {
-    if (req.user?.role === Role.TRAVELLER) {
+    if (
+      req.user?.role === Role.TRAVELLER_ACTOR ||
+      req.user?.role === Role.TRAVELLER
+    ) {
       return this.experienceBookingsService.findForTraveller(req.user?.userId);
     }
-    if (req.user?.role === Role.EXPERIENCE) {
+    if (req.user?.role === Role.EXPERIENCE_PARTNER) {
       return this.experienceBookingsService.findForPartner(req.user?.userId);
     }
 
     return this.experienceBookingsService.findAll();
+  }
+
+  @Patch(':id/status')
+  @Roles(Role.EXPERIENCE_PARTNER, Role.TRAVELLER_ACTOR, Role.TRAVELLER)
+  @ApiOperation({ summary: 'Update experience booking status' })
+  updateStatus(
+    @Param('id') id: string,
+    @Body()
+    dto: import('./dto/update-experience-booking-status.dto').UpdateExperienceBookingStatusDto,
+    @Req() req: any,
+  ) {
+    return this.experienceBookingsService.updateStatus(
+      id,
+      req.user?.userId,
+      req.user?.role,
+      dto.status,
+    );
   }
 }

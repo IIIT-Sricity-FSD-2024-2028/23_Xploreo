@@ -1,6 +1,4 @@
-const homeTestimonials = (() => { try { return JSON.parse(localStorage.getItem("homeTestimonials") || "[]"); } catch { return []; } })();
-const experienceCatalog = (() => { try { return JSON.parse(localStorage.getItem("experiences") || "[]"); } catch { return []; } })();
-const bookingsData = (() => { try { return JSON.parse(localStorage.getItem("experienceBookings") || "[]"); } catch { return []; } })();
+import { homeTestimonials, experiences as experienceCatalog, bookingsData } from "../api/legacyData.js";
 import { calculateDashboardStats, readStorage } from "./experience_shared.js";
 
 export function renderExperienceHomePage() {
@@ -29,7 +27,7 @@ export function renderExperienceHomePage() {
         (exp.slots || [])
             .filter(slot => slot.date === todayRaw)
             .map(slot => ({ ...slot, title: exp.title }))
-    );
+    ).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
 
     const alertItems = todaySchedule.map((item) => {
         const percent = (item.booked / item.capacity) * 100;
@@ -146,7 +144,7 @@ export function renderExperienceHomePage() {
             const scheduleTitle = button.dataset.scheduleTitle;
             const params = new URLSearchParams();
             if (scheduleTitle) params.set("manage", scheduleTitle);
-            window.location.href = `./experience_experience.html${params.toString() ? `?${params.toString()}` : ""}`;
+            window.location.href = `../pages/experience_experience.html${params.toString() ? `?${params.toString()}` : ""}`;
         };
     }
 
@@ -160,7 +158,12 @@ export function renderExperienceHomePage() {
                 time: exp.time,
                 seats: u.seats
             }))
-        ).sort((a,b) => new Date(a.date) - new Date(b.date));
+        ).sort((a,b) => {
+            if (a.date !== b.date) {
+                return new Date(a.date) - new Date(b.date);
+            }
+            return timeToMinutes(a.time) - timeToMinutes(b.time);
+        });
 
         bookings.innerHTML = flattenedBookings.length ? flattenedBookings.slice(0, 4).map((booking) => {
             return `
@@ -181,7 +184,7 @@ export function renderExperienceHomePage() {
 
     if (viewAllBookingsButton) {
         viewAllBookingsButton.onclick = () => {
-            window.location.href = "./experience_bookings.html";
+            window.location.href = "../pages/experience_bookings.html";
         };
     }
 
@@ -197,4 +200,18 @@ export function renderExperienceHomePage() {
             </article>
         `).join("");
     }
+}
+
+function timeToMinutes(value) {
+    const str = String(value || "").trim();
+    const match24 = str.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+        return Number(match24[1]) * 60 + Number(match24[2]);
+    }
+    const match12 = str.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+    if (!match12) return Number.MAX_SAFE_INTEGER;
+    let hour = Number(match12[1]) % 12;
+    const minute = Number(match12[2]);
+    if (match12[3].toUpperCase() === "PM") hour += 12;
+    return hour * 60 + minute;
 }

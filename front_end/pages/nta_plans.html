@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Manage Travel Packages</title>
+    <link rel="stylesheet" href="../css/shared.css">
+    <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/nontechadmin.css">
+</head>
+
+<body>
+    <div id="navbar"></div>
+
+    <div id="nta-plans-page" class="page-wrapper">
+
+        <!-- HEADER -->
+        <div id="nta-plans-header"></div>
+
+        <!-- TOOLBAR -->
+        <div id="nta-plans-toolbar"></div>
+
+        <!-- PLANS TABLE -->
+        <div id="nta-plans-container" class="nta-plans-card"></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="nta-plan-modal" class="nta-modal-overlay"></div>
+    <div id="nta-delete-modal" class="nta-modal-overlay"></div>
+
+    <!-- Hidden wrappers for routing compatibility -->
+    <div id="admin-dashboard" style="display:none;"></div>
+    <main id="main" class="page-wrapper" style="display:none;"></main>
+    <div id="hotel-dashboard" style="display:none;"></div>
+    <div id="tech-admin-dash" style="display:none;"></div>
+    <div id="experience-dashboard" style="display:none;"></div>
+
+    <script type="module" src="../js/app.js"></script>
+</body>
+
+</html>

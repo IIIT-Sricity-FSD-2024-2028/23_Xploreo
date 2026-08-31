@@ -17,6 +17,8 @@ export class TravellerService {
       plang: dto.plang ?? [],
       bio: dto.bio ?? '',
       interests: dto.interests ?? [],
+      gender: dto.gender,
+      dob: dto.dob,
     });
   }
 

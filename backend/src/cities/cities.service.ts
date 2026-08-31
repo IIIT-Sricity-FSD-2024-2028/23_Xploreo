@@ -7,8 +7,12 @@ import { UpdateCityDto } from './dto/update-city.dto';
 export class CitiesService {
   constructor(private readonly citiesRepository: CitiesRepository) {}
 
-  create(dto: CreateCityDto) { return this.citiesRepository.create(dto); }
-  findAll() { return this.citiesRepository.findAll(); }
+  create(dto: CreateCityDto) {
+    return this.citiesRepository.create(dto);
+  }
+  findAll() {
+    return this.citiesRepository.findAll();
+  }
   findOne(id: string) {
     const c = this.citiesRepository.findById(id);
     if (!c) throw new NotFoundException(`City ${id} not found`);
@@ -20,7 +24,8 @@ export class CitiesService {
     return updated;
   }
   remove(id: string) {
-    if (!this.citiesRepository.delete(id)) throw new NotFoundException(`City ${id} not found`);
+    if (!this.citiesRepository.delete(id))
+      throw new NotFoundException(`City ${id} not found`);
     return { message: `City ${id} deleted` };
   }
 }

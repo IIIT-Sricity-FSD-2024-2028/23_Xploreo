@@ -7,8 +7,12 @@ import { UpdateTechadminDto } from './dto/update-techadmin.dto';
 export class TechadminService {
   constructor(private readonly repo: TechadminRepository) {}
 
-  create(dto: CreateTechadminDto) { return this.repo.create(dto); }
-  findAll() { return this.repo.findAll(); }
+  create(dto: CreateTechadminDto) {
+    return this.repo.create(dto);
+  }
+  findAll() {
+    return this.repo.findAll();
+  }
   findOne(id: string) {
     const a = this.repo.findById(id);
     if (!a) throw new NotFoundException(`Techadmin ${id} not found`);
@@ -20,7 +24,8 @@ export class TechadminService {
     return updated;
   }
   remove(id: string) {
-    if (!this.repo.delete(id)) throw new NotFoundException(`Techadmin ${id} not found`);
+    if (!this.repo.delete(id))
+      throw new NotFoundException(`Techadmin ${id} not found`);
     return { message: `Techadmin ${id} deleted` };
   }
 }

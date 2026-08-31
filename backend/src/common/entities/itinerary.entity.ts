@@ -13,6 +13,7 @@ export class ItineraryFlight {
   departureAt!: string;
   arrivalAt!: string;
   status!: ItineraryItemStatus;
+  description?: string;
 }
 
 export class ItineraryTransport {
@@ -23,6 +24,7 @@ export class ItineraryTransport {
   dropoffLocation!: string;
   pickupAt!: string;
   status!: ItineraryItemStatus;
+  description?: string;
 }
 
 export class ItineraryHotel {
@@ -33,6 +35,7 @@ export class ItineraryHotel {
   checkOutDate!: string;
   roomType!: string;
   status!: ItineraryItemStatus;
+  description?: string;
 }
 
 export class ItineraryExperience {
@@ -43,6 +46,7 @@ export class ItineraryExperience {
   startsAt!: string;
   endsAt!: string;
   status!: ItineraryItemStatus;
+  description?: string;
 }
 
 export class DayOneItinerary {

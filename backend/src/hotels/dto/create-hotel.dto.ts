@@ -51,6 +51,12 @@ export class CreateHotelDto {
   @Min(0)
   taxesAndFees?: number;
 
+  @ApiPropertyOptional({ example: 10, minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  totalRooms?: number;
+
   @ApiPropertyOptional({ example: 'https://example.com/hotel.jpg' })
   @IsOptional()
   @IsString()

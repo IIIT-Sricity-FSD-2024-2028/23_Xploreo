@@ -1,6 +1,11 @@
 import { AppRole } from '../../contracts/api-contracts';
 
 export enum Role {
+  PARTNER = AppRole.PARTNER,
+  TRAVELLER_ACTOR = AppRole.TRAVELLER_ACTOR,
+  ADMIN = AppRole.ADMIN,
+  TECH_ADMIN = AppRole.TECH_ADMIN,
+  EXPERIENCE_PARTNER = AppRole.EXPERIENCE_PARTNER,
   SUPERADMIN = AppRole.SUPERADMIN,
   TRAVELLER = AppRole.TRAVELLER,
   GUIDE = AppRole.GUIDE,

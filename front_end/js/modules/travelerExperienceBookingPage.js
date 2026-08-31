@@ -1,8 +1,8 @@
+import { createExperienceBooking } from "../api/services.js";
+
 const SELECTED_EXPERIENCE_KEY = "traveler_selected_experience";
 const EXPERIENCE_BOOKING_DRAFT_KEY = "traveler_experience_booking_draft";
 const EXPERIENCE_CONFIRMATION_KEY = "traveler_experience_booking_confirmation";
-
-import { apiFetch, apiGetAndSync } from "../utils/api.js";
 
 export function renderTravelerExperienceBookingPage(containerId) {
     const container = document.getElementById(containerId);
@@ -229,21 +229,35 @@ export function renderTravelerExperienceBookingPage(containerId) {
                 return;
             }
 
-            const confirmation = {
-                bookingId: createIntegerBookingReference(),
-                confirmedAt: new Date().toISOString(),
-                ...state.draft,
-                leadTraveler: { ...state.leadTraveler },
-                travelers: state.travelers.map((traveler) => ({ ...traveler }))
+            const payload = {
+                experienceId: state.draft.experience.id,
+                guestName: `${state.leadTraveler.firstName} ${state.leadTraveler.lastName}`,
+                email: state.leadTraveler.email,
+                phone: state.leadTraveler.phone,
+                date: state.draft.selectedDate,
+                slotId: state.draft.selectedSlot?.id,
+                time: state.draft.selectedSlot?.time || state.draft.option.time,
+                participants: state.draft.adults
             };
 
-            persistExperienceBookingDraft({
-                ...state.draft,
-                leadTraveler: { ...state.leadTraveler },
-                travelers: state.travelers.map((traveler) => ({ ...traveler }))
+            createExperienceBooking(payload).then(response => {
+                const confirmation = {
+                    bookingId: response.id || createIntegerBookingReference(),
+                    confirmedAt: new Date().toISOString(),
+                    ...state.draft,
+                    leadTraveler: { ...state.leadTraveler },
+                    travelers: state.travelers.map((traveler) => ({ ...traveler }))
+                };
+
+                try {
+                    localStorage.removeItem(EXPERIENCE_BOOKING_DRAFT_KEY);
+                } catch(e) {}
+                persistExperienceConfirmation(confirmation);
+                window.location.href = "./traveller_experience-confirmation.html";
+            }).catch(e => {
+                showToast("Failed to create booking. Please try again.");
+                console.error("Booking error:", e);
             });
-            persistExperienceConfirmation(confirmation);
-            window.location.href = "./traveller_experience-confirmation.html";
         });
     }
 
@@ -264,76 +278,26 @@ function persistExperienceBookingDraft(draft) {
     localStorage.setItem(EXPERIENCE_BOOKING_DRAFT_KEY, JSON.stringify(draft));
 }
 
-async function persistExperienceConfirmation(record) {
+function persistExperienceConfirmation(record) {
     if (typeof localStorage === "undefined") return;
-    localStorage.setItem(EXPERIENCE_CONFIRMATION_KEY, JSON.stringify(record));
-
-    // Sync with global Experience Provider data via API
-    const allExpBookings = await apiGetAndSync("/bookings/experience", "experienceBookings", []);
-    if (!allExpBookings.find(b => b.id === record.bookingId || b.bookingId === record.bookingId)) {
-        const providerRecord = {
-            id: record.bookingId,
-            experienceId: record.experience.id,
-            title: record.experience.title,
-            date: record.selectedDate,
-            time: record.option.time,
-            users: [
-                {
-                    name: record.leadTraveler.firstName + " " + record.leadTraveler.lastName,
-                    seats: record.adults
-                }
-            ]
-        };
-        // POST to backend
-        apiFetch("/bookings/experience", { method: "POST", body: providerRecord }).catch(() => {});
-        allExpBookings.push(providerRecord);
-        localStorage.setItem("experienceBookings", JSON.stringify(allExpBookings));
+    
+    // Strip heavy fields from the experience to avoid QuotaExceededError
+    if (record && record.experience) {
+        delete record.experience.gallery;
+        delete record.experience.description;
+        delete record.experience.highlights;
+        delete record.experience.expectations;
+        if (record.experience.image && record.experience.image.length > 50000) {
+            record.experience.image = ""; // Drop image if it is a massive base64 string
+        }
     }
 
-    // Save to traveler trips (tours + traveler_my_trips) so it appears in My Trips
     try {
-        const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null");
-        const customerId = currentUser?.id || "traveler-fallback";
-        const customerName = currentUser?.name || "Traveler";
-
-        const tripRecord = {
-            id: String(record.bookingId),
-            bookingId: String(record.bookingId),
-            customerId,
-            customer: customerName,
-            title: record.experience.title,
-            destination: record.experience.location || record.experience.destination || record.experience.title,
-            location: record.experience.location || record.experience.destination || record.experience.title,
-            dateTime: `${record.selectedDate} | ${record.option.time || "09:00 AM"}`,
-            dateRange: record.selectedDate,
-            status: "Upcoming",
-            type: "Experience",
-            experienceId: record.experience.id,
-            guests: record.adults,
-            amount: record.totalPrice,
-            duration: record.experience.durationLabel || "",
-            coverImage: record.experience.image || "",
-            image: record.experience.image || "",
-            plan_iternary: [record.option.title || "Experience"]
-        };
-
-        // POST trip to backend
-        apiFetch("/trips", { method: "POST", body: tripRecord }).catch(() => {});
-
-        // Update local cache for tours
-        const allTours = JSON.parse(localStorage.getItem("tours") || "[]");
-        if (!allTours.find(t => String(t.id) === String(record.bookingId))) {
-            allTours.push(tripRecord);
-            localStorage.setItem("tours", JSON.stringify(allTours));
-        }
-
-        const myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]");
-        if (!myTrips.find(t => String(t.id) === String(record.bookingId) || String(t.bookingId) === String(record.bookingId))) {
-            myTrips.push(tripRecord);
-            localStorage.setItem("traveler_my_trips", JSON.stringify(myTrips));
-        }
-    } catch (error) {
-        console.warn("Could not save experience booking to traveler trips", error);
+        localStorage.setItem(EXPERIENCE_CONFIRMATION_KEY, JSON.stringify(record));
+    } catch (e) {
+        console.warn("Storage full. Attempting to clear space...");
+        try { localStorage.removeItem("traveler_selected_experience"); } catch(err){}
+        try { localStorage.removeItem(EXPERIENCE_CONFIRMATION_KEY); localStorage.setItem(EXPERIENCE_CONFIRMATION_KEY, JSON.stringify(record)); } catch(err) { console.error("Still failed to save confirmation"); }
     }
 }
 
@@ -343,7 +307,9 @@ function validateBooking(state) {
     if (!state.leadTraveler.email.trim()) return ["Enter the email address"];
     if (!state.leadTraveler.phone.trim()) return ["Enter the phone number"];
     const phoneDigits = state.leadTraveler.phone.replace(/\D/g, "");
-    if (/^0+$/.test(phoneDigits)) return ["Enter a valid phone number"];
+    if (/^0+$/.test(phoneDigits) || phoneDigits.length < 7 || phoneDigits.length > 15) {
+        return ["Enter a valid phone number (7-15 digits)"];
+    }
 
     for (let index = 0; index < state.travelers.length; index += 1) {
         const traveler = state.travelers[index];
@@ -364,7 +330,7 @@ function createIntegerBookingReference() {
 function formatCurrency(value) {
     return new Intl.NumberFormat("en-US", {
         style: "currency",
-        currency: "USD",
+        currency: "INR",
         maximumFractionDigits: 0
     }).format(Number(value) || 0);
 }

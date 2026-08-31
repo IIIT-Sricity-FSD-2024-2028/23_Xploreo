@@ -1,5 +1,6 @@
+import { mapHotelToSearchCard } from "../api/adapters.js";
+import { fetchHotels } from "../api/services.js";
 import { getTodayDateString } from "../utils/locationAutocomplete.js";
-import { apiGetAndSync } from "../utils/api.js";
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&q=80&w=900";
 const CITY_IMAGE = "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&q=80&w=900";
@@ -17,13 +18,20 @@ export async function renderTravelerHotelSearchPage(containerId) {
     container.innerHTML = `<main class="traveler-hotel-page"><div class="traveler-hotel-frame"><div class="traveler-hotel-empty">Loading hotels...</div></div></main>`;
 
     const params = new URLSearchParams(window.location.search);
+    let storedState = {};
+    try {
+        storedState = JSON.parse(localStorage.getItem("traveler_dashboard_search_state") || "{}");
+    } catch(e) {}
+    const hotelVals = storedState.values?.hotels || {};
+
     const state = {
-        query: params.get("hotel-city") || params.get("city") || "",
-        checkin: params.get("hotel-checkin") || "",
-        checkout: params.get("hotel-checkout") || "",
-        guests: params.get("hotel-guests") || "2",
+        query: params.get("hotel-city") || params.get("city") || hotelVals.city || "",
+        checkin: params.get("hotel-checkin") || hotelVals.checkIn || "",
+        checkout: params.get("hotel-checkout") || hotelVals.checkOut || "",
+        guests: params.get("hotel-guests") || hotelVals.guestCount || "2",
         sort: "recommended",
-        maxPrice: 100,
+        minPrice: 0,
+        maxPrice: 10000,
         stars: "all"
     };
     const hotels = await loadHotels(state.query);
@@ -33,12 +41,10 @@ export async function renderTravelerHotelSearchPage(containerId) {
 }
 
 async function loadHotels(query = "") {
-    try {
-        const raw = await apiGetAndSync("/hotels", "hotels", []);
-        return (Array.isArray(raw) ? raw : []).map((h) => ({ title: h.name || h.title, price: h.pricePerNight || h.price || 100, stars: h.stars || 4, ...h }));
-    } catch {
+    return (await fetchHotels(query ? { location: query } : {}).catch((error) => {
+        console.error("Failed to load hotels:", error);
         return [];
-    }
+    })).map(mapHotelToSearchCard);
 }
 
 function render(container, hotels, state) {
@@ -105,29 +111,32 @@ function renderToolbar(state) {
 }
 
 function renderFilters(hotels, state) {
-    const maxPrice = getMaxPrice(hotels);
+    const maxPossiblePrice = getMaxPrice(hotels);
     return `
         <aside class="traveler-hotel-filters">
             <h2>Filters</h2>
             <div class="traveler-filter-group">
-                <h3>Price per night</h3>
-                <div class="traveler-price-slider-wrap">
-                    <div class="traveler-price-track" style="--track-progress:${Math.max(1, (Number(state.maxPrice) / maxPrice) * 100)}%">
-                        <div class="traveler-price-fill"></div>
-                        <div class="traveler-price-thumb"></div>
+                <h3>Price range per night</h3>
+                <div class="traveler-price-inputs" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <div style="flex:1">
+                        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Min Price</label>
+                        <input id="hotel-min-price" type="number" min="0" max="${maxPossiblePrice}" value="${escapeHtmlAttr(state.minPrice)}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
                     </div>
-                    <input id="hotel-price-filter" class="traveler-price-slider" type="range" min="0" max="${maxPrice}" value="${escapeHtmlAttr(state.maxPrice)}">
+                    <div style="flex:1">
+                        <label style="font-size: 12px; color: #666; display: block; margin-bottom: 4px;">Max Price</label>
+                        <input id="hotel-max-price" type="number" min="0" max="${maxPossiblePrice}" value="${escapeHtmlAttr(state.maxPrice)}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                    </div>
                 </div>
-                <div class="traveler-filter-range"><span>$0</span><span>$${Number(state.maxPrice).toLocaleString()}</span></div>
             </div>
             <div class="traveler-filter-group">
                 <h3>Hotel class</h3>
-                <div class="traveler-filter-list">
-                    ${["all", "5", "4", "3"].map((value) => `
-                        <button type="button" class="traveler-filter-chip ${state.stars === value ? "active" : ""}" data-star-filter="${value}">
-                            <span>${value === "all" ? "All stays" : `${value} star`}</span>
-                            <small>${countByStars(hotels, value)}</small>
-                        </button>
+                <div class="traveler-filter-list" style="display:flex; flex-direction: column; gap: 8px;">
+                    ${["all", "5", "4", "3", "2"].map((value) => `
+                        <label class="traveler-filter-chip-new" style="display:flex; align-items:center; gap:8px; cursor:pointer; padding: 10px; border-radius: 6px; border: 1px solid ${state.stars === value ? '#3b82f6' : '#e5e7eb'}; background: ${state.stars === value ? '#eff6ff' : '#fff'}; transition: all 0.2s;">
+                            <input type="radio" name="hotel-star-filter" data-star-filter="${value}" ${state.stars === value ? "checked" : ""} style="cursor:pointer">
+                            <span style="flex:1; font-weight: ${state.stars === value ? '600' : '400'}">${value === "all" ? "All stays" : `${value} Star`}</span>
+                            <small style="color: #6b7280; font-size: 12px;">${countByStars(hotels, value)}</small>
+                        </label>
                     `).join("")}
                 </div>
             </div>
@@ -175,10 +184,13 @@ function renderHotelCard(hotel) {
                 <p class="traveler-hotel-description">${escapeHtml(hotel.description || "Comfortable stay with curated traveller support.")}</p>
                 <div class="traveler-hotel-divider"></div>
                 <div class="traveler-hotel-bottom">
+                    <div style="font-size: 13px; color: ${hotel.availableRooms <= 5 ? '#e11d48' : '#16a34a'}; font-weight: 600; margin-bottom: 8px;">
+                        ${hotel.availableRooms} rooms available
+                    </div>
                     <div class="traveler-hotel-pricing">
-                        <div class="traveler-hotel-old-price"><del>$${Number(hotel.oldPrice || hotel.price).toLocaleString()}</del><span class="traveler-hotel-offer">${escapeHtml(hotel.offer)}</span></div>
-                        <div class="traveler-hotel-price-line"><strong>$${Number(hotel.price || 0).toLocaleString()}</strong><span>/ night</span></div>
-                        <div class="traveler-hotel-taxes">+ $${Number(hotel.taxes || 0).toLocaleString()} taxes & fees</div>
+                        <div class="traveler-hotel-old-price"><del>₹${Number(hotel.oldPrice || hotel.price).toLocaleString()}</del><span class="traveler-hotel-offer">${escapeHtml(hotel.offer)}</span></div>
+                        <div class="traveler-hotel-price-line"><strong>₹${Number(hotel.price || 0).toLocaleString()}</strong><span>/ night</span></div>
+                        <div class="traveler-hotel-taxes">+ ₹${Number(hotel.taxes || 0).toLocaleString()} taxes & fees</div>
                     </div>
                     <button class="traveler-hotel-cta" data-hotel-id="${escapeHtmlAttr(hotel.id)}" type="button">View rooms</button>
                 </div>
@@ -206,15 +218,22 @@ function bindEvents(container, hotels, state) {
         render(container, hotels, state);
     });
 
-    container.querySelector("#hotel-price-filter")?.addEventListener("input", (event) => {
-        state.maxPrice = event.target.value;
+    container.querySelector("#hotel-min-price")?.addEventListener("input", (event) => {
+        state.minPrice = Number(event.target.value) || 0;
         render(container, hotels, state);
     });
 
-    container.querySelectorAll("[data-star-filter]").forEach((button) => {
-        button.addEventListener("click", () => {
-            state.stars = button.dataset.starFilter;
-            render(container, hotels, state);
+    container.querySelector("#hotel-max-price")?.addEventListener("input", (event) => {
+        state.maxPrice = Number(event.target.value) || getMaxPrice(hotels);
+        render(container, hotels, state);
+    });
+
+    container.querySelectorAll("[data-star-filter]").forEach((input) => {
+        input.addEventListener("change", () => {
+            if (input.checked) {
+                state.stars = input.dataset.starFilter;
+                render(container, hotels, state);
+            }
         });
     });
 
@@ -233,7 +252,10 @@ function filterHotels(hotels, state) {
     const query = String(state.query || "").toLowerCase();
     return hotels
         .filter((hotel) => !query || [hotel.title, hotel.city, hotel.area].some((value) => String(value || "").toLowerCase().includes(query)))
-        .filter((hotel) => Number(hotel.price || 0) <= Number(state.maxPrice || Infinity))
+        .filter((hotel) => {
+            const price = Number(hotel.price || 0);
+            return price >= Number(state.minPrice || 0) && price <= Number(state.maxPrice || Infinity);
+        })
         .filter((hotel) => state.stars === "all" || Number(hotel.stars) === Number(state.stars))
         .sort((a, b) => {
             if (state.sort === "price-low") return Number(a.price || 0) - Number(b.price || 0);
@@ -246,8 +268,8 @@ function renderEmptyState(state) {
     const city = state.query ? ` in ${escapeHtml(state.query)}` : "";
     return `
         <div class="traveler-hotel-empty">
-            <h2>No hotels found${city}</h2>
-            <p>Add an active hotel for this city or try searching another location.</p>
+            <h2>No backend hotels found${city}</h2>
+            <p>Ask the hotel service partner to add an active hotel for this city, then search again. Partner-created hotels appear here from <code>GET /api/hotels</code>.</p>
         </div>
     `;
 }

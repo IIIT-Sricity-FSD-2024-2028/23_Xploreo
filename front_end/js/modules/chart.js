@@ -52,7 +52,7 @@ export function renderChart(containerId) {
             <div class="chart-header">
                 <div>
                     <h3>Booking Velocity & Engagement</h3>
-                    <p>Detailed comparison based on real-time transaction volume</p>
+                    <p>Detailed comdelhion based on real-time transaction volume</p>
                 </div>
                 <div class="chart-toggle">
                     <button class="active" data-type="weekly">Weekly</button>

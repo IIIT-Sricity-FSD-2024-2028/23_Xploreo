@@ -18,7 +18,9 @@ export class CitiesRepository {
     return city;
   }
 
-  findAll(): City[] { return this.cities; }
+  findAll(): City[] {
+    return this.cities;
+  }
 
   findByName(name: string): City | undefined {
     return this.cities.find((c) => c.name.toLowerCase() === name.toLowerCase());

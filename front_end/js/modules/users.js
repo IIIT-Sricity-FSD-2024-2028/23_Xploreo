@@ -1,27 +1,28 @@
-import { apiGetAndSync, apiFetch, getAuthHeaders } from "../utils/api.js";
+import { initialUsersData, initialPartnersData } from '../api/legacyData.js';
 import { getUserStylesHTML } from './userStyles.js';
 import { getUserStatsHTML } from './userStats.js';
 import { getUserTableShellHTML, generateUserRowsHTML } from './userTable.js';
 import { generateProfileHTML } from './userProfile.js';
 import { getPartnerTableShellHTML, generatePartnerRowsHTML } from './partnerTable.js';
 
-export async function initUsers() {
+export function initUsers() {
     const mainContainer = document.getElementById("main");
     if (!mainContainer) return;
 
-    // Fetch live data from backend, sync to localStorage
-    let platformUsersData = await apiGetAndSync("/auth/users", "users",    []);
-    let partnersData       = await apiGetAndSync("/partners",   "partners", []);
-    if (!Array.isArray(platformUsersData)) platformUsersData = [];
-    if (!Array.isArray(partnersData))      partnersData      = [];
+    // --- 1. PERSISTENT STATE MANAGEMENT ---
+    // Load existing data from storage or seed it from the data file
+    let platformUsersData = JSON.parse(localStorage.getItem('platformUsers')) || [...initialUsersData];
+    let partnersData = JSON.parse(localStorage.getItem('partners')) || [...initialPartnersData];
     
     let currentUserFilter = "All";
     let currentPartnerFilter = "All";
 
     // Global Sync: Saves state and triggers a UI refresh for dependent components
     const updateEcosystem = () => {
-        localStorage.setItem("users",    JSON.stringify(platformUsersData));
-        localStorage.setItem("partners", JSON.stringify(partnersData));
+        localStorage.setItem('platformUsers', JSON.stringify(platformUsersData));
+        localStorage.setItem('partners', JSON.stringify(partnersData));
+        
+        // Refresh Stats & Tables
         renderStats();
         renderUserTable();
         renderPartnerTable();
@@ -98,8 +99,6 @@ export async function initUsers() {
         const removeBtn = e.target.closest(".remove-btn");
         if (removeBtn) {
             const userId = removeBtn.dataset.id;
-            // fire-and-forget delete to backend
-            apiFetch(`/auth/users/${userId}`, { method: "DELETE" }).catch(() => {});
             platformUsersData = platformUsersData.filter(u => u.id !== userId);
             if (document.getElementById("profile-panel").dataset.currentId === userId) updateProfile(null);
             updateEcosystem();

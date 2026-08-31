@@ -1,3 +1,4 @@
+
 /* Reset */
 
 * {
@@ -988,9 +989,7 @@
     padding-top: 20px;
 
     position: relative;
-    background: linear-gradient(135deg, #0F4C4C, #2F6F6D);
-    background-size: cover;
-    background-position: center;
+    background: transparent;
 
     z-index: 10;
 }
