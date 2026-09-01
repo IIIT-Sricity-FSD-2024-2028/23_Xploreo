@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID as uuidv4 } from 'crypto';
 import { AppLoggerService } from '../logger/logger.service';
 
 @Injectable()
@@ -15,7 +15,7 @@ export class RequestIdMiddleware implements NestMiddleware {
 
 @Injectable()
 export class RequestResponseLoggingMiddleware implements NestMiddleware {
-  constructor(private readonly logger: AppLoggerService) {}
+  constructor(private readonly logger: AppLoggerService) { }
 
   use(req: Request, res: Response, next: NextFunction) {
     const startTime = Date.now();
@@ -108,6 +108,7 @@ export const corsOptions = {
     'X-Request-ID',
     'X-User-Role',
     'X-User-ID',
+    'X-User-Location',
   ],
   exposedHeaders: [
     'X-Request-ID',

@@ -38,7 +38,6 @@ export async function renderTechTicketDetail(containerId) {
         <div class="ticket-detail-view" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 1px solid #F3F4F6; padding-bottom: 20px;">
                 <div>
-                    <span class="status-tag ${String(ticket.priority || 'medium').toLowerCase()}" style="margin-bottom: 10px; display: inline-block;">${String(ticket.priority || 'MEDIUM').toUpperCase()} PRIORITY</span>
                     <h2 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0;">${escapeHtml(ticket.subject)}</h2>
                     <p style="color: #6B7280; font-size: 14px; margin-top: 5px;">ID: ${escapeHtml(ticket.id)} • Created on ${new Date(ticket.createdAt).toLocaleString()}</p>
                 </div>

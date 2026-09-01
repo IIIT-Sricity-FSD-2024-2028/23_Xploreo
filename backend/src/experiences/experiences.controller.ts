@@ -37,7 +37,7 @@ import {
 )
 @Controller('experiences')
 export class ExperiencesController {
-  constructor(private readonly experiencesService: ExperiencesService) {}
+  constructor(private readonly experiencesService: ExperiencesService) { }
 
   @Roles(
     Role.SUPERADMIN,
@@ -56,7 +56,11 @@ export class ExperiencesController {
     description: 'Missing or unauthorized role header',
   })
   create(@Body() dto: CreateExperienceDto, @Req() req: any) {
-    return this.experiencesService.create(req.user?.userId, dto);
+    return this.experiencesService.create(
+      req.user?.userId,
+      req.user?.location,
+      dto,
+    );
   }
 
   @Get()
@@ -65,8 +69,14 @@ export class ExperiencesController {
   @ApiOperation({ summary: 'Get all experiences' })
   @ApiReadEndpoint()
   findAll(@Req() req: any) {
-    if (req.user?.role === Role.EXPERIENCE_PARTNER) {
-      return this.experiencesService.findForPartner(req.user?.userId);
+    if (
+      req.user?.role === Role.EXPERIENCE_PARTNER ||
+      req.user?.role === Role.EXPERIENCE
+    ) {
+      return this.experiencesService.findForPartner(
+        req.user?.userId,
+        req.user?.location,
+      );
     }
 
     return this.experiencesService.findAll();
@@ -84,8 +94,13 @@ export class ExperiencesController {
   @Public()
   @ApiOperation({ summary: 'Get experience by ID' })
   @ApiReadEndpoint()
-  findOne(@Param('id', NonEmptyStringPipe) id: string) {
-    return this.experiencesService.findOne(id);
+  findOne(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    const partnerLocation =
+      req.user?.role === Role.EXPERIENCE_PARTNER ||
+      req.user?.role === Role.EXPERIENCE
+        ? req.user?.location
+        : undefined;
+    return this.experiencesService.findOne(id, partnerLocation);
   }
 
   @Roles(
@@ -101,8 +116,9 @@ export class ExperiencesController {
   update(
     @Param('id', NonEmptyStringPipe) id: string,
     @Body() dto: UpdateExperienceDto,
+    @Req() req: any,
   ) {
-    return this.experiencesService.update(id, dto);
+    return this.experiencesService.update(id, req.user?.location, dto);
   }
 
   @Roles(
@@ -114,7 +130,7 @@ export class ExperiencesController {
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an experience' })
   @ApiDeleteEndpoint()
-  remove(@Param('id', NonEmptyStringPipe) id: string) {
-    return this.experiencesService.remove(id);
+  remove(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.experiencesService.remove(id, req.user?.location);
   }
 }

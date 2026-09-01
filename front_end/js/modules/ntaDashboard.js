@@ -1,13 +1,10 @@
-// Non-Technical Admin Dashboard Renderer
+import { fetchPlans } from "../api/services.js";
 import { nontechAdminData } from "../api/legacyData.js";
 
-export function renderNtaDashboard(containerId) {
+export async function renderNtaDashboard(containerId) {
     console.log("Rendering Non-Technical Admin Dashboard...");
 
-    // Initialize data in localStorage if not present
-    if (!localStorage.getItem("ntaPlans")) {
-        localStorage.setItem("ntaPlans", JSON.stringify(nontechAdminData.plans));
-    }
+    // Initialize activity in localStorage if not present
     if (!localStorage.getItem("ntaActivity")) {
         localStorage.setItem("ntaActivity", JSON.stringify(nontechAdminData.recentActivity));
     }
@@ -27,7 +24,25 @@ export function renderNtaDashboard(containerId) {
     if (techDash) techDash.style.display = "none";
     if (expDash) expDash.style.display = "none";
 
-    const plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
+    let plans = [];
+    try {
+        const backendPlans = await fetchPlans();
+        plans = (Array.isArray(backendPlans) ? backendPlans : []).map(plan => ({
+            id: plan.id,
+            name: plan.title || plan.name || "Custom Package",
+            description: plan.description || "",
+            price: Number(plan.pricePerPerson ?? plan.price ?? 0),
+            duration: plan.duration || (plan.durationNights ? `${plan.durationNights} Days / ${Math.max(plan.durationNights - 1, 0)} Night` : "Flexible"),
+            destination: plan.destination || "",
+            category: plan.category || "Tours",
+            status: plan.status || (plan.isActive !== false ? "available" : "unavailable"),
+            createdAt: plan.createdAt || new Date().toISOString()
+        }));
+    } catch (e) {
+        console.error("Failed to fetch plans from backend", e);
+        plans = [];
+    }
+
     const activity = JSON.parse(localStorage.getItem("ntaActivity")) || [];
     const ntaBookings = JSON.parse(localStorage.getItem("ntaBookings")) || [];
     const allTours = JSON.parse(localStorage.getItem("tours")) || [];

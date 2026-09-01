@@ -118,7 +118,7 @@ export function renderTravelerFlightSearchPage(containerId) {
                                 ${visibleDates.map(item => `
                                     <button class="date-chip ${item.value === selectedDate ? "active" : ""}" data-date-chip="${item.value}">
                                         <strong>${item.label}</strong>
-                                        <span>$${item.price}</span>
+                                        <span>₹${item.price}</span>
                                     </button>
                                 `).join("")}
                             </div>

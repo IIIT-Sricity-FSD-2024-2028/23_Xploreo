@@ -13,6 +13,24 @@ export enum AppRole {
   EXPERIENCE = 'experience',
 }
 
+export enum LocationEnum {
+  JAIPUR = 'Jaipur',
+  GOA = 'Goa',
+  DELHI = 'Delhi',
+  MUMBAI = 'Mumbai',
+  KERALA = 'Kerala',
+}
+
+export const ALLOWED_LOCATIONS = [
+  'Jaipur',
+  'Goa',
+  'Delhi',
+  'Mumbai',
+  'Kerala',
+] as const;
+
+export type AllowedLocation = (typeof ALLOWED_LOCATIONS)[number];
+
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -26,6 +44,7 @@ export interface AppUser {
   name: string;
   email: string;
   phone: string;
+  location?: AllowedLocation | string;
   status: 'active' | 'inactive';
 }
 
@@ -39,6 +58,7 @@ export interface AuthLoginResponse {
   headers: {
     'x-user-id': string;
     'x-user-role': AppRole;
+    'x-user-location'?: string;
   };
 }
 

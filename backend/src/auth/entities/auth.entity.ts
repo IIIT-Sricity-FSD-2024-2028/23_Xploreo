@@ -1,4 +1,12 @@
-import { AppRole } from '../../contracts/api-contracts';
+import {
+  AppRole,
+  LocationEnum,
+  ALLOWED_LOCATIONS,
+  AllowedLocation,
+} from '../../contracts/api-contracts';
+
+export { LocationEnum, ALLOWED_LOCATIONS };
+export type { AllowedLocation };
 
 export enum Role {
   PARTNER = AppRole.PARTNER,
@@ -23,5 +31,9 @@ export class Auth {
   name!: string;
   email!: string;
   phone!: string;
+  location?: AllowedLocation | string;
   status!: 'active' | 'inactive';
+  businessName?: string;
+  taxId?: string;
+  bankAccount?: string;
 }

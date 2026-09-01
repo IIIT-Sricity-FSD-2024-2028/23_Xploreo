@@ -1,10 +1,20 @@
 export enum ExperienceCategory {
   ADVENTURE = 'adventure',
   CULTURAL = 'culture',
+  CULTURE = 'culture',
   CULINARY = 'culinary',
   WELLNESS = 'wellness',
   WILDLIFE = 'wildlife',
   PHOTOGRAPHY = 'photography',
+  TOURS = 'tours',
+  ATTRACTION_TICKETS = 'attraction tickets',
+  WATER_SPORTS = 'water sports',
+  CRUISES = 'cruises',
+  FAMILY = 'family',
+  LUXURY = 'luxury',
+  WEEKEND_GETAWAY = 'weekend getaway',
+  HONEYMOON = 'honeymoon',
+  PILGRIMAGE = 'pilgrimage',
 }
 
 export enum ExperienceAvailability {

@@ -51,7 +51,7 @@ export class TicketsController {
   }
 
   @Patch(':id')
-  @Roles(Role.TECH_ADMIN, Role.TECHADMIN)
+  @Roles(Role.TECH_ADMIN, Role.TECHADMIN, Role.SUPERADMIN)
   @ApiOperation({ summary: 'Technical admin resolves a support ticket' })
   @ApiUpdateEndpoint(ResolveTicketDto)
   resolve(

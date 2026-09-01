@@ -421,13 +421,13 @@ export class PlansRepository {
       ...data,
       itinerary: data.itinerary
         ? normalizeStructuredItinerary(data.itinerary, {
-            idPrefix: id,
-            originCity: data.originCity ?? this.plans[idx].originCity,
-            destination: data.destination ?? this.plans[idx].destination,
-            includesFlight:
-              data.includesFlight ?? this.plans[idx].includesFlight,
-            hotelStars: data.hotelStars ?? this.plans[idx].hotelStars,
-          })
+          idPrefix: id,
+          originCity: data.originCity ?? this.plans[idx].originCity,
+          destination: data.destination ?? this.plans[idx].destination,
+          includesFlight:
+            data.includesFlight ?? this.plans[idx].includesFlight,
+          hotelStars: data.hotelStars ?? this.plans[idx].hotelStars,
+        })
         : this.plans[idx].itinerary,
     };
     return this.plans[idx];

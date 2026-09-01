@@ -63,7 +63,6 @@ export class AuthController {
     return this.authService.findOne(id);
   }
 
-  @Roles(Role.SUPERADMIN)
   @ApiProtectedResource()
   @Patch('users/:id')
   @ApiOperation({ summary: 'Update a user' })

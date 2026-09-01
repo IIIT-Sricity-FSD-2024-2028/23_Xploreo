@@ -29,7 +29,7 @@ export function setElementText(id, value) {
 }
 
 export function formatCurrency(value) {
-    return `$${Number(value || 0).toLocaleString("en-US")}`;
+    return `₹${Number(value || 0).toLocaleString("en-US")}`;
 }
 
 export function clearFieldErrors(scope = document) {

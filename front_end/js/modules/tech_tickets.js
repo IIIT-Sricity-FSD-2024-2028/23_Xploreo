@@ -86,7 +86,6 @@ function renderTickets() {
       ticket.travellerName,
       ticket.subject,
       ticket.category,
-      ticket.priority,
       ticket.status,
     ]
       .filter(Boolean)
@@ -117,7 +116,6 @@ function renderTicketRow(ticket) {
         <div style="font-size: 12px; color: #6b7280; font-weight: 600;">${escapeHtml(userRole)}</div>
       </td>
       <td>${escapeHtml(ticket.subject)}</td>
-      <td><span class="status-badge ${priorityClass(ticket.priority)}">${escapeHtml((ticket.priority || "MEDIUM").toUpperCase())}</span></td>
       <td><span class="status-badge ${statusClass(ticket.status)}">${escapeHtml(ticket.status || "OPEN")}</span></td>
       <td>${escapeHtml(ticket.category || "General")}</td>
       <td style="text-align: right;">
@@ -151,7 +149,6 @@ function openTicketModal(ticket) {
         <span><strong>Author:</strong> ${escapeHtml(userName)} (${escapeHtml(userRole)})</span>
         <span><strong>User ID:</strong> ${escapeHtml(ticket.userId || ticket.travellerId || "N/A")}</span>
         <span><strong>Category:</strong> ${escapeHtml(ticket.category || "General")}</span>
-        <span><strong>Priority:</strong> ${escapeHtml(ticket.priority || "MEDIUM")}</span>
         <span><strong>Status:</strong> ${escapeHtml(ticket.status || "OPEN")}</span>
       </div>
       <div style="font-size: 12px; color: #9CA3AF; margin-top: 4px;">Created on ${formatDateTime(ticket.createdAt)}</div>
@@ -245,7 +242,6 @@ function ensureTicketShell() {
               <th>Ticket ID</th>
               <th>User & Role</th>
               <th>Subject</th>
-              <th>Priority</th>
               <th>Status</th>
               <th>Category</th>
               <th style="text-align: right;">Actions</th>
@@ -271,7 +267,7 @@ function ensureTicketShell() {
 function tableMessage(message) {
   return `
     <tr>
-      <td colspan="7" style="text-align: center; padding: 40px; color: #667085;">
+      <td colspan="6" style="text-align: center; padding: 40px; color: #667085;">
         ${escapeHtml(message)}
       </td>
     </tr>
@@ -286,11 +282,7 @@ function statusClass(status = "") {
   return status === "RESOLVED" ? "status-completed" : "status-ongoing";
 }
 
-function priorityClass(priority = "") {
-  if (priority === "HIGH") return "status-cancelled";
-  if (priority === "LOW") return "status-completed";
-  return "status-confirmed";
-}
+
 
 function formatDateTime(value) {
   if (!value) return "Not available";

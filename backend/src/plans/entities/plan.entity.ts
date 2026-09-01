@@ -13,4 +13,6 @@ export class Plan {
   image!: string;
   tags!: string[];
   itinerary!: StructuredItinerary;
+  isActive?: boolean;
+  status?: string;
 }

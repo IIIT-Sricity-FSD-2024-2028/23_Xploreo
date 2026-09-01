@@ -1,19 +1,20 @@
 // Non-Technical Admin - Manage Travel Packages (Full CRUD)
 import { nontechAdminData } from "../api/legacyData.js";
 import { createPlan, updatePlan, deletePlan, fetchPlans, fetchHotels, fetchExperiences, fetchCities } from "../api/services.js";
+import { getCurrentUser, getApiSession } from "../api/session.js";
 
 let currentEditId = null;
 let currentDeleteId = null;
 let featuresList = [];
 let planUploadedImageUrl = null;
+let currentPlans = [];
 
 export async function initNtaPlans() {
     console.log("Initializing Non-Technical Admin Travel Packages Page...");
 
-    // Initialize data from backend
     try {
         const backendPlans = await fetchPlans();
-        const mappedPlans = backendPlans.map(plan => ({
+        currentPlans = backendPlans.map(plan => ({
             id: plan.id,
             name: plan.title,
             description: plan.description,
@@ -25,14 +26,12 @@ export async function initNtaPlans() {
             hotelId: plan.itinerary?.day1?.hotel?.hotelId || "",
             experienceIds: (plan.itinerary?.days || []).flatMap(d => (d.experiences || []).map(e => e.experienceId)).filter(Boolean),
             status: plan.isActive !== false ? "available" : "unavailable",
-            createdAt: plan.createdAt || new Date().toISOString()
+            createdAt: plan.createdAt || new Date().toISOString(),
+            image: plan.image || ""
         }));
-        localStorage.setItem("ntaPlans", JSON.stringify(mappedPlans));
     } catch (e) {
-        console.warn("Failed to fetch plans from backend, falling back to local data", e);
-        if (!localStorage.getItem("ntaPlans")) {
-            localStorage.setItem("ntaPlans", JSON.stringify(nontechAdminData.plans));
-        }
+        console.error("Failed to fetch plans from backend", e);
+        currentPlans = [];
     }
 
     if (!localStorage.getItem("ntaActivity")) {
@@ -48,10 +47,11 @@ export async function initNtaPlans() {
 function renderHeader() {
     const header = document.getElementById("nta-plans-header");
     if (header) {
+        const assignedLocation = getCurrentUser()?.location || getApiSession()?.user?.location || 'Goa';
         header.innerHTML = `
             <div class="nta-page-header">
                 <h1>Manage Travel Packages</h1>
-                <p>Create, edit, and manage your travel packages and experiences.</p>
+                <p>Assigned Region: <span style="display:inline-block; padding:2px 10px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:9999px; font-weight:600; font-size:12px;">${assignedLocation}</span> · Create, edit, and manage your travel packages and experiences.</p>
             </div>
         `;
     }
@@ -83,7 +83,7 @@ function renderPlansTable(filteredPlans) {
     const container = document.getElementById("nta-plans-container");
     if (!container) return;
 
-    const plans = filteredPlans || JSON.parse(localStorage.getItem("ntaPlans")) || [];
+    const plans = filteredPlans || currentPlans;
 
     if (plans.length === 0) {
         container.innerHTML = `
@@ -163,8 +163,7 @@ async function openCreateModal() {
 }
 
 async function openEditModal(planId) {
-    const plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
-    const plan = plans.find(p => p.id === planId);
+    const plan = currentPlans.find(p => p.id === planId);
     if (!plan) return;
 
     currentEditId = planId;
@@ -186,13 +185,23 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
 
     featuresList = plan.features || [];
 
-    const categories = ["Adventure", "Family", "International", "Weekend Getaway", "Luxury", "Honeymoon", "Pilgrimage"];
-    const allDestinations = [...new Set([
-        ...availableCities.map(c => c.name),
-        ...availableHotels.map(h => h.city),
-        ...availableExperiences.map(e => e.location || e.destination),
-        "Goa", "Mumbai", "Delhi", "Jaipur", "Kerala", "Manali", "Bangalore", "Alleppey"
-    ].filter(Boolean))].sort();
+    const categories = [
+        "Adventure",
+        "Culture",
+        "Tours",
+        "Culinary",
+        "Wellness",
+        "Wildlife",
+        "Photography",
+        "Water Sports",
+        "Cruises",
+        "Family",
+        "Luxury",
+        "Weekend Getaway",
+        "Honeymoon",
+        "Pilgrimage"
+    ];
+    const allDestinations = ["Jaipur", "Goa", "Mumbai", "Delhi", "Kerala"];
 
     modal.innerHTML = `
         <div class="nta-modal">
@@ -235,14 +244,9 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
 
             <div class="nta-form-row">
                 <div class="nta-form-group">
-                    <label for="plan-destination">Destination</label>
-                    <select id="plan-destination">
-                        <option value="" disabled ${!plan.destination ? 'selected' : ''}>Select destination</option>
-                        ${allDestinations.map(dest => `
-                            <option value="${dest}" ${plan.destination === dest ? 'selected' : ''}>${dest}</option>
-                        `).join('')}
-                    </select>
-                    <div class="nta-form-hint">Choose destination city for this package.</div>
+                    <label for="plan-destination">Assigned Destination (Fixed)</label>
+                    <input type="text" id="plan-destination" value="${getCurrentUser()?.location || getApiSession()?.user?.location || plan.destination || 'Mumbai'}" readonly disabled style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 600; color: #1e293b;" />
+                    <div class="nta-form-hint">Package destination is automatically assigned to your operational region.</div>
                 </div>
                 <div class="nta-form-group">
                     <label for="plan-category">Category</label>
@@ -271,12 +275,17 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
             <div class="nta-form-group">
                 <label>Select Partner Experiences / Guided Activities</label>
                 <div id="plan-experiences-list" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; border:1px solid #e5e7eb; padding:8px; border-radius:6px; background:#fafafa;">
-                    ${availableExperiences.length ? availableExperiences.map(e => `
-                        <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151; cursor:pointer;">
+                    ${availableExperiences.length ? availableExperiences.map(e => {
+                        const city = e.destination || e.location || e.city || '';
+                        const category = e.category || 'Tours';
+                        return `
+                        <label class="experience-option" data-city="${city}" data-category="${category.toLowerCase()}" style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151; cursor:pointer;">
                             <input type="checkbox" name="plan-experience-item" value="${e.id}" data-title="${e.title}" ${(plan.experienceIds || []).includes(e.id) ? 'checked' : ''}>
-                            <span><strong>${e.title}</strong> (${e.location || e.city || 'Standard'}) - ₹${e.price}</span>
+                            <span><strong>${e.title}</strong> (${city || 'Standard'}) [${category}] - ₹${e.price}</span>
                         </label>
-                    `).join('') : '<p style="font-size:12px; color:#9ca3af; margin:0;">No partner experiences available</p>'}
+                        `;
+                    }).join('') : '<p style="font-size:12px; color:#9ca3af; margin:0;">No partner experiences available</p>'}
+                    <p id="no-filtered-exp-msg" style="font-size:12px; color:#9ca3af; margin:0; display:none;">No matching experiences for selected destination & category</p>
                 </div>
                 <div class="nta-form-hint">Tick existing partner experiences to include in the itinerary.</div>
             </div>
@@ -332,14 +341,72 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
     // Auto-sync destination when hotel is selected
     const hotelSelect = document.getElementById("plan-hotel");
     const destSelect = document.getElementById("plan-destination");
+    const catSelect = document.getElementById("plan-category");
+    
+    function filterByDestination() {
+        if (!destSelect) return;
+        const selectedDest = (destSelect.value || "").trim().toLowerCase();
+        const selectedCat = (catSelect?.value || "").trim().toLowerCase();
+        
+        // Filter hotels
+        if (hotelSelect) {
+            Array.from(hotelSelect.options).forEach(opt => {
+                if (opt.value === "") return; // Skip placeholder
+                const city = (opt.dataset.city || "").trim().toLowerCase();
+                if (!selectedDest || city === selectedDest) {
+                    opt.style.display = "";
+                } else {
+                    opt.style.display = "none";
+                    if (opt.selected) hotelSelect.value = "";
+                }
+            });
+        }
+        
+        // Filter experiences by destination AND category
+        const expLabels = document.querySelectorAll("#plan-experiences-list .experience-option");
+        let visibleExpCount = 0;
+        expLabels.forEach(label => {
+            const city = (label.dataset.city || "").trim().toLowerCase();
+            const cat = (label.dataset.category || "").trim().toLowerCase();
+            
+            const matchDest = !selectedDest || city === selectedDest;
+            const matchCat = !selectedCat || cat === selectedCat || cat.includes(selectedCat) || selectedCat.includes(cat);
+            
+            if (matchDest && matchCat) {
+                label.style.display = "flex";
+                visibleExpCount++;
+            } else {
+                label.style.display = "none";
+                const checkbox = label.querySelector('input[type="checkbox"]');
+                if (checkbox) checkbox.checked = false;
+            }
+        });
+
+        const noExpMsg = document.getElementById("no-filtered-exp-msg");
+        if (noExpMsg) {
+            noExpMsg.style.display = (expLabels.length > 0 && visibleExpCount === 0) ? "block" : "none";
+        }
+    }
+
     if (hotelSelect && destSelect) {
         hotelSelect.addEventListener("change", () => {
             const selectedOpt = hotelSelect.options[hotelSelect.selectedIndex];
             const city = selectedOpt?.dataset?.city;
             if (city && destSelect.querySelector(`option[value="${city}"]`)) {
                 destSelect.value = city;
+                filterByDestination();
             }
         });
+        
+        destSelect.addEventListener("change", filterByDestination);
+        if (catSelect) {
+            catSelect.addEventListener("change", filterByDestination);
+        }
+        
+        // Initial filter if edit mode
+        if (destSelect.value || catSelect?.value) {
+            filterByDestination();
+        }
     }
 
     // Toggle label listener
@@ -376,7 +443,7 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
                 };
                 reader.readAsDataURL(file);
             } else {
-                planUploadedImageUrl = currentEditId ? JSON.parse(localStorage.getItem("ntaPlans"))?.find(p => p.id === currentEditId)?.image || "" : "";
+                planUploadedImageUrl = currentEditId ? currentPlans.find(p => p.id === currentEditId)?.image || "" : "";
                 imagePreview.innerHTML = planUploadedImageUrl ? `<img src="${planUploadedImageUrl}" alt="Package Image" style="max-width: 120px; border-radius: 4px;" onerror="this.style.display='none'">` : '';
             }
         });
@@ -384,8 +451,7 @@ function renderPlanModal(title, plan, availableHotels = [], availableExperiences
 }
 
 function openDeleteModal(planId) {
-    const plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
-    const plan = plans.find(p => p.id === planId);
+    const plan = currentPlans.find(p => p.id === planId);
     if (!plan) return;
 
     currentDeleteId = planId;
@@ -411,7 +477,7 @@ function openDeleteModal(planId) {
     modal.classList.add("active");
 }
 
-function savePlan() {
+async function savePlan() {
     const name = document.getElementById("plan-name")?.value?.trim();
     const description = document.getElementById("plan-desc")?.value?.trim();
     const price = parseFloat(document.getElementById("plan-price")?.value);
@@ -474,27 +540,12 @@ function savePlan() {
         ]
     };
 
-    let plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
     let activityLog = JSON.parse(localStorage.getItem("ntaActivity")) || [];
 
-    if (currentEditId) {
-        // UPDATE
-        const idx = plans.findIndex(p => p.id === currentEditId);
-        if (idx !== -1) {
-            plans[idx] = {
-                ...plans[idx],
-                name, description, price, duration, destination, category,
-                hotelId: selectedHotelId,
-                experienceIds: selectedExpIds,
-                features: [...featuresList],
-                status: statusChecked ? "available" : "unavailable",
-                image: planUploadedImageUrl || ""
-            };
-
-            activityLog.unshift({ id: Date.now(), action: "Package updated", detail: `"${name}" was updated`, user: getCurrentUserName(), timestamp: new Date().toISOString(), type: "update" });
-            
-            // Sync to backend
-            updatePlan(currentEditId, {
+    try {
+        if (currentEditId) {
+            // UPDATE
+            await updatePlan(currentEditId, {
                 title: name,
                 description,
                 pricePerPerson: Number(price),
@@ -503,76 +554,71 @@ function savePlan() {
                 originCity: "Any",
                 tags: featuresList,
                 itinerary: structuredItinerary,
-                image: planUploadedImageUrl || ""
-            }).catch(e => console.warn("Failed to sync plan update to backend", e));
+                image: planUploadedImageUrl || "",
+                isActive: Boolean(statusChecked),
+                status: statusChecked ? "available" : "unavailable"
+            });
+            activityLog.unshift({ id: Date.now(), action: "Package updated", detail: `"${name}" was updated`, user: getCurrentUserName(), timestamp: new Date().toISOString(), type: "update" });
+        } else {
+            // CREATE
+            await createPlan({
+                title: name,
+                description,
+                pricePerPerson: Number(price),
+                durationNights: parseInt(duration) || 3,
+                destination,
+                originCity: "Any",
+                tags: featuresList,
+                itinerary: structuredItinerary,
+                image: planUploadedImageUrl || "",
+                isActive: Boolean(statusChecked),
+                status: statusChecked ? "available" : "unavailable"
+            });
+            activityLog.unshift({ id: Date.now(), action: "Package created", detail: `"${name}" was added`, user: getCurrentUserName(), timestamp: new Date().toISOString(), type: "create" });
         }
-    } else {
-        // CREATE
-        const newId = "PKG-" + String(plans.length + 1).padStart(3, "0");
-        const newPlan = {
-            id: newId,
-            name, description, price, duration, destination, category,
-            hotelId: selectedHotelId,
-            experienceIds: selectedExpIds,
-            features: [...featuresList],
-            status: statusChecked ? "available" : "unavailable",
-            createdAt: new Date().toISOString(),
-            image: planUploadedImageUrl || ""
-        };
-        plans.push(newPlan);
-
-        activityLog.unshift({ id: Date.now(), action: "Package created", detail: `"${name}" was added`, user: getCurrentUserName(), timestamp: new Date().toISOString(), type: "create" });
-        
-        // Sync to backend
-        createPlan({
-            id: newId,
-            title: name,
-            description,
-            pricePerPerson: Number(price),
-            durationNights: parseInt(duration) || 3,
-            destination,
-            originCity: "Any",
-            tags: featuresList,
-            itinerary: structuredItinerary,
-            image: planUploadedImageUrl || ""
-        }).catch(e => console.warn("Failed to sync plan creation to backend", e));
+    } catch (e) {
+        console.error("Failed to save plan to backend", e);
+        alert(`Failed to save: ${e?.message || "Server error"}`);
+        return;
     }
 
-    localStorage.setItem("ntaPlans", JSON.stringify(plans));
     localStorage.setItem("ntaActivity", JSON.stringify(activityLog));
 
     closeModal();
-    renderPlansTable();
+    // Refetch and render
+    await initNtaPlans();
 }
 
-function confirmDelete() {
+async function confirmDelete() {
     if (!currentDeleteId) return;
 
-    let plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
     let activityLog = JSON.parse(localStorage.getItem("ntaActivity")) || [];
-    const plan = plans.find(p => p.id === currentDeleteId);
-
-    plans = plans.filter(p => p.id !== currentDeleteId);
-    localStorage.setItem("ntaPlans", JSON.stringify(plans));
+    const plan = currentPlans.find(p => p.id === currentDeleteId);
 
     if (plan) {
-        activityLog.unshift({
-            id: Date.now(),
-            action: "Package deleted",
-            detail: `"${plan.name}" was removed`,
-            user: getCurrentUserName(),
-            timestamp: new Date().toISOString(),
-            type: "status"
-        });
-        localStorage.setItem("ntaActivity", JSON.stringify(activityLog));
-
-        // Sync to backend
-        deletePlan(currentDeleteId).catch(e => console.warn("Failed to sync plan deletion to backend", e));
+        try {
+            await deletePlan(currentDeleteId);
+            
+            activityLog.unshift({
+                id: Date.now(),
+                action: "Package deleted",
+                detail: `"${plan.name}" was removed`,
+                user: getCurrentUserName(),
+                timestamp: new Date().toISOString(),
+                type: "status"
+            });
+            localStorage.setItem("ntaActivity", JSON.stringify(activityLog));
+        } catch (e) {
+            console.error("Failed to delete plan from backend", e);
+            alert(`Failed to delete: ${e?.message || "Server error"}`);
+            return;
+        }
     }
 
     currentDeleteId = null;
     closeDeleteModal();
-    renderPlansTable();
+    // Refetch and render
+    await initNtaPlans();
 }
 
 function addFeature() {
@@ -625,10 +671,10 @@ function searchPlans() {
     const query = document.getElementById("nta-search")?.value?.toLowerCase() || "";
     const statusFilter = document.getElementById("nta-status-filter")?.value || "all";
 
-    let plans = JSON.parse(localStorage.getItem("ntaPlans")) || [];
+    let plans = [...currentPlans];
 
     if (query) {
-        plans = plans.filter(p => p.name.toLowerCase().includes(query) || p.description.toLowerCase().includes(query) || (p.destination && p.destination.toLowerCase().includes(query)));
+        plans = plans.filter(p => (p.name && p.name.toLowerCase().includes(query)) || (p.description && p.description.toLowerCase().includes(query)) || (p.destination && p.destination.toLowerCase().includes(query)));
     }
     if (statusFilter !== "all") {
         plans = plans.filter(p => p.status === statusFilter);

@@ -11,6 +11,11 @@ import {
     saveTravelerBookingConfirmation,
     saveTravelerBookingDraft
 } from "./dashboard.js";
+import {
+    createRazorpayOrder,
+    verifyRazorpayPayment,
+    openRazorpayCheckout
+} from "../api/payments.js";
 
 document.addEventListener("DOMContentLoaded", () => {
     renderTravelerBookingDetailsPage("traveler-booking-details-app");
@@ -324,13 +329,14 @@ function renderTravelerBookingDetailsPage(containerId) {
             persistDraft(true);
         });
 
-        container.querySelector("#continue-booking-btn")?.addEventListener("click", () => {
+        container.querySelector("#continue-booking-btn")?.addEventListener("click", async () => {
             const validation = validateTravelers(state.travelers);
             if (!validation.valid) {
                 setFeedback(validation.message, true);
                 return;
             }
 
+            // Build draft and confirmation objects (same as before)
             const draft = createTravelerDraft({
                 ...state.packageData,
                 departureDate: state.selectedDate,
@@ -338,9 +344,74 @@ function renderTravelerBookingDetailsPage(containerId) {
             }, state.travelers);
             const confirmation = createTravelerConfirmation(draft);
 
+            // Persist draft so confirmation page can read it
             saveTravelerBookingDraft(draft);
-            saveTravelerBookingConfirmation(confirmation);
-            window.location.href = "./booking-confirmation.html";
+
+            // --- Razorpay Checkout ---
+            const btn = container.querySelector("#continue-booking-btn");
+            const travelerCount = state.travelers.length;
+            const totalPrice = calculateTravelerBookingTotal(state.packageData, travelerCount);
+
+            // Guard: amount must be a positive number
+            if (!totalPrice || totalPrice <= 0) {
+                setFeedback("Could not determine a valid booking amount. Please refresh and try again.", true);
+                return;
+            }
+
+            // Disable button and show loading state
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = "Creating order…";
+            }
+            setFeedback("", false);
+
+            let orderData;
+            try {
+                orderData = await createRazorpayOrder(totalPrice);
+            } catch (error) {
+                const message = error?.message || "Failed to create payment order. Please try again.";
+                setFeedback(message, true);
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = "Continue to confirmation";
+                }
+                return;
+            }
+
+            // Restore button — Razorpay modal is now in control
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Continue to confirmation";
+            }
+
+            // Open Razorpay Checkout modal
+            openRazorpayCheckout(
+                orderData,
+                `${state.packageData.title} — ${travelerCount} traveller${travelerCount > 1 ? "s" : ""}`,
+
+                // ✅ Payment succeeded in modal — now verify server-side
+                async (paymentResponse) => {
+                    setFeedback("Verifying payment…", false);
+                    try {
+                        await verifyRazorpayPayment({
+                            razorpay_order_id: paymentResponse.razorpay_order_id,
+                            razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                            razorpay_signature: paymentResponse.razorpay_signature
+                        });
+                        // Server confirmed the signature — save confirmation and navigate
+                        saveTravelerBookingConfirmation(confirmation);
+                        window.location.href = "./booking-confirmation.html";
+                    } catch (verifyError) {
+                        const message = verifyError?.message || "Payment verification failed. Please contact support.";
+                        setFeedback(message, true);
+                    }
+                },
+
+                // ❌ Payment cancelled or failed
+                (errorMessage) => {
+                    setFeedback(errorMessage, true);
+                }
+            );
         });
     }
 

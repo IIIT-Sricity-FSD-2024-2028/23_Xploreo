@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Query,
+  Req,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -41,7 +42,7 @@ import {
 )
 @Controller('plans')
 export class PlansController {
-  constructor(private readonly plansService: PlansService) {}
+  constructor(private readonly plansService: PlansService) { }
 
   @Roles(Role.SUPERADMIN, Role.NONTECHADMIN)
   @Post()
@@ -54,8 +55,8 @@ export class PlansController {
     status: 403,
     description: 'Missing or unauthorized role header',
   })
-  create(@Body() dto: CreatePlanDto) {
-    return this.plansService.create(dto);
+  create(@Body() dto: CreatePlanDto, @Req() req: any) {
+    return this.plansService.create(req.user?.location, dto);
   }
 
   @Get()
@@ -77,16 +78,21 @@ export class PlansController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('destination') destination?: string,
+    @Req() req?: any,
   ) {
-    return this.plansService.findAll({ page, limit, from, to, destination });
+    return this.plansService.findAll(
+      { page, limit, from, to, destination },
+      req?.user?.role,
+      req?.user?.location,
+    );
   }
 
   @Get(':id')
   @Public()
   @ApiOperation({ summary: 'Get plan by ID' })
   @ApiReadEndpoint()
-  findOne(@Param('id', NonEmptyStringPipe) id: string) {
-    return this.plansService.findOne(id);
+  findOne(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.plansService.findOne(id, req.user?.role, req.user?.location);
   }
 
   @Roles(Role.SUPERADMIN, Role.NONTECHADMIN)
@@ -97,15 +103,16 @@ export class PlansController {
   update(
     @Param('id', NonEmptyStringPipe) id: string,
     @Body() dto: UpdatePlanDto,
+    @Req() req: any,
   ) {
-    return this.plansService.update(id, dto);
+    return this.plansService.update(id, req.user?.location, dto);
   }
 
-  @Roles(Role.SUPERADMIN)
+  @Roles(Role.SUPERADMIN, Role.NONTECHADMIN)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a plan' })
   @ApiDeleteEndpoint()
-  remove(@Param('id', NonEmptyStringPipe) id: string) {
-    return this.plansService.remove(id);
+  remove(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.plansService.remove(id, req.user?.location);
   }
 }

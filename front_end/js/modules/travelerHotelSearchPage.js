@@ -91,7 +91,10 @@ function renderToolbar(state) {
         <form class="traveler-hotel-toolbar" id="hotel-search-form" novalidate>
             <label class="traveler-hotel-toolbar-field">
                 ${LOCATION_ICON}
-                <input class="traveler-hotel-toolbar-input" id="hotel-query" value="${escapeHtmlAttr(state.query)}" placeholder="City or hotel name">
+                <select class="traveler-hotel-toolbar-input" id="hotel-query" required style="cursor: pointer; background: transparent; border: none; outline: none; appearance: none;">
+                    <option value="" disabled ${!state.query ? "selected" : ""}>Select City</option>
+                    ${["Jaipur", "Goa", "Delhi", "Mumbai", "Kerala"].map(loc => `<option value="${loc}" ${state.query === loc ? "selected" : ""}>${loc}</option>`).join("")}
+                </select>
             </label>
             <label class="traveler-hotel-toolbar-field">
                 ${CALENDAR_ICON}
@@ -202,7 +205,12 @@ function renderHotelCard(hotel) {
 function bindEvents(container, hotels, state) {
     container.querySelector("#hotel-search-form")?.addEventListener("submit", async (event) => {
         event.preventDefault();
-        state.query = readValue("hotel-query");
+        const selectedCity = readValue("hotel-query");
+        if (!selectedCity) {
+            alert("Please select a city to search for hotels.");
+            return;
+        }
+        state.query = selectedCity;
         state.checkin = readValue("hotel-checkin-search");
         state.checkout = readValue("hotel-checkout-search");
         state.guests = readValue("hotel-guests-search") || "1";

@@ -26,7 +26,6 @@ function renderTravelerPackageSearchPage(containerId) {
     const state = {
         searchValues: getSearchValues(),
         minDuration: 1,
-        flightMode: "with",
         maxBudget: 5000,
         selectedBudgets: new Set(),
         selectedCategories: new Set(),
@@ -67,13 +66,6 @@ function renderTravelerPackageSearchPage(containerId) {
                                 </div>
                             </div>
 
-                            <div class="traveler-package-filter-group">
-                                <h3>Flights</h3>
-                                <div class="traveler-package-flight-toggle">
-                                    <button type="button" class="${state.flightMode === "with" ? "active" : ""}" data-package-flight="with">With Flight</button>
-                                    <button type="button" class="${state.flightMode === "without" ? "active" : ""}" data-package-flight="without">Without Flight</button>
-                                </div>
-                            </div>
 
                             <div class="traveler-package-filter-group">
                                 <h3>Budget</h3>
@@ -159,12 +151,6 @@ function renderTravelerPackageSearchPage(containerId) {
             render();
         });
 
-        container.querySelectorAll("[data-package-flight]").forEach((button) => {
-            button.addEventListener("click", () => {
-                state.flightMode = button.dataset.packageFlight;
-                render();
-            });
-        });
 
         container.querySelectorAll("[data-package-budget]").forEach((input) => {
             input.addEventListener("change", () => {
@@ -242,7 +228,7 @@ function renderTravelerPackageSearchPage(containerId) {
 
 function getSearchValues() {
     const fallback = {
-        fromCity: "New Delhi",
+        fromCity: "Delhi",
         destination: "Goa",
         departureDate: "",
         rooms: "1",
@@ -315,7 +301,6 @@ function getFilteredPackages(state) {
 
     const items = basePool.items
         .filter((item) => item.nights >= state.minDuration)
-        .filter((item) => state.flightMode === "with" ? item.withFlight : !item.withFlight)
         .filter((item) => item.pricePerPerson <= state.maxBudget)
         .filter((item) => !state.selectedBudgets.size || state.selectedBudgets.has(item.budgetBucket))
         .filter((item) => !state.selectedCategories.size || state.selectedCategories.has(String(item.hotelCategory)))
@@ -561,7 +546,7 @@ function formatRoomsGuests(rooms, guests) {
 }
 
 function formatCurrency(value) {
-    return `$${Number(value).toLocaleString("en-US")}`;
+    return `₹${Number(value).toLocaleString("en-US")}`;
 }
 
 function escapeHtml(value) {

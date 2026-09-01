@@ -230,7 +230,7 @@ export async function renderTravelerDashboard(containerId, user) {
             <section class="travel-section">
                 <div class="section-header">
                     <div>
-                        <h2 class="section-title">Trending Destinations</h2>
+                        <h2 class="section-title">Destination</h2>
                         <p class="section-subtitle">Popular places worth exploring right now</p>
                     </div>
                 </div>
@@ -248,58 +248,6 @@ export async function renderTravelerDashboard(containerId, user) {
                 </div>
             </section>
 
-            <!-- 2. RECOMMENDED TOURS -->
-            <section class="travel-section light-bg-section">
-                <div class="section-header">
-                    <div>
-                        <h2 class="section-title">Recommended for You</h2>
-                        <p class="section-subtitle">Personalized experiences based on your interests</p>
-                    </div>
-                </div>
-                <div class="cards-grid tours-grid">
-                    ${travelerData.recommendedTours.map(tour => `
-                        <div class="tour-card">
-                            <div class="tour-image">
-                                ${buildFallbackImg(tour.image, TOUR_IMAGE_FALLBACK, tour.title)}
-                                <button class="heart-btn-circle">${heartSvg}</button>
-                                <div class="rating-badge">★ ${tour.rating} <span>(${tour.reviews})</span></div>
-                            </div>
-                            <div class="tour-content">
-                                <h4>${tour.title}</h4>
-                                <p class="tour-desc">${tour.desc}</p>
-                                <div class="tour-footer">
-                                    <span class="tour-duration"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${tour.duration}</span>
-                                    <span class="tour-price">${tour.price}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </section>
-
-            <!-- 3. EXPLORE BY CATEGORY -->
-            <section class="travel-section">
-                <div class="section-header">
-                    <div>
-                        <h2 class="section-title">Explore by Category</h2>
-                        <p class="section-subtitle">Find experiences that match your travel style</p>
-                    </div>
-                </div>
-                <div class="cards-grid destinations-grid">
-                    ${travelerData.categories.map(cat => `
-                        <div class="destination-card" style="${buildBackgroundImageStyle(cat.image, CATEGORY_IMAGE_FALLBACK)}">
-                            <div class="card-gradient"></div>
-                            <div class="category-icon" style="background: ${cat.color};">
-                                ${cat.svg}
-                            </div>
-                            <div class="card-info">
-                                <h3>${cat.title}</h3>
-                                <p>${cat.desc}</p>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </section>
 
             <!-- 4. HOW IT WORKS -->
             <section class="travel-section text-center">
@@ -320,94 +268,7 @@ export async function renderTravelerDashboard(containerId, user) {
                 </div>
             </section>
 
-            <!-- POPULAR ITINERARIES -->
-            <section class="travel-section">
-                <div class="section-header">
-                    <div>
-                        <h2 class="section-title">Popular Itineraries</h2>
-                        <p class="section-subtitle">Curated multi-day travel experiences</p>
-                    </div>
-                </div>
-                <div class="cards-grid itineraries-grid">
-                    ${travelerData.itineraries.map(itin => `
-                        <div class="itinerary-card">
-                            <div class="itin-image" style="${buildBackgroundImageStyle(itin.image, DESTINATION_IMAGE_FALLBACK)}">
-                                <button class="heart-btn-circle">${heartSvg}</button>
-                                <div class="days-badge">📅 ${itin.days} Days</div>
-                                <div class="itin-title-overlay">
-                                    <h3>${itin.title}</h3>
-                                    <div class="itin-tags">
-                                        ${itin.tags.map(tag => `<span>${tag}</span>`).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="itin-content">
-                                <div class="itin-meta-row">
-                                    <span class="itin-rating">★ ${itin.rating} <small>(${itin.reviews})</small></span>
-                                    <span class="itin-travelers">👥 ${itin.travelers} travelers</span>
-                                </div>
-                                <ul class="itin-features">
-                                    ${itin.features.map(f => `<li>${f}</li>`).join('')}
-                                </ul>
-                                <div class="itin-footer">
-                                    <div class="itin-price-block">
-                                        <span class="price-label">From</span>
-                                        <span class="price-value">${itin.price}</span>
-                                    </div>
-                                    <button class="view-plan-btn" data-view-plan="${itin.id || itin.title}">View Plan</button>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </section>
 
-            <!-- WHAT TRAVELERS SAY -->
-            <section class="travel-section text-center">
-                <h2 class="section-title">What Travelers Say</h2>
-                <p class="section-subtitle">Real stories from our community</p>
-                <div class="cards-grid itineraries-grid" style="margin-top: 40px; text-align: left;">
-                    ${travelerData.reviews.map(rev => `
-                        <div class="review-card">
-                            <div class="review-stars">${rev.stars}</div>
-                            <p class="review-text">${rev.text}</p>
-                            <div class="reviewer-info">
-                                <img src="${rev.avatar}" style="width: 40px; height: 40px; border-radius: 50%; background:#e2e8f0; padding:4px;" alt="Reviewer">
-                                <div>
-                                    <h4>${rev.name}</h4>
-                                    <p>${rev.location}</p>
-                                </div>
-                                <span class="review-loc">${rev.tourLoc}</span>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </section>
-            
-            <!-- CONTINUE EXPLORING -->
-            <section class="travel-section">
-                <h2 class="section-title">Continue Exploring</h2>
-                <p class="section-subtitle" style="margin-bottom: 30px;">Pick up where you left off</p>
-                <div class="cards-grid tours-grid">
-                    ${travelerData.continueExploring.map(item => `
-                        <div class="tour-card" style="opacity: 0.9;">
-                            <div class="tour-image">
-                                ${buildFallbackImg(item.image, CONTINUE_IMAGE_FALLBACK, item.title, item.grayscale ? 'style="filter: grayscale(100%);"' : "")}
-                                <button class="heart-btn-circle">${heartSvg}</button>
-                                <div class="rating-badge" style="background:#10B981; color:white; top:12px; left:12px; right:auto;">${item.badge}</div>
-                            </div>
-                            <div class="tour-content">
-                                <h4>${item.title}</h4>
-                                <p class="tour-desc">${item.desc}</p>
-                                <div class="tour-footer">
-                                    <span class="tour-duration" style="color:#9CA3AF;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> ${item.duration}</span>
-                                    <span class="tour-price">${item.price}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            </section>
         </div>
     `;
 
@@ -438,6 +299,29 @@ function attachDashboardEvents() {
     hydrateFlightLayout();
     bindSearchActions();
     bindDateMinConstraints();
+
+    // Destination Card Redirection
+    document.querySelectorAll(".destinations-grid .destination-card").forEach(card => {
+        card.style.cursor = "pointer";
+        card.addEventListener("click", (e) => {
+            if (e.target.closest('.heart-btn')) return;
+            const titleEl = card.querySelector("h3");
+            if (titleEl) {
+                const destination = titleEl.textContent.trim();
+                const searchState = JSON.parse(localStorage.getItem("traveler_dashboard_search_state") || "{}");
+                searchState.values = searchState.values || {};
+                searchState.values.packages = searchState.values.packages || {};
+                searchState.values.packages.destination = destination;
+                
+                const nextDay = new Date();
+                nextDay.setDate(nextDay.getDate() + 1);
+                searchState.values.packages.departureDate = nextDay.toISOString().split("T")[0];
+                
+                localStorage.setItem("traveler_dashboard_search_state", JSON.stringify(searchState));
+                window.location.href = "./traveller_package-search.html";
+            }
+        });
+    });
 
     // Initialize Wishlist State
     let wishlist = JSON.parse(localStorage.getItem("traveler_wishlist") || "[]");

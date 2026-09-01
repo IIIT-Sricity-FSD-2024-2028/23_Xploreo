@@ -9,7 +9,7 @@ const navlinks = [
     name: "Tickets",
     path: "../pages/tech_tickets.html",
     icon: "../components/ui/support.svg",
-    roles: ["techadmin", "TECH_ADMIN"]
+    roles: ["techadmin", "TECH_ADMIN", "superadmin"]
   },
   {
     name: "Dashboard",
@@ -35,12 +35,7 @@ const navlinks = [
     icon: "../components/ui/users.png",
     roles: ["nontechadmin"]
   },
-  {
-    name: "Guides",
-    path: "../pages/guide.html",
-    icon: "../components/ui/users.png",
-    roles: ["superadmin", "nontechadmin"]
-  },
+
   {
     name: "Plans",
     path: "../pages/plans.html",
@@ -63,7 +58,7 @@ const navlinks = [
     name: "Users & Partners",
     path: "../pages/users.html",
     icon: "../components/ui/users.png",
-    roles: ["superadmin"]
+    roles: ["superadmin", "nontechadmin"]
   },
   {
     name: "Finance & Reports",
@@ -94,6 +89,12 @@ const navlinks = [
     name: "Services",
     path: "../pages/hotelRooms.html",
     icon: "../components/ui/tours.svg",
+    roles: ["hotel"]
+  },
+  {
+    name: "Reviews",
+    path: "../pages/hotelReviews.html",
+    icon: "../components/ui/reviews.svg",
     roles: ["hotel"]
   },
   {

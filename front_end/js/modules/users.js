@@ -1,153 +1,67 @@
-import { initialUsersData, initialPartnersData } from '../api/legacyData.js';
-import { getUserStylesHTML } from './userStyles.js';
-import { getUserStatsHTML } from './userStats.js';
-import { getUserTableShellHTML, generateUserRowsHTML } from './userTable.js';
-import { generateProfileHTML } from './userProfile.js';
-import { getPartnerTableShellHTML, generatePartnerRowsHTML } from './partnerTable.js';
+import { renderGuideCrudPage, renderTravellerGrid, renderHotelGrid, renderExperienceGrid } from '../moduleCrudPages.js';
 
 export function initUsers() {
     const mainContainer = document.getElementById("main");
     if (!mainContainer) return;
 
-    // --- 1. PERSISTENT STATE MANAGEMENT ---
-    // Load existing data from storage or seed it from the data file
-    let platformUsersData = JSON.parse(localStorage.getItem('platformUsers')) || [...initialUsersData];
-    let partnersData = JSON.parse(localStorage.getItem('partners')) || [...initialPartnersData];
-    
-    let currentUserFilter = "All";
-    let currentPartnerFilter = "All";
-
-    // Global Sync: Saves state and triggers a UI refresh for dependent components
-    const updateEcosystem = () => {
-        localStorage.setItem('platformUsers', JSON.stringify(platformUsersData));
-        localStorage.setItem('partners', JSON.stringify(partnersData));
-        
-        // Refresh Stats & Tables
-        renderStats();
-        renderUserTable();
-        renderPartnerTable();
-    };
-
-    // --- 2. INITIAL PAGE SHELL ---
+    // --- INITIAL PAGE SHELL ---
     mainContainer.innerHTML = `
-        ${getUserStylesHTML()}
-        <div class="page-header" style="margin-bottom: 24px;">
-            <h1 class="page-title" style="margin: 0; font-size: 28px;">User & Partner Ecosystem</h1>
-            <p style="margin: 5px 0 0; font-size: 14px; color: #718096;">Manage access levels and monitor platform health.</p>
+        <div class="page-header" style="margin-bottom: 24px; padding: 24px;">
+            <h1 class="page-title" style="margin: 0; font-size: 28px;">Users & Partners Ecosystem</h1>
+            <p style="margin: 5px 0 0; font-size: 14px; color: #718096;">Manage access levels, roles, and profiles.</p>
         </div>
         
-        <div id="stats-container"></div>
-        
-        <div style="display:grid; grid-template-columns: 1fr 380px; gap:24px; align-items: start; margin-bottom: 32px;">
-            <div id="user-table-container">${getUserTableShellHTML()}</div>
-            <div id="profile-panel" style="background:#fff; border-radius:20px; border:1px solid #edf2f7; padding:40px 24px; position:sticky; top:24px;"></div>
+        <div style="padding: 0 24px;">
+            <div style="display: flex; gap: 16px; border-bottom: 2px solid #edf2f7; margin-bottom: 24px;">
+                <button class="eco-tab-btn active" data-tab="guides" style="padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #3182ce; border-bottom: 2px solid #3182ce; margin-bottom: -2px;">Guides</button>
+                <button class="eco-tab-btn" data-tab="travelers" style="padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #718096;">Travelers</button>
+                <button class="eco-tab-btn" data-tab="hotels" style="padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #718096;">Hotel Partners</button>
+                <button class="eco-tab-btn" data-tab="experiences" style="padding: 12px 24px; background: none; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #718096;">Experience Partners</button>
+            </div>
+            
+            <div id="eco-content-area"></div>
         </div>
-
-        <div id="partner-table-container">${getPartnerTableShellHTML()}</div>
     `;
 
-    // --- 3. RENDERING FUNCTIONS ---
-    function renderStats() {
-        const container = document.getElementById("stats-container");
-        if (container) container.innerHTML = getUserStatsHTML(platformUsersData, partnersData);
-    }
+    const contentArea = document.getElementById("eco-content-area");
+    
+    // Grab the current user for authorization in CRUD pages if needed
+    const currentUser = JSON.parse(sessionStorage.getItem('sessionData') || '{}').user || {};
 
-    function renderUserTable() {
-        const tbody = document.getElementById("users-tbody");
-        if (!tbody) return;
+    function switchTab(tabName) {
+        // Update active tab styles
+        document.querySelectorAll('.eco-tab-btn').forEach(btn => {
+            if (btn.dataset.tab === tabName) {
+                btn.style.color = "#3182ce";
+                btn.style.borderBottom = "2px solid #3182ce";
+                btn.classList.add("active");
+            } else {
+                btn.style.color = "#718096";
+                btn.style.borderBottom = "none";
+                btn.classList.remove("active");
+            }
+        });
 
-        const filtered = currentUserFilter === "All" 
-            ? platformUsersData 
-            : platformUsersData.filter(u => u.role === currentUserFilter);
+        contentArea.innerHTML = ""; // Clear current content
         
-        tbody.innerHTML = generateUserRowsHTML(filtered);
+        if (tabName === "guides") {
+            renderGuideCrudPage("eco-content-area", currentUser);
+        } else if (tabName === "travelers") {
+            renderTravellerGrid("eco-content-area");
+        } else if (tabName === "hotels") {
+            renderHotelGrid("eco-content-area");
+        } else if (tabName === "experiences") {
+            renderExperienceGrid("eco-content-area");
+        }
     }
 
-    function renderPartnerTable() {
-    const tbody = document.getElementById("partners-tbody");
-    if (!tbody) return;
-
-    console.log("Current Data:", partnersData); // Check if this is empty!
-    console.log("Current Filter:", currentPartnerFilter);
-
-    const filtered = currentPartnerFilter === "All" 
-        ? partnersData 
-        : partnersData.filter(p => p.type === currentPartnerFilter);
-    
-    tbody.innerHTML = generatePartnerRowsHTML(filtered);
-}
-
-    function updateProfile(id) {
-        const panel = document.getElementById("profile-panel");
-        const user = platformUsersData.find(u => u.id === id);
-        panel.dataset.currentId = id || "";
-        panel.innerHTML = generateProfileHTML(user);
-    }
-
-    // --- 4. EVENT DELEGATION (The "Logic Hub") ---
-    // We attach one listener to the main container to handle all dynamic clicks
-    mainContainer.addEventListener('click', (e) => {
-        // User Row Selection
-        const row = e.target.closest(".user-row");
-        if (row && !e.target.closest('.remove-btn') && e.target.tagName !== 'SELECT') {
-            document.querySelectorAll(".user-row").forEach(r => r.style.background = "transparent");
-            row.style.background = "#f8fafc";
-            updateProfile(row.dataset.id);
-        }
-
-        // Delete User Action
-        const removeBtn = e.target.closest(".remove-btn");
-        if (removeBtn) {
-            const userId = removeBtn.dataset.id;
-            platformUsersData = platformUsersData.filter(u => u.id !== userId);
-            if (document.getElementById("profile-panel").dataset.currentId === userId) updateProfile(null);
-            updateEcosystem();
-        }
-
-        // Filter Buttons
-        const userFilter = e.target.closest(".user-filter-btn");
-        if (userFilter) {
-            document.querySelectorAll(".user-filter-btn").forEach(b => b.classList.remove("active"));
-            userFilter.classList.add("active");
-            currentUserFilter = userFilter.dataset.filter;
-            renderUserTable();
-        }
-
-        const partnerFilter = e.target.closest(".partner-filter-btn");
-        if (partnerFilter) {
-            document.querySelectorAll(".partner-filter-btn").forEach(b => b.classList.remove("active"));
-            partnerFilter.classList.add("active");
-            currentPartnerFilter = partnerFilter.dataset.filter;
-            renderPartnerTable();
-        }
+    // Attach click listeners to tabs
+    document.querySelectorAll('.eco-tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            switchTab(e.target.dataset.tab);
+        });
     });
 
-    // Handle Dropdown Changes (Status Updates)
-    mainContainer.addEventListener('change', (e) => {
-        if (e.target.classList.contains("user-status-select")) {
-            const userId = e.target.dataset.id;
-            const index = platformUsersData.findIndex(u => u.id === userId);
-            if (index !== -1) {
-                platformUsersData[index].status = e.target.value;
-                updateEcosystem();
-                if (document.getElementById("profile-panel").dataset.currentId === userId) updateProfile(userId);
-            }
-        }
-
-        if (e.target.classList.contains("partner-status-select")) {
-            const partnerId = e.target.dataset.id;
-            const index = partnersData.findIndex(p => p.id === partnerId);
-            if (index !== -1) {
-                partnersData[index].status = e.target.value;
-                updateEcosystem();
-            }
-        }
-    });
-
-    // --- 5. STARTUP ---
-    updateEcosystem(); // Initial render and storage sync
-    
-    // Auto-select the first user for the profile panel
-    const firstRow = document.querySelector(".user-row");
-    if (firstRow) firstRow.click();
+    // Default open Guides tab
+    switchTab("guides");
 }

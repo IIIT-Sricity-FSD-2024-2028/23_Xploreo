@@ -38,10 +38,15 @@ export async function renderStats(containerId, currentUser) {
            const { fetchPartnerHotels, fetchPartnerHotelBookings } = await import("../api/services.js");
            const hotels = await fetchPartnerHotels().catch(() => []);
            const bookings = await fetchPartnerHotelBookings().catch(() => []);
+           const activeBookings = bookings.filter(b => String(b.status).toUpperCase() !== "CANCELLED" && String(b.status).toUpperCase() !== "REFUNDED");
            
-           const totalBookings = bookings.length;
-           const revenue = bookings.reduce((sum, b) => sum + (Number(b.totalAmount) || 0), 0);
-           const upcomingBookings = bookings.filter(b => {
+           const totalBookings = activeBookings.length;
+           const revenue = activeBookings.reduce((sum, b) => {
+               const amt = Number(b.totalAmount) || 0;
+               const base = amt > 14 ? amt - 14 : 0;
+               return sum + (base * 0.96);
+           }, 0);
+           const upcomingBookings = activeBookings.filter(b => {
                const checkIn = new Date(b.checkIn);
                return checkIn >= new Date();
            }).length;

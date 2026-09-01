@@ -46,6 +46,7 @@ export function renderTravelerExperienceConfirmationPage(containerId) {
                             <div><span>Option</span><strong>${escapeHtml(booking.option.title)}</strong><p>${escapeHtml(booking.option.time)}</p></div>
                             <div><span>Date</span><strong>${escapeHtml(formatDate(booking.selectedDate))}</strong></div>
                             <div><span>Travelers</span><strong>${booking.adults} ${booking.adults === 1 ? "Adult" : "Adults"}</strong></div>
+                            <div><span>Platform Fee</span><strong>₹14</strong></div>
                             <div><span>Total</span><strong>${formatCurrency(booking.totalPrice)}</strong></div>
                         </div>
                     </article>

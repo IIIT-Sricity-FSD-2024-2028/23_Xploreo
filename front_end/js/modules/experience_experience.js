@@ -1,4 +1,5 @@
 import { experiences as experienceCatalog } from "../api/legacyData.js";
+import { getCurrentUser, getApiSession } from "../api/session.js";
 import {
     attachModalDismissals,
     clearFieldErrors,
@@ -62,6 +63,14 @@ export async function renderExperienceCatalogPage() {
     let uploadedImageUrls = [];
 
     if (!container) return;
+
+    const actorLocation = getCurrentUser()?.location || getApiSession()?.user?.location || "Goa";
+    if (catalogHeader) {
+        const pTags = catalogHeader.querySelectorAll("p");
+        if (pTags.length >= 2) {
+            pTags[1].innerHTML = `Assigned Region: <span style="display:inline-block; padding:2px 10px; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:9999px; font-weight:600; font-size:12px;">${actorLocation}</span> · Manage your experience offerings`;
+        }
+    }
 
     function persistExperiences() {
         writeStorage("experienceCatalog", experiences);
@@ -145,6 +154,11 @@ export async function renderExperienceCatalogPage() {
         const price = Number(document.getElementById(`${prefix}Price`).value);
         const duration = Number(document.getElementById(`${prefix}Duration`).value);
         const category = document.getElementById(`${prefix}Category`).value;
+        const actorLocation = getCurrentUser()?.location || getApiSession()?.user?.location || "Goa";
+        const location = actorLocation;
+        if (document.getElementById(`${prefix}Location`)) {
+            document.getElementById(`${prefix}Location`).value = actorLocation;
+        }
 
         if (!name || name.length < 3) {
             setFieldError(`${prefix}Name`, "Enter a name with at least 3 characters.");
@@ -166,7 +180,7 @@ export async function renderExperienceCatalogPage() {
             isValid = false;
         }
 
-        return { isValid, name, description, price, duration, category };
+        return { isValid, name, description, price, duration, category, location };
     }
 
     function validateAddImage() {
@@ -194,7 +208,7 @@ export async function renderExperienceCatalogPage() {
             today.setHours(0, 0, 0, 0);
             const slotDateObj = new Date(date);
             slotDateObj.setHours(0, 0, 0, 0);
-            
+
             if (slotDateObj <= today) {
                 setFieldError("slotDate", "Slots can only be created for tomorrow or later.");
                 isValid = false;
@@ -244,7 +258,7 @@ export async function renderExperienceCatalogPage() {
         const files = Array.from(imageInput?.files || []);
         selectedThumbnailIndex = 0;
         uploadedImageUrls = [];
-        
+
         if (!files.length) {
             renderImagePreviewGrid();
             return;
@@ -266,12 +280,12 @@ export async function renderExperienceCatalogPage() {
 
     function timeToMinutes(value) {
         const str = String(value).trim();
-        
+
         const match24 = str.match(/^(\d{1,2}):(\d{2})$/);
         if (match24) {
             return Number(match24[1]) * 60 + Number(match24[2]);
         }
-        
+
         const match12 = str.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
         if (!match12) return Number.MAX_SAFE_INTEGER;
         let hour = Number(match12[1]) % 12;
@@ -345,10 +359,10 @@ export async function renderExperienceCatalogPage() {
                     <h2 class="slots-day-heading">${slotDateLabel(date)}</h2>
                     <div class="slots-card-grid">
                         ${slots.map((slot) => {
-                            const slotMeta = getSlotMeta(slot);
-                            const percent = slot.capacity ? Math.min(100, (slot.booked / slot.capacity) * 100) : 0;
+                const slotMeta = getSlotMeta(slot);
+                const percent = slot.capacity ? Math.min(100, (slot.booked / slot.capacity) * 100) : 0;
 
-                            return `
+                return `
                                 <article class="slot-card" data-slot-id="${slot.id}">
                                     <div class="slot-card-top">
                                         <h3>${slot.time}</h3>
@@ -386,7 +400,7 @@ export async function renderExperienceCatalogPage() {
                                     </div>
                                 </article>
                             `;
-                        }).join("")}
+            }).join("")}
                     </div>
                 </section>
             `).join("")
@@ -414,7 +428,7 @@ export async function renderExperienceCatalogPage() {
         const tomorrowStr = tomorrow.toISOString().split("T")[0];
         dateInput.value = slot?.date || exp.slots[0]?.date || tomorrowStr;
         dateInput.min = tomorrowStr;
-        
+
         document.getElementById("slotTime").value = slot?.time || "10:00";
         document.getElementById("slotCapacity").value = slot?.capacity || exp.capacity || 10;
 
@@ -455,9 +469,9 @@ export async function renderExperienceCatalogPage() {
         container.innerHTML = experiences.map((exp) => {
             const sortedSlots = Array.isArray(exp.slots) ? sortSlots(exp.slots) : [];
             const nextSlotObj = sortedSlots.find(s => s.available) || sortedSlots[0] || null;
-            
 
-            const nextSessionDisplay = nextSlotObj 
+
+            const nextSessionDisplay = nextSlotObj
                 ? `Next session: ${nextSlotObj.date} at ${nextSlotObj.time} • ${nextSlotObj.booked}/${nextSlotObj.capacity} seats booked`
                 : exp.slots && exp.slots.length === 0
                     ? `No slots created yet`
@@ -529,8 +543,32 @@ export async function renderExperienceCatalogPage() {
             document.getElementById("editPrice").value = selectedExperience.price;
             document.getElementById("editDuration").value = parseInt(selectedExperience.duration) || 2;
             document.getElementById("editCategory").value = selectedExperience.category || "adventure";
+            if (document.getElementById("editLocation")) {
+                document.getElementById("editLocation").value = selectedExperience.destination || selectedExperience.location || "Goa";
+            }
             resetCatalogMessages();
-            openModal("editModal");
+            const expLoc = document.getElementById("editLocation");
+        if (expLoc) expLoc.value = getCurrentUser()?.location || getApiSession()?.user?.location || "Goa";
+        
+        // Populate dropzone for edit
+        const urlInput = document.getElementById("editImageUrl");
+        const preview = document.getElementById("editImagePreview");
+        const content = document.getElementById("editDropzoneContent");
+        const changeBtn = document.getElementById("editChangeImageBtn");
+        
+        if (urlInput) urlInput.value = exp.image || "";
+        if (preview && exp.image) {
+            preview.src = exp.image;
+            preview.style.display = "block";
+            if (content) content.style.opacity = "0";
+            if (changeBtn) changeBtn.style.display = "block";
+        } else {
+            if (preview) preview.style.display = "none";
+            if (content) content.style.opacity = "1";
+            if (changeBtn) changeBtn.style.display = "none";
+        }
+
+        openModal("editModal");
         }
 
         if (actionButton.dataset.action === "delete-experience") {
@@ -543,7 +581,7 @@ export async function renderExperienceCatalogPage() {
 
             persistExperiences();
             renderCatalog();
-            
+
             // Sync to backend
             deleteExperience(expId).catch(e => console.warn("Failed to sync experience deletion", e));
             return;
@@ -623,14 +661,79 @@ export async function renderExperienceCatalogPage() {
             resetCatalogMessages();
             uploadedImageUrls = [];
             selectedThumbnailIndex = 0;
+            const expLoc = document.getElementById("expLocation");
+            if (expLoc) expLoc.value = getCurrentUser()?.location || getApiSession()?.user?.location || "Goa";
+            
+            // Reset dropzone
+            const urlInput = document.getElementById("expImageUrl");
+            const preview = document.getElementById("expImagePreview");
+            const content = document.getElementById("expDropzoneContent");
+            const changeBtn = document.getElementById("expChangeImageBtn");
+            if (urlInput) urlInput.value = "";
+            if (preview) preview.style.display = "none";
+            if (content) content.style.opacity = "1";
+            if (changeBtn) changeBtn.style.display = "none";
+            
             refreshImagePreview();
             openModal("addModal");
         };
     }
 
-    if (imageInput) {
-        imageInput.onchange = refreshImagePreview;
+    function bindImageDropzone(inputId, urlId, previewId, dropzoneContentId, changeBtnId, dropzoneId) {
+        const input = document.getElementById(inputId);
+        const urlInput = document.getElementById(urlId);
+        const preview = document.getElementById(previewId);
+        const content = document.getElementById(dropzoneContentId);
+        const changeBtn = document.getElementById(changeBtnId);
+        const dropzone = document.getElementById(dropzoneId);
+
+        const handleFile = (file) => {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const base64Str = ev.target.result;
+                    if(urlInput) urlInput.value = base64Str;
+                    if(preview) {
+                        preview.src = base64Str;
+                        preview.style.display = "block";
+                    }
+                    if(content) content.style.opacity = "0";
+                    if(changeBtn) changeBtn.style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        if(input) {
+            input.addEventListener("change", (e) => {
+                handleFile(e.target.files[0]);
+            });
+        }
+
+        if(dropzone) {
+            dropzone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropzone.classList.add("dragover");
+            });
+
+            dropzone.addEventListener("dragleave", (e) => {
+                e.preventDefault();
+                dropzone.classList.remove("dragover");
+            });
+
+            dropzone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropzone.classList.remove("dragover");
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0]);
+                    if(input) input.files = e.dataTransfer.files;
+                }
+            });
+        }
     }
+
+    bindImageDropzone("expImage", "expImageUrl", "expImagePreview", "expDropzoneContent", "expChangeImageBtn", "expImageDropzone");
+    bindImageDropzone("editImage", "editImageUrl", "editImagePreview", "editDropzoneContent", "editChangeImageBtn", "editImageDropzone");
 
     if (imagePreviewGrid) {
         imagePreviewGrid.onclick = (event) => {
@@ -672,22 +775,24 @@ export async function renderExperienceCatalogPage() {
             duration: `${payload.duration} hours`,
             capacity: 0,
             category: payload.category,
+            destination: payload.location,
+            location: payload.location,
             status: "active",
-            image: uploadedImageUrls[selectedThumbnailIndex] || uploadedImageUrls[0],
-            images: [...uploadedImageUrls],
+            image: document.getElementById("expImageUrl")?.value || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=900",
+            images: document.getElementById("expImageUrl")?.value ? [document.getElementById("expImageUrl").value] : [],
             booked: 0,
             slots: []
         };
         experiences.push(expPayload);
 
         persistExperiences();
-        
+
         // Sync to backend
         createExperience({
             id: String(newExperienceId),
             title: payload.name,
-            description: payload.description, 
-            destination: payload.name, 
+            description: payload.description,
+            destination: payload.location,
             category: payload.category,
             price: Number(payload.price),
             durationHours: parseInt(payload.duration) || 2,
@@ -718,18 +823,27 @@ export async function renderExperienceCatalogPage() {
         exp.price = payload.price;
         exp.duration = `${payload.duration} hours`;
         exp.category = payload.category;
+        exp.destination = payload.location;
+        exp.location = payload.location;
+        
+        const newImg = document.getElementById("editImageUrl")?.value;
+        if (newImg) {
+            exp.image = newImg;
+            exp.images = [newImg];
+        }
 
         persistExperiences();
-        
+
         // Sync to backend
         updateExperience(String(currentEditId), {
             title: payload.name,
             description: payload.description,
-            destination: payload.name,
+            destination: payload.location,
             category: payload.category,
             price: Number(payload.price),
             durationHours: parseInt(payload.duration) || 2,
-            capacity: exp.capacity || 0
+            capacity: exp.capacity || 0,
+            image: exp.image
         }).catch(e => console.warn("Failed to sync experience update", e));
 
         closeModal("editModal");
@@ -756,9 +870,9 @@ export async function renderExperienceCatalogPage() {
         if (!exp) return;
 
         const isDuplicate = exp.slots.some(
-            (item) => item.date === payload.date && 
-                      item.time === payload.time && 
-                      (slotModalMode === "add" || String(item.id) !== String(currentSlotId))
+            (item) => item.date === payload.date &&
+                item.time === payload.time &&
+                (slotModalMode === "add" || String(item.id) !== String(currentSlotId))
         );
 
         if (isDuplicate) {

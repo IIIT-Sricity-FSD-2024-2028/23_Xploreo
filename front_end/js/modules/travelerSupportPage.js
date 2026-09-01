@@ -8,7 +8,7 @@ const CATEGORY_OPTIONS = [
   "Account",
   "General",
 ];
-const PRIORITY_OPTIONS = ["LOW", "MEDIUM", "HIGH"];
+
 
 export async function renderTravelerSupportPage(containerId, user) {
   const container = document.getElementById(containerId);
@@ -116,12 +116,6 @@ function buildSupportShell(user, userTickets = []) {
               </select>
             </label>
 
-            <label class="traveler-support-field">
-              <span>Priority</span>
-              <select class="traveler-support-select" name="priority">
-                ${PRIORITY_OPTIONS.map((item) => `<option value="${item}" ${item === "MEDIUM" ? "selected" : ""}>${titleCase(item)}</option>`).join("")}
-              </select>
-            </label>
 
             <label class="traveler-support-field">
               <span>Message</span>

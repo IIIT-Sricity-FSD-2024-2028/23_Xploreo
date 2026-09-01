@@ -84,14 +84,7 @@ export async function renderSupportPage(containerId, user) {
                   <option value="General Inquiry">General Inquiry</option>
                 </select>
               </div>
-              <div class="form-group">
-                <span class="label">Priority</span>
-                <select class="input-field" name="priority">
-                  <option value="LOW">Low - General Question</option>
-                  <option value="MEDIUM" selected>Medium - Minor Issue</option>
-                  <option value="HIGH">High - Urgent / Blocking</option>
-                </select>
-              </div>
+
             </div>
 
             <div class="form-group">

@@ -66,7 +66,7 @@ function createFlightCard(flight) {
                         </button>
                     </div>
 
-                    <div class="price-amount">$${flight.price}</div>
+                    <div class="price-amount">₹${flight.price}</div>
                     <div class="price-subtext">per person</div>
                     <div class="price-divider" aria-hidden="true"></div>
                     <div class="price-meta">${escapeHtml(flight.duration)}<br>${escapeHtml(getStopsLabel(flight.stops))}</div>

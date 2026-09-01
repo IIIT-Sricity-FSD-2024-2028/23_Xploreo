@@ -1,4 +1,5 @@
 import { createExperienceBooking } from "../api/services.js";
+import { createRazorpayOrder, verifyRazorpayPayment, openRazorpayCheckout } from "../api/payments.js";
 
 const SELECTED_EXPERIENCE_KEY = "traveler_selected_experience";
 const EXPERIENCE_BOOKING_DRAFT_KEY = "traveler_experience_booking_draft";
@@ -42,7 +43,9 @@ export function renderTravelerExperienceBookingPage(containerId) {
     };
 
     function render() {
-        const total = Number(state.draft.totalPrice) || 0;
+        const PLATFORM_FEE = 14;
+        const baseTotal = Number(state.draft.totalPrice) || 0;
+        const total = baseTotal + PLATFORM_FEE;
 
         container.innerHTML = `
             <main class="traveler-experience-booking-page">
@@ -134,8 +137,8 @@ export function renderTravelerExperienceBookingPage(containerId) {
                                     <div class="traveler-experience-payment-info">
                                         ${infoCircleIcon()}
                                         <div>
-                                            <strong>Payment Information</strong>
-                                            <p>No payment required now. You'll pay directly at the activity location. Your booking is confirmed with these details.</p>
+                                            <strong>Secure Online Payment</strong>
+                                            <p>Pay securely online with Razorpay (Test Mode). Your activity reservation is instantly confirmed upon payment.</p>
                                         </div>
                                     </div>
                                 </form>
@@ -173,7 +176,11 @@ export function renderTravelerExperienceBookingPage(containerId) {
                                 <span>Price Details</span>
                                 <div class="traveler-experience-price-line">
                                     <strong>${formatCurrency(state.draft.option.price)} × ${state.draft.adults} ${state.draft.adults === 1 ? "adult" : "adults"}</strong>
-                                    <span>${formatCurrency(total)}</span>
+                                    <span>${formatCurrency(baseTotal)}</span>
+                                </div>
+                                <div class="traveler-experience-price-line">
+                                    <strong style="color: #4B5563;">Platform Fee</strong>
+                                    <span style="color: #4B5563;">₹14</span>
                                 </div>
                             </div>
 
@@ -184,11 +191,11 @@ export function renderTravelerExperienceBookingPage(containerId) {
 
                             <button type="button" class="traveler-experience-confirm-btn" id="traveler-experience-confirm-btn">
                                 ${lockIcon()}
-                                <span>Confirm Booking</span>
+                                <span>Pay ${formatCurrency(total)} & Confirm</span>
                             </button>
 
                             <ul class="traveler-experience-summary-list">
-                                <li>${checkCircleIcon()} No payment required now</li>
+                                <li>${checkCircleIcon()} Secure payment via Razorpay Test Mode</li>
                                 <li>${checkCircleIcon()} Free cancellation up to 24 hours</li>
                                 <li>${checkCircleIcon()} Instant confirmation</li>
                             </ul>
@@ -222,12 +229,39 @@ export function renderTravelerExperienceBookingPage(containerId) {
             });
         });
 
-        container.querySelector("#traveler-experience-confirm-btn")?.addEventListener("click", () => {
+        const confirmBtn = container.querySelector("#traveler-experience-confirm-btn");
+        const PLATFORM_FEE = 14;
+        const baseTotal = Number(state.draft.totalPrice) || 0;
+        const total = baseTotal + PLATFORM_FEE;
+
+        const resetButton = () => {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.dataset.paymentInProgress = "";
+                const span = confirmBtn.querySelector("span");
+                if (span) {
+                    span.textContent = `Pay ${formatCurrency(total)} & Confirm`;
+                }
+            }
+        };
+
+        confirmBtn?.addEventListener("click", async () => {
             const errors = validateBooking(state);
             if (errors.length) {
                 showToast(errors[0]);
                 return;
             }
+
+            if (!total || total <= 0) {
+                showToast("Invalid booking total. Please check options.");
+                return;
+            }
+
+            if (confirmBtn.dataset.paymentInProgress === "true") return;
+            confirmBtn.dataset.paymentInProgress = "true";
+            confirmBtn.disabled = true;
+            const span = confirmBtn.querySelector("span");
+            if (span) span.textContent = "Creating order…";
 
             const payload = {
                 experienceId: state.draft.experience.id,
@@ -240,29 +274,119 @@ export function renderTravelerExperienceBookingPage(containerId) {
                 participants: state.draft.adults
             };
 
-            createExperienceBooking(payload).then(response => {
-                const confirmation = {
-                    bookingId: response.id || createIntegerBookingReference(),
-                    confirmedAt: new Date().toISOString(),
-                    ...state.draft,
-                    leadTraveler: { ...state.leadTraveler },
-                    travelers: state.travelers.map((traveler) => ({ ...traveler }))
-                };
+            let orderData;
+            try {
+                orderData = await createRazorpayOrder(total, {
+                    bookingType: "EXPERIENCE",
+                    bookingId: String(state.draft.experience.id),
+                    notes: {
+                        experienceId: String(state.draft.experience.id),
+                        date: String(state.draft.selectedDate || ""),
+                        option: String(state.draft.option?.title || "")
+                    }
+                });
+            } catch (err) {
+                showToast(err?.message || "Failed to create payment order. Please try again.");
+                resetButton();
+                return;
+            }
 
-                try {
-                    localStorage.removeItem(EXPERIENCE_BOOKING_DRAFT_KEY);
-                } catch(e) {}
-                persistExperienceConfirmation(confirmation);
-                window.location.href = "./traveller_experience-confirmation.html";
-            }).catch(e => {
-                showToast("Failed to create booking. Please try again.");
-                console.error("Booking error:", e);
-            });
+            resetButton();
+
+            // Open Razorpay Checkout modal
+            openRazorpayCheckout(
+                orderData,
+                `${state.draft.experience.title} — ${state.draft.option.title}`,
+
+                // ✅ Payment succeeded in modal — verify server-side before creating booking
+                async (paymentResponse) => {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        const s = confirmBtn.querySelector("span");
+                        if (s) s.textContent = "Verifying payment…";
+                    }
+
+                    try {
+                        await verifyRazorpayPayment({
+                            razorpay_order_id: paymentResponse.razorpay_order_id,
+                            razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                            razorpay_signature: paymentResponse.razorpay_signature
+                        });
+
+                        const currentAdminRevenue = Number(localStorage.getItem("superAdminRevenue")) || 0;
+                        const commission = total * 0.04;
+                        localStorage.setItem("superAdminRevenue", currentAdminRevenue + 14 + commission);
+
+                        const globalBookings = JSON.parse(localStorage.getItem("allPlatformBookings")) || [];
+                        const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Guest", role: "traveler" };
+                        globalBookings.push({
+                            id: paymentResponse.razorpay_order_id || "BKG-" + Math.floor(Math.random()*10000),
+                            user: currentUser.name,
+                            role: currentUser.role,
+                            amount: total,
+                            type: "Experience",
+                            date: new Date().toISOString()
+                        });
+                        localStorage.setItem("allPlatformBookings", JSON.stringify(globalBookings));
+
+                        // Server signature verification passed — create the backend booking record
+                        try {
+                            const response = await createExperienceBooking(payload);
+                            const confirmation = {
+                                bookingId: response?.id || createIntegerBookingReference(),
+                                confirmedAt: new Date().toISOString(),
+                                paymentId: paymentResponse.razorpay_payment_id,
+                                orderId: paymentResponse.razorpay_order_id,
+                                paymentStatus: "PAID",
+                                ...state.draft,
+                                totalPrice: total,
+                                leadTraveler: { ...state.leadTraveler },
+                                travelers: state.travelers.map((traveler) => ({ ...traveler }))
+                            };
+
+                            try {
+                                localStorage.removeItem(EXPERIENCE_BOOKING_DRAFT_KEY);
+                            } catch(e) {}
+
+                            persistExperienceConfirmation(confirmation);
+                            window.location.href = "./traveller_experience-confirmation.html";
+
+                        } catch (bookingErr) {
+                            console.error("Backend booking creation error:", bookingErr);
+                            // Even if booking API had issues, since payment succeeded, save local confirmation and redirect
+                            const confirmation = {
+                                bookingId: createIntegerBookingReference(),
+                                confirmedAt: new Date().toISOString(),
+                                paymentId: paymentResponse.razorpay_payment_id,
+                                orderId: paymentResponse.razorpay_order_id,
+                                paymentStatus: "PAID",
+                                ...state.draft,
+                                totalPrice: total,
+                                leadTraveler: { ...state.leadTraveler },
+                                travelers: state.travelers.map((traveler) => ({ ...traveler }))
+                            };
+                            persistExperienceConfirmation(confirmation);
+                            window.location.href = "./traveller_experience-confirmation.html";
+                        }
+
+                    } catch (verifyErr) {
+                        showToast(verifyErr?.message || "Payment verification failed. Please try again.");
+                        resetButton();
+                    }
+                },
+
+                // ❌ Payment failed or cancelled
+                (errorMessage) => {
+                    showToast(errorMessage || "Payment was cancelled.");
+                    resetButton();
+                }
+            );
         });
     }
 
     render();
 }
+
 
 function getExperienceBookingDraft() {
     if (typeof localStorage === "undefined") return null;

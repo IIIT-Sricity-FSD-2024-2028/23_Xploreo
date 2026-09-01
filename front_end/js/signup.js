@@ -234,6 +234,24 @@ function showStep(stepNumber) {
     document.querySelector(".step-" + stepNumber).classList.remove("hidden");
     const signupCard = document.querySelector(".signup-card");
     if (signupCard) signupCard.classList.remove("step4-active");
+
+    if (String(stepNumber) === "2") {
+        const isExperiencePartner = (selectedRole === "Experiences" || selectedRole === "Service Partner" || selectedRole === "Hotel");
+        const dobGroup = document.getElementById("dobGroup");
+        const genderGroup = document.getElementById("genderGroup");
+        if (dobGroup) {
+            dobGroup.style.display = isExperiencePartner ? "none" : "";
+        }
+        if (genderGroup) {
+            genderGroup.style.display = isExperiencePartner ? "none" : "";
+        }
+        if (isExperiencePartner) {
+            const dobInput = document.getElementById("dob");
+            const genderInput = document.getElementById("gender");
+            if (dobInput) clearError(dobInput);
+            if (genderInput) clearError(genderInput);
+        }
+    }
 }
 
 function showStep4() {
@@ -302,7 +320,12 @@ function validateStep2() {
     let isValid = true;
     let firstInvalid = null;
 
-    const ids = ["fullName", "username", "email", "phone", "dob", "gender", "password", "confirmPassword"];
+    const isExperiencePartner = (selectedRole === "Experiences" || selectedRole === "Service Partner" || selectedRole === "Hotel");
+    const ids = ["fullName", "username", "email", "phone", "password", "confirmPassword"];
+    if (!isExperiencePartner) {
+        ids.push("dob", "gender");
+    }
+
     ids.forEach(id => {
         const input = document.getElementById(id);
         if (input) {
@@ -355,19 +378,21 @@ function validateStep2() {
         }
     }
 
-    const dobInput = document.getElementById("dob");
-    if (dobInput && dobInput.value.trim()) {
-        const dobDate = new Date(dobInput.value);
-        const today = new Date();
-        let age = today.getFullYear() - dobDate.getFullYear();
-        const monthDiff = today.getMonth() - dobDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
-            age--;
-        }
-        if (age < 18) {
-            isValid = false;
-            showError(dobInput, "You must be at least 18 years old to sign up.");
-            if (!firstInvalid) firstInvalid = dobInput;
+    if (!isExperiencePartner) {
+        const dobInput = document.getElementById("dob");
+        if (dobInput && dobInput.value.trim()) {
+            const dobDate = new Date(dobInput.value);
+            const today = new Date();
+            let age = today.getFullYear() - dobDate.getFullYear();
+            const monthDiff = today.getMonth() - dobDate.getMonth();
+            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dobDate.getDate())) {
+                age--;
+            }
+            if (age < 18) {
+                isValid = false;
+                showError(dobInput, "You must be at least 18 years old to sign up.");
+                if (!firstInvalid) firstInvalid = dobInput;
+            }
         }
     }
 
@@ -406,8 +431,8 @@ function validateStep3() {
     inputs.forEach(input => {
         clearError(input);
 
-        // Skip the optional Preferred Destination Types input
-        if (input.placeholder && input.placeholder.includes("Coastal")) {
+        // Skip optional fields (like GST / Tax ID and Preferred Destination Types)
+        if (input.id === "tax-id" || (input.placeholder && input.placeholder.includes("Coastal"))) {
             return;
         }
 
@@ -453,23 +478,38 @@ async function createUser(role) {
         "Traveler": "traveller",
         "Local Guide": "guide",
         "Hotel": "hotel",
-        "Experiences": "experience"
+        "Experiences": "experience",
+        "Service Partner": "experience"
     };
     const mappedRole = roleMap[role] || "traveller";
-    
+    const location = document.getElementById("actorLocation")?.value || "Goa";
+
+    const payload = {
+        name: name,
+        username: username,
+        email: email,
+        phone: phoneVal,
+        password: password,
+        role: mappedRole,
+        location: location
+    };
+
+    if (role === "Hotel" || role === "Experiences") {
+        const businessName = document.getElementById("business-name")?.value;
+        const taxId = document.getElementById("tax-id")?.value;
+        const bankAccount = document.getElementById("bank-account")?.value;
+        
+        if (businessName) payload.businessName = businessName;
+        if (taxId) payload.taxId = taxId;
+        if (bankAccount) payload.bankAccount = bankAccount;
+    }
+
     const response = await fetch("http://localhost:3000/api/auth/register", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            name: name,
-            username: username,
-            email: email,
-            phone: phoneVal,
-            password: password,
-            role: mappedRole
-        })
+        body: JSON.stringify(payload)
     });
 
     const data = await response.json();

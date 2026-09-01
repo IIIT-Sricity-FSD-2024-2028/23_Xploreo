@@ -53,6 +53,7 @@ export function toFrontendUser(apiUser) {
         phone: apiUser.phone,
         phno: apiUser.phone,
         role: apiUser.role,
+        location: apiUser.location || (existing && existing.location) || undefined,
         status: apiUser.status || "active"
     };
 }

@@ -1320,8 +1320,8 @@ body.experience-page {
 }
 
 #addModal .modal-box {
-  width: min(760px, 100%);
-  padding: 28px 32px;
+  width: min(680px, 100%);
+  padding: 20px 24px;
 }
 
 #addModal .modal-header {
@@ -1334,20 +1334,20 @@ body.experience-page {
 
 #addExperienceForm {
   display: grid;
-  gap: 20px;
+  gap: 12px;
 }
 
 #addExperienceForm .form-grid {
   display: grid;
   grid-template-columns: 1fr;
   column-gap: 0;
-  row-gap: 16px;
+  row-gap: 12px;
 }
 
 #addExperienceForm .field-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
 }
 
@@ -1364,15 +1364,18 @@ body.experience-page {
 #addExperienceForm textarea {
   width: 100%;
   box-sizing: border-box;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border-radius: 8px;
 }
 
 .experience-form select {
-  padding: 14px 16px;
-  border-radius: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
   border: 1px solid var(--experience-border);
   background-color: var(--experience-surface-soft);
   color: var(--experience-text);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   transition: all 0.2s ease;
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23667085' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");

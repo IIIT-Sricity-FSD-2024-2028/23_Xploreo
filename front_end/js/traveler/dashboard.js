@@ -410,7 +410,7 @@ function resolvePackageSelection(selection, catalog) {
 function createFallbackPackage() {
     return {
         id: "package-goa-escape",
-        origin: "New Delhi",
+        origin: "Delhi",
         destination: "Goa",
         title: "Magical Goa - Island Paradise Escape",
         image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1400",

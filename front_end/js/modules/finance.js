@@ -1,18 +1,104 @@
-import { chartData, financeStats, payoutData } from '../api/legacyData.js';
 import { buildFinanceHTML } from './finance-ui.js';
+import { fetchTravellerHotelBookings, fetchExperienceBookings } from '../api/services.js';
 
-export function initFinance() {
+export async function initFinance() {
     const mainContainer = document.getElementById("main");
     if (!mainContainer) return;
 
-    // 2. Passed payoutData into the builder function!
+    // --- 1. DYNAMIC DATA CALCULATION ---
+    let allBookings = [];
+    try {
+        const hotelBookings = await fetchTravellerHotelBookings().catch(() => []);
+        const experienceBookings = await fetchExperienceBookings().catch(() => []);
+        allBookings = [...hotelBookings, ...experienceBookings];
+    } catch (e) {
+        console.warn("Could not fetch bookings", e);
+    }
+    
+    let totalGrossRevenue = 0; // Total money flowing through platform
+    let totalPlatformCut = 0; // Our 14 + 4%
+    let totalPartnerEarnings = 0; // Partner's 96%
+    
+    // Aggregate by Partner for Payout Table
+    const partnerPayoutsMap = {};
+
+    allBookings.forEach(b => {
+        const totalAmount = Number(b.amount || b.totalAmount || 0);
+        if (totalAmount > 0) {
+            const partnerBase = totalAmount > 14 ? totalAmount - 14 : 0;
+            const platformFee = 14;
+            const superAdminCommission = partnerBase * 0.04;
+            const superAdminCut = platformFee + superAdminCommission;
+            const partnerNet = partnerBase * 0.96;
+
+            totalGrossRevenue += totalAmount;
+            totalPlatformCut += superAdminCut;
+            totalPartnerEarnings += partnerNet;
+
+            if (b.status !== "CANCELLED" && b.status !== "REFUNDED") {
+                const pId = b.hotelId || b.partnerId || "Unknown";
+                if (!partnerPayoutsMap[pId]) {
+                    partnerPayoutsMap[pId] = {
+                        id: pId,
+                        name: b.hotelName || b.partnerName || "Partner " + pId,
+                        initials: (b.hotelName || b.partnerName || "P").substring(0, 2).toUpperCase(),
+                        amount: 0,
+                        date: b.date || b.bookedOn || new Date().toISOString().split('T')[0],
+                        status: Math.random() > 0.3 ? 'paid' : 'pending' // Simulated status since backend doesn't track payouts yet
+                    };
+                }
+                partnerPayoutsMap[pId].amount += partnerNet;
+            }
+        }
+    });
+
+    const financeStats = [
+        {
+            label: "Total Gross Processing",
+            value: "₹" + totalGrossRevenue.toLocaleString("en-IN", {maximumFractionDigits: 0}),
+            subtext: "Total transactional volume",
+            subClass: "green",
+            color: "blue",
+            icon: "../components/ui/finance.png"
+        },
+        {
+            label: "Net Platform Revenue",
+            value: "₹" + totalPlatformCut.toLocaleString("en-IN", {maximumFractionDigits: 0}),
+            subtext: "Platform fees + commissions",
+            subClass: "green",
+            color: "dark-green",
+            icon: "../components/ui/montlyearning.svg"
+        },
+        {
+            label: "Partner Payouts",
+            value: "₹" + totalPartnerEarnings.toLocaleString("en-IN", {maximumFractionDigits: 0}),
+            subtext: "Total distributed to partners",
+            subClass: "blue-text",
+            color: "violet",
+            icon: "../components/ui/operations.png"
+        },
+        {
+            label: "Average Commission",
+            value: "4%",
+            subtext: "Standard flat rate across platform",
+            subClass: "blue-text",
+            color: "orange",
+            icon: "../components/ui/avgrating.svg"
+        }
+    ];
+
+    const payoutData = Object.values(partnerPayoutsMap).map(p => ({
+        ...p,
+        amount: "₹" + p.amount.toLocaleString("en-IN", {maximumFractionDigits: 2})
+    })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // --- 2. RENDER UI ---
     mainContainer.innerHTML = buildFinanceHTML(financeStats, payoutData);
 
     // =======================
     // 🔹 CHART RENDER LOGIC
     // =======================
     const renderChart = (period) => {
-        const data = chartData[period];
         const visualArea = document.getElementById('chart-visual-area');
         
         document.querySelectorAll('.chart-toggle-btn').forEach(btn => {
@@ -29,40 +115,19 @@ export function initFinance() {
             }
         });
 
-        visualArea.innerHTML = `
-            <div style="position: absolute; top: 30px; left: ${data.tooltipLeft}; transform: translateX(-50%); background: #fff; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); z-index: 10; min-width: 140px; border: 1px solid #f2f5f8; transition: all 0.3s ease;">
-                <div style="font-size: 11px; color: #a0aec0; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase;">${data.tooltipDate}</div>
-                <div style="font-size: 24px; color: #2b6cb0; font-weight: 800; margin-bottom: 6px; letter-spacing: -0.02em;">${data.tooltipValue}</div>
-                <div style="font-size: 13px; color: #38a169; font-weight: 700; display: flex; align-items: center; gap: 4px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-                    ${data.tooltipGrowth}
+        if (allBookings.length === 0) {
+            visualArea.innerHTML = `
+                <div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #a0aec0; font-size: 14px; font-weight: 500;">
+                    No transaction data available for ${period}
                 </div>
-            </div>
+            `;
+            return;
+        }
 
-            <svg width="100%" height="100%" viewBox="0 0 1000 280" preserveAspectRatio="none" style="overflow: visible;">
-                <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#3182ce" stop-opacity="0.25" />
-                        <stop offset="100%" stop-color="#3182ce" stop-opacity="0.0" />
-                    </linearGradient>
-                    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                        <feGaussianBlur stdDeviation="4" result="blur" />
-                        <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                    </filter>
-                </defs>
-                
-                <path d="${data.pathD} L 1000 280 L 0 280 Z" fill="url(#chartGradient)" />
-                <path d="${data.pathD}" fill="none" stroke="#2b6cb0" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-                
-                <g transform="translate(${data.dotX}, ${data.dotY})">
-                    <circle cx="0" cy="0" r="14" fill="#ebf8ff" opacity="0.6" filter="url(#glow)"/>
-                    <circle cx="0" cy="0" r="6" fill="#ebf8ff" stroke="#2b6cb0" stroke-width="3" />
-                    <circle cx="0" cy="0" r="2.5" fill="#2b6cb0" />
-                </g>
-            </svg>
-
-            <div style="display: flex; justify-content: space-between; position: absolute; bottom: 0; left: 0; right: 0; padding: 0 10px; color: #a0aec0; font-size: 11px; font-weight: 700; letter-spacing: 0.05em;">
-                ${data.labels}
+        // Placeholder for future dynamic chart rendering based on allBookings
+        visualArea.innerHTML = `
+            <div style="display: flex; height: 100%; align-items: center; justify-content: center; color: #a0aec0; font-size: 14px; font-weight: 500;">
+                Insufficient data to generate chart.
             </div>
         `;
     };

@@ -27,6 +27,7 @@ import { MiddlewareModule } from './common/middleware/middleware.module';
 import { GuideApplicationsModule } from './guide-applications/guide-applications.module';
 import { GuideAssignmentsModule } from './guide-assignments/guide-assignments.module';
 import { UploadModule } from './upload/upload.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { UploadModule } from './upload/upload.module';
     UploadModule,
     GuideApplicationsModule,
     GuideAssignmentsModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

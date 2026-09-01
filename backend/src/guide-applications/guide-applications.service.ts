@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,6 +10,11 @@ import { PlansRepository } from '../plans/plans.repository';
 import { CreateGuideApplicationDto } from './dto/create-guide-application.dto';
 import { UpdateGuideApplicationDto } from './dto/update-guide-application.dto';
 import { GuideApplicationStatus } from './entities/guide-application.entity';
+import { Role } from '../auth/entities/auth.entity';
+import {
+  assertActorLocationMatch,
+  locationMatches,
+} from '../common/utils/location-scope';
 
 @Injectable()
 export class GuideApplicationsService {
@@ -18,12 +24,20 @@ export class GuideApplicationsService {
     private readonly plansRepository: PlansRepository,
   ) {}
 
-  async create(guideId: string, dto: CreateGuideApplicationDto) {
+  async create(guideId: string, dto: CreateGuideApplicationDto, userLocation?: string) {
     const guide = this.guideRepository.findById(guideId);
     if (!guide) throw new NotFoundException(`Guide ${guideId} not found`);
 
+    const effectiveLocation = userLocation || guide.location;
+
     const plan = await this.plansRepository.findById(dto.planId);
     if (!plan) throw new NotFoundException(`Plan ${dto.planId} not found`);
+
+    if (!locationMatches(effectiveLocation, plan.destination)) {
+      throw new ForbiddenException(
+        `Location mismatch: You are assigned to ${effectiveLocation}, but this plan is for ${plan.destination}.`,
+      );
+    }
 
     // Prevent duplicate pending application
     const duplicate = this.repository.findOpenDuplicate(guideId, dto.planId);
@@ -55,7 +69,7 @@ export class GuideApplicationsService {
     });
 
     // Run auto-decision immediately
-    return this.autoDecide(application.id, guide.location, plan.destination);
+    return this.autoDecide(application.id, effectiveLocation, plan.destination);
   }
 
   private autoDecide(
@@ -63,15 +77,7 @@ export class GuideApplicationsService {
     guideLocation: string,
     planDestination: string,
   ) {
-    // Normalize: extract keywords from location strings
-    // e.g. 'loc-mumbai-1' → 'mumbai', 'Mumbai' → 'mumbai'
-    const guideKeyword = guideLocation.toLowerCase().replace(/loc-|-\d+/g, '').trim();
-    const planKeyword = planDestination.toLowerCase().trim();
-
-    const isMatch =
-      planKeyword.includes(guideKeyword) ||
-      guideKeyword.includes(planKeyword) ||
-      guideLocation.toLowerCase().includes(planKeyword);
+    const isMatch = locationMatches(guideLocation, planDestination);
 
     const status = isMatch
       ? GuideApplicationStatus.ACCEPTED
@@ -84,12 +90,27 @@ export class GuideApplicationsService {
     return this.repository.update(applicationId, { status, autoDecisionReason });
   }
 
-  findAll(filters?: {
-    status?: GuideApplicationStatus;
-    planId?: string;
-    guideId?: string;
-  }) {
-    const applications = this.repository.findAll(filters);
+  async findAll(
+    user?: any,
+    filters?: {
+      status?: GuideApplicationStatus;
+      planId?: string;
+      guideId?: string;
+    },
+  ) {
+    let applications = this.repository.findAll(filters);
+
+    if (user?.role === Role.NONTECHADMIN && user?.location) {
+      const allPlans = await this.plansRepository.findAll({ limit: 1000 });
+      const planLocationMap = new Map(
+        allPlans.items.map((p) => [p.id, p.destination]),
+      );
+      applications = applications.filter((app) => {
+        const dest = planLocationMap.get(app.planId);
+        return dest && locationMatches(user.location, dest);
+      });
+    }
+
     return applications.map((app) => this.enrichWithDetails(app));
   }
 
@@ -97,7 +118,13 @@ export class GuideApplicationsService {
     return this.repository.findByGuide(guideId).map((app) => this.enrichWithDetails(app));
   }
 
-  findByPlan(planId: string) {
+  async findByPlan(planId: string, user?: any) {
+    if (user?.role === Role.NONTECHADMIN && user?.location) {
+      const plan = await this.plansRepository.findById(planId);
+      if (plan) {
+        assertActorLocationMatch(user.location, plan.destination, 'plan');
+      }
+    }
     return this.repository.findByPlan(planId).map((app) => this.enrichWithDetails(app));
   }
 

@@ -1,5 +1,6 @@
 import { getHotelDetailDataById } from "./travelerHotelDetailPage.js";
 import { getTravelerProfile } from "../utils/travelerWorkspaceState.js";
+import { createRazorpayOrder, verifyRazorpayPayment, openRazorpayCheckout } from "../api/payments.js";
 
 const SEARCH_STORAGE_KEY = "traveler_dashboard_search_state";
 const HOTEL_CONFIRMATION_PAGE = "./traveller_hotel-confirmation.html";
@@ -17,7 +18,8 @@ export async function renderTravelerHotelBookingPage(containerId) {
     const guestCount = Math.max(1, Number.parseInt(searchValues.guestCount, 10) || 2);
     const roomSubtotal = selectedRoom.price * stayNights * roomCount;
     const taxTotal = hotel.taxes * roomCount;
-    const totalAmount = roomSubtotal + taxTotal;
+    const PLATFORM_FEE = 14;
+    const totalAmount = roomSubtotal + taxTotal + PLATFORM_FEE;
 
     container.innerHTML = `
         <main class="traveler-hotel-booking-page">
@@ -104,10 +106,10 @@ export async function renderTravelerHotelBookingPage(containerId) {
                         </section>
 
                         <section class="traveler-booking-note">
-                            ${icon("info")}
+                            ${icon("shield")}
                             <div>
-                                <strong>Payment at Hotel</strong>
-                                <p>No payment required now. You'll pay directly at the hotel upon arrival. Your booking is guaranteed with these details.</p>
+                                <strong>Secure Online Payment</strong>
+                                <p>Pay securely online with Razorpay (Test Mode). Your reservation is instantly confirmed upon successful transaction.</p>
                             </div>
                         </section>
                     </div>
@@ -153,18 +155,24 @@ export async function renderTravelerHotelBookingPage(containerId) {
                                 <span>Taxes & fees</span>
                                 <strong>₹${taxTotal}</strong>
                             </div>
+                            <div class="traveler-booking-price-row">
+                                <span style="color: #4B5563; font-weight: 500;">Platform Fee</span>
+                                <strong style="color: #4B5563;">₹14</strong>
+                            </div>
                             <div class="traveler-booking-total-row">
                                 <span>Total Amount</span>
                                 <strong>₹${totalAmount}</strong>
                             </div>
                         </div>
 
-                        <button class="traveler-booking-confirm" type="button">${icon("lock")}Confirm Booking</button>
+                        <div id="hotel-booking-feedback" style="display:none; padding:10px; border-radius:8px; font-size:13px; margin-bottom:12px; font-weight:500;"></div>
+
+                        <button class="traveler-booking-confirm" id="hotel-pay-btn" type="button">${icon("lock")} Pay ₹${totalAmount} & Confirm</button>
 
                         <ul class="traveler-booking-features">
-                            <li>${icon("check")}No payment required now</li>
+                            <li>${icon("check")}Secure payment via Razorpay Test Mode</li>
                             <li>${icon("check")}Free cancellation up to 24 hours</li>
-                            <li>${icon("check")}Instant confirmation</li>
+                            <li>${icon("check")}Instant booking confirmation</li>
                         </ul>
                     </aside>
                 </section>
@@ -172,15 +180,40 @@ export async function renderTravelerHotelBookingPage(containerId) {
         </main>
     `;
 
-    bindEvents();
+    bindEvents(container, { hotel, selectedRoom, totalAmount });
 }
 
-function bindEvents() {
-    document.querySelector(".traveler-booking-confirm")?.addEventListener("click", () => {
-        const guestFirstNames = Array.from(document.querySelectorAll("[data-guest-first-name]")).map(el => el.value.trim());
-        const guestLastNames = Array.from(document.querySelectorAll("[data-guest-last-name]")).map(el => el.value.trim());
-        const email = document.querySelector('input[type="email"]')?.value.trim();
-        const phone = document.querySelector('input[type="text"][placeholder="+1 (555) 000-0000"]')?.value.trim() || document.querySelector('input[type="tel"]')?.value.trim();
+function bindEvents(container, { hotel, selectedRoom, totalAmount }) {
+    const payBtn = container.querySelector("#hotel-pay-btn") || container.querySelector(".traveler-booking-confirm");
+    const feedbackEl = container.querySelector("#hotel-booking-feedback");
+
+    const setFeedback = (msg, isError = false) => {
+        if (!feedbackEl) return;
+        if (!msg) {
+            feedbackEl.style.display = "none";
+            feedbackEl.textContent = "";
+            return;
+        }
+        feedbackEl.style.display = "block";
+        feedbackEl.textContent = msg;
+        feedbackEl.style.background = isError ? "#fef2f2" : "#f0fdf4";
+        feedbackEl.style.color = isError ? "#b91c1c" : "#15803d";
+        feedbackEl.style.border = isError ? "1px solid #fecaca" : "1px solid #bbf7d0";
+    };
+
+    const resetButton = () => {
+        if (payBtn) {
+            payBtn.disabled = false;
+            payBtn.dataset.paymentInProgress = "";
+            payBtn.innerHTML = `${icon("lock")} Pay ₹${totalAmount} & Confirm`;
+        }
+    };
+
+    payBtn?.addEventListener("click", async () => {
+        const guestFirstNames = Array.from(container.querySelectorAll("[data-guest-first-name]")).map(el => el.value.trim());
+        const guestLastNames = Array.from(container.querySelectorAll("[data-guest-last-name]")).map(el => el.value.trim());
+        const email = container.querySelector('input[type="email"]')?.value.trim();
+        const phone = container.querySelector('input[type="text"][placeholder="+1 (555) 000-0000"]')?.value.trim() || container.querySelector('input[type="tel"]')?.value.trim();
 
         // Validation logic
         const hasEmptyName = guestFirstNames.some(name => !name) || guestLastNames.some(name => !name);
@@ -217,18 +250,109 @@ function bindEvents() {
             return;
         }
 
-        const params = new URLSearchParams(window.location.search);
-        const hotelId = params.get("hotel") || "grand-luxury";
-        const roomId = params.get("room");
-        const guests = guestFirstNames.map((first, i) => ({ firstName: first, lastName: guestLastNames[i] }));
-        localStorage.setItem("traveler_booking_guest_details", JSON.stringify(guests));
+        if (!totalAmount || totalAmount <= 0) {
+            alert("Invalid booking total. Please re-select dates or room.");
+            return;
+        }
 
-        const nextUrl = roomId
-            ? `${HOTEL_CONFIRMATION_PAGE}?hotel=${encodeURIComponent(hotelId)}&room=${encodeURIComponent(roomId)}`
-            : `${HOTEL_CONFIRMATION_PAGE}?hotel=${encodeURIComponent(hotelId)}`;
-        window.location.assign(nextUrl);
+        if (payBtn.dataset.paymentInProgress === "true") return;
+        payBtn.dataset.paymentInProgress = "true";
+        payBtn.disabled = true;
+        payBtn.innerHTML = `${icon("lock")} Creating order…`;
+        setFeedback("", false);
+
+        const params = new URLSearchParams(window.location.search);
+        const hotelId = params.get("hotel") || hotel.id || "grand-luxury";
+        const roomId = params.get("room") || selectedRoom.id;
+        const guests = guestFirstNames.map((first, i) => ({ firstName: first, lastName: guestLastNames[i] }));
+
+        let orderData;
+        try {
+            orderData = await createRazorpayOrder(totalAmount, {
+                bookingType: "HOTEL",
+                bookingId: hotelId,
+                notes: {
+                    hotelId: String(hotelId),
+                    roomId: String(roomId || ""),
+                    guestEmail: email
+                }
+            });
+        } catch (err) {
+            const msg = err?.message || "Failed to create payment order. Please try again.";
+            setFeedback(msg, true);
+            resetButton();
+            return;
+        }
+
+        resetButton();
+
+        // Open Razorpay Checkout modal
+        openRazorpayCheckout(
+            orderData,
+            `${hotel.title} — ${selectedRoom.name}`,
+            
+            // ✅ Payment succeeded in modal — verify server-side before trusting
+            async (paymentResponse) => {
+                setFeedback("Verifying payment with server…", false);
+                if (payBtn) {
+                    payBtn.disabled = true;
+                    payBtn.innerHTML = `${icon("lock")} Verifying…`;
+                }
+
+                try {
+                    await verifyRazorpayPayment({
+                        razorpay_order_id: paymentResponse.razorpay_order_id,
+                        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                        razorpay_signature: paymentResponse.razorpay_signature
+                    });
+
+                    const currentAdminRevenue = Number(localStorage.getItem("superAdminRevenue")) || 0;
+                    const commission = totalAmount * 0.04;
+                    localStorage.setItem("superAdminRevenue", currentAdminRevenue + 14 + commission);
+
+                    const globalBookings = JSON.parse(localStorage.getItem("allPlatformBookings")) || [];
+                    const currentUser = JSON.parse(localStorage.getItem("currentUser")) || { name: "Guest", role: "traveler" };
+                    globalBookings.push({
+                        id: paymentResponse.razorpay_order_id || "BKG-" + Math.floor(Math.random()*10000),
+                        user: currentUser.name,
+                        role: currentUser.role,
+                        amount: totalAmount,
+                        type: "Hotel",
+                        date: new Date().toISOString()
+                    });
+                    localStorage.setItem("allPlatformBookings", JSON.stringify(globalBookings));
+
+                    // Store guest details & payment metadata in localStorage
+                    localStorage.setItem("traveler_booking_guest_details", JSON.stringify(guests));
+                    localStorage.setItem("traveler_hotel_payment_receipt", JSON.stringify({
+                        orderId: paymentResponse.razorpay_order_id,
+                        paymentId: paymentResponse.razorpay_payment_id,
+                        amount: totalAmount,
+                        verified: true,
+                        paidAt: new Date().toISOString()
+                    }));
+
+                    const nextUrl = roomId
+                        ? `${HOTEL_CONFIRMATION_PAGE}?hotel=${encodeURIComponent(hotelId)}&room=${encodeURIComponent(roomId)}`
+                        : `${HOTEL_CONFIRMATION_PAGE}?hotel=${encodeURIComponent(hotelId)}`;
+                    window.location.assign(nextUrl);
+
+                } catch (verifyErr) {
+                    const msg = verifyErr?.message || "Payment verification failed. Please contact support.";
+                    setFeedback(msg, true);
+                    resetButton();
+                }
+            },
+
+            // ❌ Payment failed or cancelled
+            (errorMessage) => {
+                setFeedback(errorMessage, true);
+                resetButton();
+            }
+        );
     });
 }
+
 
 async function getSelectedHotel() {
     const params = new URLSearchParams(window.location.search);

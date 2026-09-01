@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsArray,
   IsOptional,
+  IsBoolean,
   Min,
   MinLength,
 } from 'class-validator';
@@ -30,9 +31,10 @@ export class CreateGuideDto {
   @IsString()
   location!: string;
 
-  @ApiProperty({ example: 'Senior Trek Guide' })
+  @ApiPropertyOptional({ example: 'Senior Trek Guide' })
+  @IsOptional()
   @IsString()
-  prof_title!: string;
+  prof_title?: string;
 
   @ApiProperty({ example: 5 })
   @IsNumber()
@@ -69,4 +71,14 @@ export class CreateGuideDto {
   @IsString()
   @MinLength(15)
   iban?: string;
+
+  @ApiPropertyOptional({ example: 'restricted' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ example: false })
+  @IsOptional()
+  @IsBoolean()
+  isDeleted?: boolean;
 }

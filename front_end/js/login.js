@@ -99,7 +99,7 @@ export function initLogin() {
         } else if(role === "guide") {
           window.location.href = "./dashboard.html";
         } else if (role === "partner" || role === "hotel") {
-          window.location.href = "./hotelRooms.html";
+          window.location.href = "./dashboard.html";
         } else if (role === "tech_admin" || role === "techadmin") {
           window.location.href = "./tech_tickets.html";
         } else if (role === "admin") {

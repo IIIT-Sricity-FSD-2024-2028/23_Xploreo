@@ -1,7 +1,8 @@
-import { getApiBaseUrl, getApiSession } from "./session.js";
+import { getApiBaseUrl, getApiSession, getCurrentUser } from "./session.js";
 
 async function request(path, options = {}) {
     const session = getApiSession();
+    const currentUser = getCurrentUser();
     const headers = {
         "Content-Type": "application/json",
         ...(options.headers || {})
@@ -12,12 +13,19 @@ async function request(path, options = {}) {
         headers["Authorization"] = `Bearer ${session.token}`;
     }
 
-    // Also send x-user-id and x-user-role for RBAC guards
-    if (session?.headers?.["x-user-id"]) {
-        headers["x-user-id"] = session.headers["x-user-id"];
+    // Also send x-user-id, x-user-role, and x-user-location for RBAC/Location guards
+    const userId = session?.headers?.["x-user-id"] || session?.user?.userId || session?.user?.id || currentUser?.userId || currentUser?.id;
+    const userRole = session?.headers?.["x-user-role"] || session?.user?.role || currentUser?.role;
+    const userLocation = session?.headers?.["x-user-location"] || session?.user?.location || currentUser?.location;
+
+    if (userId) {
+        headers["x-user-id"] = String(userId);
     }
-    if (session?.headers?.["x-user-role"]) {
-        headers["x-user-role"] = session.headers["x-user-role"];
+    if (userRole) {
+        headers["x-user-role"] = String(userRole);
+    }
+    if (userLocation) {
+        headers["x-user-location"] = String(userLocation);
     }
 
     const response = await fetch(`${getApiBaseUrl()}${path}`, {

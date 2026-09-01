@@ -13,6 +13,7 @@ export class Hotel {
   totalRooms!: number;
   availableRooms!: number;
   image!: string;
+  images?: string[];
   amenities!: string[];
   status!: 'active' | 'inactive';
   createdAt!: Date;

@@ -276,11 +276,11 @@ function renderPaymentsPanel(plan) {
                 <div class="plan-detail-payment-summary">
                     <div class="plan-detail-amount-card total">
                         <span>Total Amount</span>
-                        <strong>${formatCurrency(plan.payments.total)}</strong>
+                        <strong>${formatCurrency(plan.payments.total + 14)}</strong>
                     </div>
                     <div class="plan-detail-amount-card paid">
                         <span>Paid Amount</span>
-                        <strong>${formatCurrency(plan.payments.paid)}</strong>
+                        <strong>${formatCurrency(plan.payments.paid + 14)}</strong>
                     </div>
                     <div class="plan-detail-amount-card pending">
                         <span>Pending Amount</span>
@@ -292,9 +292,16 @@ function renderPaymentsPanel(plan) {
                     ${plan.payments.breakdown.map((row) => `
                         <div class="plan-detail-breakdown-row ${row.emphasis ? "total" : ""}">
                             <span>${escapeHtml(row.label)}</span>
-                            <strong>${formatCurrency(row.amount)}</strong>
+                            <strong>${formatCurrency(row.emphasis ? row.amount + 14 : row.amount)}</strong>
                         </div>
                     `).join("")}
+                    <div class="plan-detail-breakdown-row">
+                        <span style="color: #4B5563; font-weight: 500;">Platform Fee</span>
+                        <strong style="color: #4B5563;">₹14</strong>
+                    </div>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; border-radius: 8px; background: #F3F4F6;">
+                    <p style="font-size: 13px; color: #6B7280; text-align: center; margin: 0;">Note: If cancelled, Platform Fee and Taxes won't be repaid.</p>
                 </div>
             </article>
 
@@ -432,6 +439,21 @@ function bindEvents(container, state) {
                     myTrips.push(tripRecord);
                     localStorage.setItem("traveler_my_trips", JSON.stringify(myTrips));
                 }
+
+                const currentAdminRevenue = Number(localStorage.getItem("superAdminRevenue")) || 0;
+                const commission = tripRecord.amount * 0.04;
+                localStorage.setItem("superAdminRevenue", currentAdminRevenue + 14 + commission);
+
+                const globalBookings = JSON.parse(localStorage.getItem("allPlatformBookings")) || [];
+                globalBookings.push({
+                    id: bookingId,
+                    user: currentUser?.name || "Traveler",
+                    role: currentUser?.role || "traveler",
+                    amount: tripRecord.amount + 14,
+                    type: "Holiday Package",
+                    date: new Date().toISOString()
+                });
+                localStorage.setItem("allPlatformBookings", JSON.stringify(globalBookings));
             } catch (error) {
                 console.warn("Could not save plan booking to traveler trips", error);
             }

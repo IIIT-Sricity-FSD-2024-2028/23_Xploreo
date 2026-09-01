@@ -37,7 +37,7 @@ export class GuideApplicationsController {
   @ApiCreateEndpoint(CreateGuideApplicationDto)
   create(@Req() req: any, @Body() dto: CreateGuideApplicationDto) {
     const guideId = req.user.userId;
-    return this.service.create(guideId, dto);
+    return this.service.create(guideId, dto, req.user.location);
   }
 
   @Roles(Role.SUPERADMIN, Role.NONTECHADMIN)
@@ -48,11 +48,12 @@ export class GuideApplicationsController {
   @ApiQuery({ name: 'planId', required: false })
   @ApiQuery({ name: 'guideId', required: false })
   findAll(
+    @Req() req: any,
     @Query('status') status?: GuideApplicationStatus,
     @Query('planId') planId?: string,
     @Query('guideId') guideId?: string,
   ) {
-    return this.service.findAll({ status, planId, guideId });
+    return this.service.findAll(req.user, { status, planId, guideId });
   }
 
   @Roles(Role.GUIDE, Role.SUPERADMIN, Role.NONTECHADMIN)
@@ -67,8 +68,8 @@ export class GuideApplicationsController {
   @Get('plan/:planId')
   @ApiOperation({ summary: 'Get all applications for a specific plan (NTA dashboard)' })
   @ApiReadEndpoint()
-  findByPlan(@Param('planId', NonEmptyStringPipe) planId: string) {
-    return this.service.findByPlan(planId);
+  findByPlan(@Param('planId', NonEmptyStringPipe) planId: string, @Req() req: any) {
+    return this.service.findByPlan(planId, req.user);
   }
 
   @Roles(Role.TRAVELLER, Role.TRAVELLER_ACTOR)

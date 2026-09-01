@@ -4,6 +4,7 @@ import {
   IsNotEmpty,
   IsString,
   MinLength,
+  IsOptional,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Role } from '../entities/auth.entity';
@@ -38,4 +39,23 @@ export class RegisterDto {
   @ApiProperty({ enum: Role, example: Role.TRAVELLER })
   @IsEnum(Role)
   role!: Role;
+
+  @ApiProperty({ example: 'Goa', required: false })
+  @IsString()
+  location?: string;
+
+  @ApiProperty({ example: 'Xploreo Beach Resort', required: false })
+  @IsOptional()
+  @IsString()
+  businessName?: string;
+
+  @ApiProperty({ example: 'GSTIN1234567', required: false })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiProperty({ example: '1234567890', required: false })
+  @IsOptional()
+  @IsString()
+  bankAccount?: string;
 }

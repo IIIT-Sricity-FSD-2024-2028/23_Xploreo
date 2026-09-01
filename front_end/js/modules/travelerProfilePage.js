@@ -148,9 +148,10 @@ export async function initTravelerProfilePage(containerId) {
                     <span class="label">Date of Birth</span>
                     <input class="input-field" value="${profile.dob || 'Not provided'}" disabled>
                 </div>
+                </div>
                 <div class="input-group full">
-                    <span class="label">Preferred language</span>
-                    <input class="input-field" value="${profile.language}" disabled>
+                    <span class="label">Languages</span>
+                    <input class="input-field" value="${profile.languages || profile.language || ''}" disabled>
                 </div>
             </div>
         `;
@@ -163,23 +164,26 @@ export async function initTravelerProfilePage(containerId) {
                 <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:1.5rem;">
                     <div class="input-group">
                         <span class="label">First Name</span>
-                        <input type="text" name="firstName" class="input-field" value="${firstName}">
+                        <input type="text" name="firstName" class="input-field" value="${firstName}" required minlength="2" pattern="[a-zA-Z ]+" title="First name should only contain letters">
                     </div>
                     <div class="input-group">
                         <span class="label">Last Name</span>
-                        <input type="text" name="lastName" class="input-field" value="${lastName}">
+                        <input type="text" name="lastName" class="input-field" value="${lastName}" required minlength="1" pattern="[a-zA-Z ]+" title="Last name should only contain letters">
                     </div>
                     <div class="input-group full">
                         <span class="label">Email Address</span>
-                        <input type="email" name="email" class="input-field" value="${profile.email}">
+                        <input type="email" name="email" class="input-field" value="${profile.email}" required>
                     </div>
                     <div class="input-group full">
                         <span class="label">Phone Number</span>
-                        <input type="text" name="phone" class="input-field" value="${profile.phone}">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                            <span style="font-weight: 600; color: #4B5563; padding-left: 8px;">+91</span>
+                            <input type="tel" name="phone" class="input-field" pattern="[6-9][0-9]{9}" maxlength="10" title="Please enter a valid 10-digit Indian mobile number starting with 6-9" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex: 1; margin-top: 0;" value="${(profile.phone || '').replace(/^\+91\s*/, '')}">
+                        </div>
                     </div>
                     <div class="input-group">
                         <span class="label">Gender</span>
-                        <select name="gender" class="input-field">
+                        <select name="gender" class="input-field" required>
                             <option value="">Select</option>
                             <option value="Male" ${profile.gender === 'Male' ? 'selected' : ''}>Male</option>
                             <option value="Female" ${profile.gender === 'Female' ? 'selected' : ''}>Female</option>
@@ -188,11 +192,11 @@ export async function initTravelerProfilePage(containerId) {
                     </div>
                     <div class="input-group">
                         <span class="label">Date of Birth</span>
-                        <input type="date" name="dob" class="input-field" value="${profile.dob || ''}">
+                        <input type="date" name="dob" class="input-field" value="${profile.dob || ''}" required>
                     </div>
                     <div class="input-group full">
-                        <span class="label">Preferred language</span>
-                        <input type="text" name="language" class="input-field" value="${profile.language}">
+                        <span class="label">Languages</span>
+                        <input type="text" name="languages" class="input-field" value="${profile.languages || profile.language || ''}" required minlength="2" pattern="^[a-zA-Z, ]+$" title="Enter languages separated by commas">
                     </div>
                     <div class="input-group full">
                         <span class="label">Preferences</span>
@@ -208,7 +212,7 @@ export async function initTravelerProfilePage(containerId) {
                     </div>
                     <div class="input-group full">
                         <span class="label">Bio</span>
-                        <textarea name="bio" class="input-field" rows="5">${profile.bio}</textarea>
+                        <textarea name="bio" class="input-field" rows="5" required minlength="10">${profile.bio}</textarea>
                     </div>
                 </div>
                 <div class="save-all-container" style="margin-top:1.5rem;">
@@ -244,14 +248,19 @@ export async function initTravelerProfilePage(containerId) {
             const dob = form.elements.dob?.value;
             const gender = form.elements.gender?.value;
 
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+
             const payload = {
                 ...profile,
                 fullName: `${firstName} ${lastName}`.trim(),
                 name: `${firstName} ${lastName}`.trim(),
                 email: form.elements.email.value.trim(),
-                phone: form.elements.phone.value.trim(),
-                phno: form.elements.phone.value.trim(),
-                language: form.elements.language.value.trim(),
+                phone: "+91 " + form.elements.phone.value.trim(),
+                phno: "+91 " + form.elements.phone.value.trim(),
+                languages: form.elements.languages.value.trim(),
                 bio: form.elements.bio.value.trim(),
                 hobbies: hobbiesRaw,
                 interestPreferences: preferenceOptions,

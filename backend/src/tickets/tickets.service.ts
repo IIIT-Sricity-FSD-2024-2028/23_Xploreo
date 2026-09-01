@@ -61,8 +61,10 @@ export class TicketsService {
     const isTechAdmin =
       role === 'techadmin' ||
       role === 'tech_admin' ||
+      role === 'superadmin' ||
       user.role === Role.TECHADMIN ||
-      user.role === Role.TECH_ADMIN;
+      user.role === Role.TECH_ADMIN ||
+      user.role === Role.SUPERADMIN;
 
     if (isTechAdmin) {
       return this.ticketsRepository.findAll();

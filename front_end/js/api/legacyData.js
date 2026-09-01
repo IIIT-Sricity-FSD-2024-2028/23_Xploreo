@@ -64,10 +64,16 @@ const defaultTravelerData = {
             tours: "21 tours"
         },
         {
-            title: "Bangalore",
-            subtitle: "Culture, food, and neon neighborhoods",
+            title: "Jaipur",
+            subtitle: "Culture, palaces, and forts",
             image: "https://images.unsplash.com/photo-1542051841857-5f90071e7989?auto=format&fit=crop&q=80&w=800",
             tours: "16 tours"
+        },
+        {
+            title: "Kerala",
+            subtitle: "Backwaters, nature, and tranquility",
+            image: "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&q=80&w=800",
+            tours: "20 tours"
         }
     ],
     recommendedTours: [],

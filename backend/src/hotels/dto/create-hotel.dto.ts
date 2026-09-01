@@ -61,6 +61,11 @@ export class CreateHotelDto {
   @IsOptional()
   @IsString()
   image?: string;
+  @ApiPropertyOptional({ example: ['https://example.com/hotel.jpg'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @ApiPropertyOptional({ example: ['Pool', 'Breakfast', 'WiFi'] })
   @IsOptional()

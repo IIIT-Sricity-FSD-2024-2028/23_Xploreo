@@ -50,14 +50,17 @@ export function renderExperienceEarningsPage() {
         let cancelled = 0;
 
         table.innerHTML = dataToRender.map((item) => {
-            total += item.amount;
+            const rawAmt = Number(item.amount || 0);
+            const partnerBase = rawAmt > 14 ? rawAmt - 14 : rawAmt;
+            const partnerNet = partnerBase * 0.96;
+            total += partnerNet;
 
             if (item.status === "Refunded") {
-                refunded += item.amount;
+                refunded += partnerNet;
                 cancelled += 1;
             }
 
-            expMap[item.title] = (expMap[item.title] || 0) + item.amount;
+            expMap[item.title] = (expMap[item.title] || 0) + partnerNet;
             const day = new Date(item.date).toLocaleDateString("en-US", { weekday: "long" });
             dayMap[day] = (dayMap[day] || 0) + 1;
 
@@ -65,7 +68,7 @@ export function renderExperienceEarningsPage() {
                 <tr>
                     <td>${item.user}</td>
                     <td>${item.title}</td>
-                    <td>${formatCurrency(item.amount)}</td>
+                    <td>${formatCurrency(partnerNet)}</td>
                     <td>${formatDisplayDate(item.date)}</td>
                     <td><span class="status-pill ${item.status === "Refunded" ? "cancelled" : "checked"}">${item.status}</span></td>
                 </tr>

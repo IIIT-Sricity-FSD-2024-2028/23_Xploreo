@@ -56,7 +56,7 @@ export function renderinternalcontents(containerId, currentUser, currentActiveTa
                         <div class="card-footer-info">
                             <div class="guests-amount">
                                 <p class="guests">${req.guests} guests</p>
-                                <p class="amount">$${req.amount}</p>
+                                <p class="amount">₹${req.amount}</p>
                             </div>
                             <div class="card-actions">
                                 <button class="btn btn-solid-blue" onclick="handleTourStart('${req.id}')">Start</button>
@@ -94,7 +94,7 @@ export function renderinternalcontents(containerId, currentUser, currentActiveTa
                             <span class="badge badge-ongoing">In Progress</span>
                         </div>
                         <div class="price-guests">
-                            <h3 class="price">$${req.amount}</h3>
+                            <h3 class="price">₹${req.amount}</h3>
                             <p class="guests-small">${req.guests} guests</p>
                         </div>
                     </div>
@@ -158,7 +158,7 @@ export function renderinternalcontents(containerId, currentUser, currentActiveTa
                     <div class="completed-tour-card">
                         <div class="comp-header">
                             <h2>${req.title}</h2>
-                            <h3 class="price">$${req.amount}</h3>
+                            <h3 class="price">₹${req.amount}</h3>
                         </div>
                         <div class="comp-sub">
                             <div class="comp-icons">

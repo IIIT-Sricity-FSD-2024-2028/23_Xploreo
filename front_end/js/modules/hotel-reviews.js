@@ -1,4 +1,4 @@
-import { fetchReviews } from "../api/services.js";
+import { fetchReviews, fetchPartnerHotels } from "../api/services.js";
 
 export async function renderHotelReviews(containerId) {
     const container = document.getElementById(containerId);
@@ -14,8 +14,15 @@ export async function renderHotelReviews(containerId) {
     `;
 
     try {
-        const allReviews = await fetchReviews();
-        const hotelReviews = allReviews.filter(r => r.targetType === "hotel" || r.targetType === "HOTEL");
+        const [allReviews, partnerHotels] = await Promise.all([
+            fetchReviews(),
+            fetchPartnerHotels()
+        ]);
+
+        const partnerHotelIds = new Set(partnerHotels.map(h => h.id));
+        const hotelReviews = allReviews.filter(r =>
+            (r.targetType === "hotel" || r.targetType === "HOTEL") && partnerHotelIds.has(r.targetId)
+        );
 
         if (hotelReviews.length === 0) {
             container.innerHTML = `

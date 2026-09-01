@@ -65,6 +65,7 @@ export const API_ENDPOINTS = Object.freeze({
   guideAssignmentReject: (id) => `/guide-assignments/${id}/reject`,
   guideAssignmentChangeGuide: (id) => `/guide-assignments/${id}/change-guide`,
   guideAssignmentCancel: (id) => `/guide-assignments/${id}/cancel`,
+  hotelBookingCancel: (id) => `/bookings/${id}/cancel`,
 
   // Cities
   cities: "/cities",
@@ -72,6 +73,11 @@ export const API_ENDPOINTS = Object.freeze({
   // Reviews
   reviews: "/reviews",
   reviewsByTarget: (type, id) => `/reviews?targetType=${type}&targetId=${id}`,
+
+  // Payments (Razorpay)
+  paymentsCreateOrder: "/payments/create-order",
+  paymentsVerify: "/payments/verify",
+
 });
 
 export const API_SESSION_KEY = "xploreo_api_session";

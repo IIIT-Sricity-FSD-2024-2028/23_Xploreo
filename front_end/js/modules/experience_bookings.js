@@ -172,7 +172,12 @@ export async function renderExperienceBookingsPage() {
         setElementText("modalCustomer", user.name);
         setElementText("modalPhone", user.phone || "+1 (555) 123-4567");
         setElementText("modalEmail", user.email || `${user.name.toLowerCase().replace(/\s+/g, ".")}@email.com`);
-        setElementText("modalAmount", formatAmount(user.totalAmount || (user.seats * 90)));
+        
+        const total = Number(user.totalAmount || (user.seats * 90));
+        const partnerEarnings = total > 14 ? total - 14 : total;
+        const superAdminCut = partnerEarnings * 0.04;
+        
+        setElementText("modalAmount", `Earnings: ₹${partnerEarnings} | Admin Cut (4%): ₹${superAdminCut.toFixed(2)}`);
         setElementText("modalPaymentStatus", user.status === "cancelled" ? "Refunded" : "Paid");
 
         const statusEl = document.getElementById("modalStatus");
@@ -184,7 +189,7 @@ export async function renderExperienceBookingsPage() {
     }
 
     function formatAmount(value) {
-        return `$${value}`;
+        return `₹${value}`;
     }
 
     async function markCheckIn(id) {

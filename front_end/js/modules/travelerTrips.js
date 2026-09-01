@@ -1,5 +1,5 @@
 import { travelerData } from "../api/legacyData.js";
-import { fetchTripsForGuide, fetchTripsForTraveller, fetchExperienceBookings, fetchTravellerHotelBookings } from "../api/services.js";
+import { fetchTripsForGuide, fetchTripsForTraveller, fetchExperienceBookings, fetchTravellerHotelBookings, fetchReviews } from "../api/services.js";
 import { mapTripToLegacyTour } from "../api/adapters.js";
 import { showAppAlert } from "./experience_shared.js";
 
@@ -116,7 +116,7 @@ export async function renderTravelerTrips(containerId, user) {
                             
                             <div class="trip-actions">
                                 <button class="btn-solid-blue" ${String(trip.backendStatus).toUpperCase() === 'END_REQUESTED' ? 'style="background-color: #f59e0b; border-color: #f59e0b; color: white;"' : ''} data-trip-view="${escapeHtml(getTripViewKey(trip))}">View Details</button>
-                                ${trip.status === 'Completed'
+                                ${trip.status === 'Completed' && !trip.hasReviewed
                                     ? `<button class="btn-outline-teal" data-trip-review="${escapeHtml(getTripViewKey(trip))}">Review Trip</button>`
                                     : ``}
                                 ${String(trip.backendStatus).toUpperCase() === 'END_REQUESTED'
@@ -301,12 +301,24 @@ export async function renderTravelerTrips(containerId, user) {
 
     container.querySelector("#trip-review-photo")?.addEventListener("change", (event) => {
         const file = event.target.files?.[0];
-        tripReviewState.photoName = file?.name || "";
-        rerender();
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                tripReviewState.photoName = file.name;
+                tripReviewState.photoData = e.target.result;
+                rerender();
+            };
+            reader.readAsDataURL(file);
+        } else {
+            tripReviewState.photoName = "";
+            tripReviewState.photoData = "";
+            rerender();
+        }
     });
 
     container.querySelector("[data-review-cancel]")?.addEventListener("click", () => {
         resetReviewState();
+        tripReviewState.photoData = "";
         rerender();
     });
 
@@ -333,8 +345,8 @@ export async function renderTravelerTrips(containerId, user) {
             rating: tripReviewState.rating,
             comment: tripReviewState.reviewText
         };
-        if (tripReviewState.photoName) {
-            payload.image = tripReviewState.photoName;
+        if (tripReviewState.photoData) {
+            payload.image = tripReviewState.photoData;
         }
 
         try {
@@ -431,8 +443,8 @@ async function fetchTripsFromBackend(user) {
 
     // 2. Fetch regular trips (tours) from localStorage and enrich with backend guide assignments
     try {
-        const localTours = JSON.parse(localStorage.getItem("tours") || "[]");
-        const myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]");
+        const localTours = JSON.parse(localStorage.getItem("tours") || "[]").filter(t => (t.type || "").toLowerCase() !== "hotel");
+        const myTrips = JSON.parse(localStorage.getItem("traveler_my_trips") || "[]").filter(t => (t.type || "").toLowerCase() !== "hotel");
         
         const tourMap = new Map();
         localTours.forEach(t => tourMap.set(t.bookingId || t.id, t));
@@ -499,6 +511,17 @@ async function fetchTripsFromBackend(user) {
         }
     } catch (e) {
         console.warn("Failed to fetch/merge trips", e);
+    }
+
+    try {
+        const allReviews = await fetchReviews();
+        const userReviews = allReviews.filter(r => String(r.userId) === String(currentUser.id));
+        allTrips = allTrips.map(trip => {
+            const hasReviewed = userReviews.some(r => String(r.targetId) === String(trip.bookingId));
+            return { ...trip, hasReviewed };
+        });
+    } catch (e) {
+        console.warn("Failed to fetch reviews for trips", e);
     }
 
     return allTrips;
@@ -787,28 +810,6 @@ function renderReviewModal(displayedTrips, reviewState) {
                     <div class="trip-review-section">
                         <h3>Write your experience</h3>
                         <textarea id="trip-review-text" class="trip-review-textarea" placeholder="Share your thoughts about this trip...">${escapeHtml(reviewState.reviewText)}</textarea>
-                    </div>
-
-                    <div class="trip-review-section">
-                        <h3>Add tags (optional)</h3>
-                        <div class="trip-review-tags">
-                            ${REVIEW_TAGS.map((tag) => `
-                                <button type="button" class="trip-review-tag ${reviewState.selectedTags.has(tag) ? "active" : ""}" data-review-tag="${escapeHtmlAttr(tag)}">${tag}</button>
-                            `).join("")}
-                        </div>
-                    </div>
-
-                    <div class="trip-review-section">
-                        <h3>Add photos (optional)</h3>
-                        <label class="trip-review-upload">
-                            <input type="file" id="trip-review-photo" accept="image/*">
-                            <div class="trip-review-upload-copy">
-                                <div class="trip-review-upload-icon">${uploadIconSvg()}</div>
-                                <strong>Drag & drop photos here</strong>
-                                <span>or click to browse</span>
-                                ${reviewState.photoName ? `<small>${escapeHtml(reviewState.photoName)}</small>` : ""}
-                            </div>
-                        </label>
                     </div>
                 </div>
 

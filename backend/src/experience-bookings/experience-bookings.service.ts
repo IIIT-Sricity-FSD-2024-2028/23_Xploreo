@@ -9,13 +9,17 @@ import { ExperiencesRepository } from '../experiences/experiences.repository';
 import { CreateExperienceBookingDto } from './dto/create-experience-booking.dto';
 import { ExperienceBookingsRepository } from './experience-bookings.repository';
 import { Role } from '../auth/entities/auth.entity';
+import {
+  assertActorLocationMatch,
+  normalizeAllowedLocation,
+} from '../common/utils/location-scope';
 
 @Injectable()
 export class ExperienceBookingsService {
   constructor(
     private readonly bookingsRepository: ExperienceBookingsRepository,
     private readonly experiencesRepository: ExperiencesRepository,
-  ) {}
+  ) { }
 
   create(travellerId: string | undefined, dto: CreateExperienceBookingDto) {
     if (!travellerId) {
@@ -111,15 +115,25 @@ export class ExperienceBookingsService {
       }));
   }
 
-  findForPartner(partnerId: string | undefined) {
+  findForPartner(
+    partnerId: string | undefined,
+    partnerLocation: string | undefined,
+  ) {
     if (!partnerId) {
       throw new ForbiddenException(
         'x-user-id header is required for EXPERIENCE_PARTNER',
       );
     }
 
-    const partnerExperiences =
+    let partnerExperiences =
       this.experiencesRepository.findByPartnerId(partnerId);
+      
+    if (partnerLocation) {
+      const normLoc = normalizeAllowedLocation(partnerLocation);
+      partnerExperiences = partnerExperiences.filter(
+        (e) => normalizeAllowedLocation(e.destination) === normLoc,
+      );
+    }
     const experienceById = new Map(
       partnerExperiences.map((experience) => [experience.id, experience]),
     );
@@ -138,6 +152,7 @@ export class ExperienceBookingsService {
     id: string,
     userId: string | undefined,
     userRole: string | undefined,
+    partnerLocation: string | undefined,
     status: import('./entities/experience-booking.entity').ExperienceBookingStatus,
   ) {
     if (!userId || !userRole) {
@@ -152,6 +167,14 @@ export class ExperienceBookingsService {
     const experience = this.experiencesRepository.findById(
       booking.experienceId,
     );
+
+    if (userRole === Role.EXPERIENCE_PARTNER && experience && partnerLocation) {
+      assertActorLocationMatch(
+        partnerLocation,
+        experience.destination,
+        'experience',
+      );
+    }
 
     if (status === 'COMPLETED') {
       if (
@@ -192,19 +215,19 @@ export class ExperienceBookingsService {
     ) {
       const updatedSlots = experience.slots
         ? experience.slots.map((slot) => {
-            if (
-              slot.id === booking.slotId ||
-              (slot.date === booking.date && slot.time === booking.time)
-            ) {
-              const newBooked = Math.max(0, slot.booked - booking.participants);
-              return {
-                ...slot,
-                booked: newBooked,
-                available: newBooked < slot.capacity,
-              };
-            }
-            return slot;
-          })
+          if (
+            slot.id === booking.slotId ||
+            (slot.date === booking.date && slot.time === booking.time)
+          ) {
+            const newBooked = Math.max(0, slot.booked - booking.participants);
+            return {
+              ...slot,
+              booked: newBooked,
+              available: newBooked < slot.capacity,
+            };
+          }
+          return slot;
+        })
         : [];
 
       const newTotalBooked = Math.max(

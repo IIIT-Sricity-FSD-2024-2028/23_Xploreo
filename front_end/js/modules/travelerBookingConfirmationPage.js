@@ -235,7 +235,9 @@ export async function renderTravelerBookingConfirmationPage(containerId) {
 }
 
 function renderPackageConfirmation(booking) {
-    const { packageData, travelerCount, totalPrice, bookingId, confirmedAt } = booking;
+    const { packageData, travelerCount, bookingId, confirmedAt } = booking;
+    const displayTotal = (packageData.pricePerPerson * travelerCount) + 14;
+    
     const startDate = packageData.departureDate ? formatBookingDate(packageData.departureDate) : "Flexible dates";
     const endDate = packageData.departureDate
         ? formatBookingDate(addDays(packageData.departureDate, Math.max(1, Number(packageData.nights) || 1)))
@@ -408,9 +410,13 @@ function renderPackageConfirmation(booking) {
                             <span>Price per traveler</span>
                             <strong>${formatBookingCurrency(packageData.pricePerPerson)}</strong>
                         </div>
+                        <div class="traveler-side-stat">
+                            <span>Platform Fee</span>
+                            <strong>₹14</strong>
+                        </div>
                         <div class="traveler-side-stat traveler-side-stat-total">
                             <span>Total price</span>
-                            <strong>${formatBookingCurrency(totalPrice)}</strong>
+                            <strong>${formatBookingCurrency(displayTotal)}</strong>
                         </div>
                         <div class="traveler-perk-pill">${escapeHtml(packageData.perk)}</div>
                     </article>

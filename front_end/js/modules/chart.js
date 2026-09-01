@@ -1,48 +1,60 @@
-export function renderChart(containerId) {
+export function renderChart(containerId, bookings = []) {
     const container = document.getElementById(containerId);
 
-    // 1. DYNAMIC DATA FETCH: Get actual total bookings from localStorage
-    const partners = JSON.parse(localStorage.getItem("partners")) || [];
-    let totalBookings = 0;
-    partners.forEach(p => {
-        // Ensure we are adding numbers, defaulting to 0 if undefined
-        totalBookings += (Number(p.bookings) || 0);
-    });
+    // 1. DYNAMIC DATA FETCH
+    let totalBookings = bookings.length;
+    if (totalBookings === 0) {
+        const partners = JSON.parse(localStorage.getItem("partners")) || [];
+        partners.forEach(p => {
+            totalBookings += (Number(p.bookings) || 0);
+        });
+    }
 
-    // Fallback just in case localStorage is completely empty during testing
-    if (totalBookings === 0) totalBookings = 1500; 
+    // 2. DYNAMIC CALCULATION: Distribute the total volume across time periods based on actual dates.
+    const weeklyCounts = [0, 0, 0, 0, 0, 0, 0]; // Sun to Sat
+    const monthlyCounts = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]; // Jan to Dec
+    const quarterlyCounts = [0, 0, 0, 0]; // Q1 to Q4
 
-    // 2. DYNAMIC CALCULATION: Distribute the total volume across time periods.
-    // (In a future update, you can replace this by filtering an array of actual timestamps)
+    if (bookings.length > 0) {
+        bookings.forEach(b => {
+            const d = new Date(b.date || b.bookedOn || b.createdAt || new Date());
+            if (!isNaN(d)) {
+                weeklyCounts[d.getDay()]++;
+                monthlyCounts[d.getMonth()]++;
+                quarterlyCounts[Math.floor(d.getMonth() / 3)]++;
+            }
+        });
+    }
+
     const datasets = {
         weekly: [
-            { label: "MON", value: Math.floor(totalBookings * 0.02) },
-            { label: "TUE", value: Math.floor(totalBookings * 0.03) },
-            { label: "WED", value: Math.floor(totalBookings * 0.04) },
-            { label: "THU", value: Math.floor(totalBookings * 0.05) }, // Peak day
-            { label: "FRI", value: Math.floor(totalBookings * 0.03) },
-            { label: "SAT", value: Math.floor(totalBookings * 0.02) },
-            { label: "SUN", value: Math.floor(totalBookings * 0.04) }
+            { label: "MON", value: weeklyCounts[1] },
+            { label: "TUE", value: weeklyCounts[2] },
+            { label: "WED", value: weeklyCounts[3] },
+            { label: "THU", value: weeklyCounts[4] },
+            { label: "FRI", value: weeklyCounts[5] },
+            { label: "SAT", value: weeklyCounts[6] },
+            { label: "SUN", value: weeklyCounts[0] }
         ],
         monthly: [
-            { label: "JAN", value: Math.floor(totalBookings * 0.06) },
-            { label: "FEB", value: Math.floor(totalBookings * 0.04) },
-            { label: "MAR", value: Math.floor(totalBookings * 0.07) },
-            { label: "APR", value: Math.floor(totalBookings * 0.09) },
-            { label: "MAY", value: Math.floor(totalBookings * 0.11) },
-            { label: "JUN", value: Math.floor(totalBookings * 0.14) },
-            { label: "JUL", value: Math.floor(totalBookings * 0.16) }, // Peak Month
-            { label: "AUG", value: Math.floor(totalBookings * 0.15) },
-            { label: "SEP", value: Math.floor(totalBookings * 0.10) },
-            { label: "OCT", value: Math.floor(totalBookings * 0.05) },
-            { label: "NOV", value: Math.floor(totalBookings * 0.02) },
-            { label: "DEC", value: Math.floor(totalBookings * 0.01) }
+            { label: "JAN", value: monthlyCounts[0] },
+            { label: "FEB", value: monthlyCounts[1] },
+            { label: "MAR", value: monthlyCounts[2] },
+            { label: "APR", value: monthlyCounts[3] },
+            { label: "MAY", value: monthlyCounts[4] },
+            { label: "JUN", value: monthlyCounts[5] },
+            { label: "JUL", value: monthlyCounts[6] },
+            { label: "AUG", value: monthlyCounts[7] },
+            { label: "SEP", value: monthlyCounts[8] },
+            { label: "OCT", value: monthlyCounts[9] },
+            { label: "NOV", value: monthlyCounts[10] },
+            { label: "DEC", value: monthlyCounts[11] }
         ],
         quarterly: [
-            { label: "Q1", value: Math.floor(totalBookings * 0.17) },
-            { label: "Q2", value: Math.floor(totalBookings * 0.34) },
-            { label: "Q3", value: Math.floor(totalBookings * 0.41) }, // Peak Quarter
-            { label: "Q4", value: Math.floor(totalBookings * 0.08) }
+            { label: "Q1", value: quarterlyCounts[0] },
+            { label: "Q2", value: quarterlyCounts[1] },
+            { label: "Q3", value: quarterlyCounts[2] },
+            { label: "Q4", value: quarterlyCounts[3] }
         ]
     };
 

@@ -6,14 +6,27 @@ import {
 import { CreateHotelDto } from './dto/create-hotel.dto';
 import { UpdateHotelDto } from './dto/update-hotel.dto';
 import { HotelsRepository } from './hotels.repository';
+import {
+  assertLocationOwnership,
+  assertActorLocationMatch,
+  validateAllowedLocation,
+} from '../common/utils/location-scope';
 
 @Injectable()
 export class HotelsService {
-  constructor(private readonly hotelsRepository: HotelsRepository) {}
+  constructor(private readonly hotelsRepository: HotelsRepository) { }
 
-  create(partnerId: string | undefined, dto: CreateHotelDto) {
+  create(partnerId: string | undefined, actorLocation: string | undefined, dto: CreateHotelDto) {
     if (!partnerId) {
       throw new ForbiddenException('x-user-id header is required for PARTNER');
+    }
+
+    if (actorLocation) {
+      dto.location = assertLocationOwnership(
+        actorLocation,
+        dto.location,
+        'hotel',
+      );
     }
 
     return this.hotelsRepository.create(partnerId, {
@@ -26,16 +39,21 @@ export class HotelsService {
       rating: 0,
       reviewCount: 0,
       pricePerNight: dto.pricePerNight,
-      taxesAndFees: dto.taxesAndFees ?? 0,
+      taxesAndFees: Math.round(dto.pricePerNight * 0.05),
       totalRooms: dto.totalRooms ?? 10,
       image: dto.image ?? '',
+      images: dto.images ?? [],
       amenities: dto.amenities ?? [],
       status: dto.status ?? 'active',
     });
   }
 
   findAll(location?: string) {
-    return this.hotelsRepository.findAll({ location });
+    let effectiveLocation = location;
+    if (effectiveLocation) {
+      effectiveLocation = validateAllowedLocation(effectiveLocation, 'location');
+    }
+    return this.hotelsRepository.findAll({ location: effectiveLocation });
   }
 
   findForPartner(partnerId: string | undefined) {
@@ -52,15 +70,52 @@ export class HotelsService {
     return hotel;
   }
 
-  update(id: string, dto: UpdateHotelDto) {
+  update(id: string, actorLocation: string | undefined, dto: UpdateHotelDto) {
+    const hotel = this.hotelsRepository.findById(id);
+    if (!hotel) throw new NotFoundException(`Hotel ${id} not found`);
+
+    if (actorLocation) {
+      assertActorLocationMatch(actorLocation, hotel.location, 'hotel');
+      if (dto.location) {
+        dto.location = assertLocationOwnership(
+          actorLocation,
+          dto.location,
+          'hotel',
+        );
+      }
+    }
+
+    if (dto.pricePerNight !== undefined) {
+      dto.taxesAndFees = Math.round(dto.pricePerNight * 0.05);
+    }
+
     const updated = this.hotelsRepository.update(id, dto);
-    if (!updated) throw new NotFoundException(`Hotel ${id} not found`);
     return updated;
   }
 
-  remove(id: string) {
+  addReviewRating(id: string, newRating: number) {
+    const hotel = this.hotelsRepository.findById(id);
+    if (!hotel) throw new NotFoundException(`Hotel ${id} not found`);
+
+    const currentTotalScore = hotel.rating * hotel.reviewCount;
+    const newCount = hotel.reviewCount + 1;
+    const newAverage = (currentTotalScore + newRating) / newCount;
+
+    // Round to 1 decimal place
+    const roundedRating = Math.round(newAverage * 10) / 10;
+
+    this.hotelsRepository.updateRating(id, roundedRating, newCount);
+  }
+
+  remove(id: string, actorLocation?: string) {
+    const hotel = this.hotelsRepository.findById(id);
+    if (!hotel) throw new NotFoundException(`Hotel ${id} not found`);
+
+    if (actorLocation) {
+      assertActorLocationMatch(actorLocation, hotel.location, 'hotel');
+    }
+
     const deleted = this.hotelsRepository.delete(id);
-    if (!deleted) throw new NotFoundException(`Hotel ${id} not found`);
     return { message: `Hotel ${id} deleted` };
   }
 }

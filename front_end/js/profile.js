@@ -102,7 +102,6 @@ async function renderTechAdminProfile(container, user) {
 
                 <div class="badges" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
                     <span class="badge verified" style="background: #DCFCE7; color: #166534; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700;">Authorized</span>
-                    <span class="badge" style="background: #EFF6FF; color: #1E40AF; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 700;">Level 1 Access</span>
                 </div>
             </div>
 
@@ -316,13 +315,10 @@ async function renderStandardProfile(container, user) {
 
     const profileKey = user ? `profileData_${user.id}` : "profileData";
     profileData = JSON.parse(localStorage.getItem(profileKey)) || JSON.parse(localStorage.getItem("profileData")) || {
-        location: guideData?.location || "Mumbai, India",
+        location: user?.location || guideData?.location || "Mumbai",
         experience: guideData?.years_exp ? `${guideData.years_exp} Years` : "5+ Years",
-        professionalTitle: guideData?.prof_title || "Operations Specialist",
         bio: guideData?.bio || "Travel and logistics operations lead.",
-        languages: guideData?.lang_spoken || ["English", "Hindi"],
-        certifications: guideData?.certifications || [],
-        bankDetails: { bankName: guideData?.bank_name || "HDFC Bank", accountEnding: guideData?.bank_acc_num_end || "4589", iban: guideData?.iban || "IN89HDFC000123456789" }
+        languages: guideData?.lang_spoken || ["English", "Hindi"]
     };
 
     container.innerHTML = `
@@ -342,21 +338,18 @@ async function renderStandardProfile(container, user) {
                 </div>
                 <div class="hero-info">
                     <h2 class="hero-name">${escapeHtml(user.name || 'User')}</h2>
-                    <span class="hero-title">${escapeHtml(profileData.professionalTitle || 'Partner')}</span>
                     <div class="hero-meta">
                         <div class="meta-item">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-                            <span>${escapeHtml(profileData.location || 'India')}</span>
+                            <span>${escapeHtml(profileData.location || 'Mumbai')}</span>
                         </div>
                         <div class="meta-item">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                            <span>${escapeHtml(profileData.experience || '3 Years')}</span>
+                            <span>${escapeHtml(profileData.experience ? (String(profileData.experience).includes('Year') ? profileData.experience : profileData.experience + ' Years') : '5+ Years')}</span>
                         </div>
                     </div>
                 </div>
                 <div class="badges">
-                    <span class="badge verified">Verified</span>
-                    <span class="badge premium">Premium</span>
                 </div>
             </div>
 
@@ -369,23 +362,26 @@ async function renderStandardProfile(container, user) {
                     <div class="form-grid">
                         <div class="input-group">
                             <span class="label">First Name</span>
-                            <input type="text" class="input-field" name="firstName" value="${escapeHtml((user.name || '').split(' ')[0])}" disabled>
+                            <input type="text" class="input-field" name="firstName" value="${escapeHtml((user.name || '').split(' ')[0])}" required minlength="2" pattern="[a-zA-Z ]+" title="First name should only contain letters" disabled>
                         </div>
                         <div class="input-group">
                             <span class="label">Last Name</span>
-                            <input type="text" class="input-field" name="lastName" value="${escapeHtml((user.name || '').split(' ')[1] || '')}" disabled>
+                            <input type="text" class="input-field" name="lastName" value="${escapeHtml((user.name || '').split(' ')[1] || '')}" required minlength="1" pattern="[a-zA-Z ]+" title="Last name should only contain letters" disabled>
                         </div>
                         <div class="input-group">
                             <span class="label">Email Address</span>
-                            <input type="email" class="input-field" name="email" value="${escapeHtml(user.email || '')}" disabled>
+                            <input type="email" class="input-field" name="email" value="${escapeHtml(user.email || '')}" required disabled>
                         </div>
                         <div class="input-group">
                             <span class="label">Phone Number</span>
-                            <input type="text" class="input-field" name="phone" value="${escapeHtml(user.phone || user.phno || '')}" disabled>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <span style="font-weight: 600; color: #4B5563;">+91</span>
+                                <input type="tel" class="input-field" style="flex: 1;" name="phone" pattern="[6-9][0-9]{9}" maxlength="10" title="Please enter a valid 10-digit Indian mobile number starting with 6-9" value="${escapeHtml((user.phone || user.phno || '').replace(/^\+91\s*/, ''))}" placeholder="10-digit mobile number" required disabled oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            </div>
                         </div>
                         <div class="input-group full">
                             <span class="label">Location</span>
-                            <input type="text" class="input-field" name="location" value="${escapeHtml(profileData.location || '')}" disabled>
+                            <input type="text" class="input-field" name="location" value="${escapeHtml(profileData.location || '')}" required minlength="2" title="Location is required" disabled>
                         </div>
                     </div>
                 </div>
@@ -397,16 +393,16 @@ async function renderStandardProfile(container, user) {
                     </div>
                     <div class="form-grid">
                         <div class="input-group">
-                            <span class="label">Professional Title</span>
-                            <input type="text" class="input-field" name="professionalTitle" value="${escapeHtml(profileData.professionalTitle || '')}" disabled>
+                            <span class="label">Years of Experience</span>
+                            <input type="number" class="input-field" name="experience" value="${escapeHtml(String(profileData.experience || '')).replace(/[^0-9]/g, '')}" required min="0" step="1" title="Please enter a whole number" oninput="this.value = this.value.replace(/[^0-9]/g, '')" disabled>
                         </div>
                         <div class="input-group">
-                            <span class="label">Years of Experience</span>
-                            <input type="text" class="input-field" name="experience" value="${escapeHtml(profileData.experience || '')}" disabled>
+                            <span class="label">Languages</span>
+                            <input type="text" class="input-field" name="languages" value="${escapeHtml((profileData.languages || []).join(', '))}" required minlength="2" pattern="^[a-zA-Z, ]+$" title="Enter languages separated by commas" disabled>
                         </div>
                         <div class="input-group full">
                             <span class="label">Bio</span>
-                            <textarea class="input-field" name="bio" disabled>${escapeHtml(profileData.bio || '')}</textarea>
+                            <textarea class="input-field" name="bio" required minlength="10" title="Bio must be at least 10 characters long" disabled>${escapeHtml(profileData.bio || '')}</textarea>
                         </div>
                     </div>
                 </div>
@@ -447,8 +443,22 @@ function setupStandardProfileListeners(user) {
             const section = e.target.closest(".profile-section");
             const inputs = section.querySelectorAll("input, textarea");
             const isEditing = e.target.innerText === "Save";
-            inputs.forEach(input => input.disabled = isEditing);
-            e.target.innerText = isEditing ? "Edit" : "Save";
+            
+            if (isEditing) {
+                const form = document.getElementById("profileForm");
+                if (form) {
+                    if (!form.checkValidity()) {
+                        form.reportValidity();
+                        return; // Prevent saving if invalid
+                    }
+                    inputs.forEach(input => input.disabled = true);
+                    e.target.innerText = "Edit";
+                    form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+                }
+            } else {
+                inputs.forEach(input => input.disabled = false);
+                e.target.innerText = "Save";
+            }
         };
     });
 
@@ -456,14 +466,29 @@ function setupStandardProfileListeners(user) {
     if (form) {
         form.onsubmit = async (e) => {
             e.preventDefault();
+            
+            // Enable inputs temporarily so FormData captures them
+            const allInputs = form.querySelectorAll("input, textarea");
+            const disabledInputs = Array.from(allInputs).filter(input => input.disabled);
+            disabledInputs.forEach(input => input.disabled = false);
+            
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                disabledInputs.forEach(input => input.disabled = true);
+                return;
+            }
+            
             const formData = new FormData(form);
+            
+            disabledInputs.forEach(input => input.disabled = true);
+            
             const isGuide = (user.role || "").toLowerCase() === "guide";
             
             try {
                 if (isGuide) {
                     const guideUpdates = {
                         location: formData.get("location"),
-                        prof_title: formData.get("professionalTitle"),
+                        lang_spoken: formData.get("languages") ? formData.get("languages").split(',').map(l => l.trim()).filter(Boolean) : [],
                         years_exp: parseInt(formData.get("experience")) || 0,
                         bio: formData.get("bio")
                     };
@@ -472,15 +497,23 @@ function setupStandardProfileListeners(user) {
 
                 // Update common user data
                 const userUpdates = {
-                    name: (formData.get("firstName") + " " + formData.get("lastName")).trim(),
-                    email: formData.get("email"),
-                    phone: formData.get("phone")
+                    name: ((formData.get("firstName") || "") + " " + (formData.get("lastName") || "")).trim(),
+                    email: formData.get("email") || "",
+                    phone: formData.get("phone") ? "+91 " + formData.get("phone") : ""
                 };
                 
                 await updateUser(user.id || user.userId, userUpdates);
                 
                 Object.assign(user, userUpdates);
                 localStorage.setItem("currentUser", JSON.stringify(user));
+                
+                // Keep non-guide profileData (like location, bio, experience) up to date locally
+                profileData.location = formData.get("location") || profileData.location;
+                profileData.experience = formData.get("experience") || profileData.experience;
+                profileData.languages = formData.get("languages") ? formData.get("languages").split(',').map(l => l.trim()).filter(Boolean) : profileData.languages;
+                profileData.bio = formData.get("bio") || profileData.bio;
+                const profileKey = user ? `profileData_${user.id || user.userId}` : "profileData";
+                localStorage.setItem(profileKey, JSON.stringify(profileData));
                 
                 alert("Profile updated successfully!");
                 renderProfilePage("main", user);

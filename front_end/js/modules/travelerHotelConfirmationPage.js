@@ -17,7 +17,8 @@ export async function renderTravelerHotelConfirmationPage(containerId) {
     const guestCount = Number.parseInt(searchValues.guestCount, 10) || Number.parseInt(hotel.adults, 10) || 1;
     const roomSubtotal = selectedRoom.price * stayNights * roomCount;
     const taxTotal = Number(hotel.taxes || 0) * roomCount;
-    const totalAmount = roomSubtotal + taxTotal;
+    const PLATFORM_FEE = 14;
+    const totalAmount = roomSubtotal + taxTotal + PLATFORM_FEE;
     const bookingId = `XPL-HTL-${new Date(searchValues.checkIn + "T00:00:00").getFullYear()}-${String(Math.abs(hashCode(hotel.id))).slice(0, 4)}-${Date.now().toString().slice(-4)}`;
 
     const currentTraveler = getCurrentTraveler();

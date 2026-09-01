@@ -29,14 +29,14 @@ import { HotelsService } from './hotels.service';
 @ApiProtectedResource()
 @Controller('hotels')
 export class HotelsController {
-  constructor(private readonly hotelsService: HotelsService) {}
+  constructor(private readonly hotelsService: HotelsService) { }
 
   @Post()
   @Roles(Role.PARTNER)
   @ApiOperation({ summary: 'Partner creates a hotel' })
   @ApiCreateEndpoint(CreateHotelDto)
   create(@Body() dto: CreateHotelDto, @Req() req: any) {
-    return this.hotelsService.create(req.user?.userId, dto);
+    return this.hotelsService.create(req.user?.userId, req.user?.location, dto);
   }
 
   @Get()
@@ -71,15 +71,16 @@ export class HotelsController {
   update(
     @Param('id', NonEmptyStringPipe) id: string,
     @Body() dto: UpdateHotelDto,
+    @Req() req: any,
   ) {
-    return this.hotelsService.update(id, dto);
+    return this.hotelsService.update(id, req.user?.location, dto);
   }
 
   @Delete(':id')
   @Roles(Role.PARTNER)
   @ApiOperation({ summary: 'Delete a hotel' })
   @ApiDeleteEndpoint()
-  remove(@Param('id', NonEmptyStringPipe) id: string) {
-    return this.hotelsService.remove(id);
+  remove(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.hotelsService.remove(id, req.user?.location);
   }
 }

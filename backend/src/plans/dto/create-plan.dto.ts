@@ -97,6 +97,16 @@ export class CreatePlanDto {
   @IsString({ each: true })
   tags?: string[];
 
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({ example: 'available' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
   @ApiProperty({
     oneOf: [
       {

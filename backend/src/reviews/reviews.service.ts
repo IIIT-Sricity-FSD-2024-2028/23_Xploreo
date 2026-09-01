@@ -2,13 +2,29 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { ReviewsRepository } from './reviews.repository';
+import { HotelsService } from '../hotels/hotels.service';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly reviewsRepository: ReviewsRepository) {}
+  constructor(
+    private readonly reviewsRepository: ReviewsRepository,
+    private readonly hotelsService: HotelsService,
+  ) {}
 
   create(dto: CreateReviewDto) {
-    return this.reviewsRepository.create(dto);
+    const review = this.reviewsRepository.create(dto);
+    
+    // Update the target entity's average rating
+    if (dto.targetType === 'hotel') {
+      try {
+        this.hotelsService.addReviewRating(dto.targetId, dto.rating);
+      } catch (err) {
+        // If hotel is not found, we still return the created review
+        console.warn(`Could not update rating for hotel ${dto.targetId}: ${err.message}`);
+      }
+    }
+
+    return review;
   }
 
   findAll() {

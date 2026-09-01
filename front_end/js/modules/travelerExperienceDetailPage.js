@@ -105,7 +105,8 @@ export async function renderTravelerExperienceDetailPage(containerId) {
     function render() {
         const isCompleted = isExperienceCompleted();
         const selectedOption = getSelectedOption(state);
-        const total = selectedOption.price * state.adults;
+        const PLATFORM_FEE = 14;
+        const total = (selectedOption.price * state.adults) + PLATFORM_FEE;
 
         const imgHtml = state.activeImage 
             ? `<img src="${escapeHtml(state.activeImage)}" alt="${escapeHtml(state.experience.title)}" onerror="this.src='data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'100%\\' height=\\'100%\\' viewBox=\\'0 0 800 400\\'%3E%3Crect fill=\\'%23f3f4f6\\' width=\\'800\\' height=\\'400\\'/%3E%3Ctext fill=\\'%239ca3af\\' font-family=\\'sans-serif\\' font-size=\\'20\\' dy=\\'10.5\\' font-weight=\\'bold\\' x=\\'50%\\' y=\\'50%\\' text-anchor=\\'middle\\'%3ENo Image Available%3C/text%3E%3C/svg%3E';">` 
@@ -201,15 +202,23 @@ export async function renderTravelerExperienceDetailPage(containerId) {
                         </div>
 
                         <div class="traveler-experience-side-total" style="margin-top: 18px; padding-top: 14px; font-size: 16px;">
-                            <span>Total Amount</span>
-                            <strong>${formatCurrency(total)}</strong>
+                            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px;">
+                                <span>Platform Fee</span>
+                                <strong>₹14</strong>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span>Total Amount</span>
+                                <strong>${formatCurrency(total)}</strong>
+                            </div>
                         </div>
 
                         ${getBackendStatus() === "END_REQUESTED"
                             ? `<button class="primary-btn" type="button" id="traveler-experience-confirm-btn" style="background-color: #f59e0b; color: white; border: none; padding: 12px; border-radius: 12px; cursor: pointer; width: 100%; font-size: 16px; font-weight: 700; margin-bottom: 12px; margin-top: 16px;">Confirm Request End</button>`
                             : (isCompleted 
                                 ? (getTripStatus() === "upcoming" 
-                                    ? `<button class="traveler-experience-continue-btn" type="button" id="traveler-experience-cancel-btn" style="background: #ef4444; min-height: 48px; border-radius: 12px; font-size: 16px; margin-top: 16px;">Cancel Booking</button>`
+                                    ? `<button class="traveler-experience-continue-btn" type="button" id="traveler-experience-cancel-btn" style="background: #ef4444; min-height: 48px; border-radius: 12px; font-size: 16px; margin-top: 16px;">Cancel Booking</button>
+                                       <p style="font-size: 12px; color: #6B7280; text-align: center; margin: 8px 0 0 0; line-height: 1.4;">If cancelled, Platform Fee and Taxes won't be repaid.</p>`
+                                    : getTripStatus() === "cancelled" ? `<p style="font-size: 13px; color: #ef4444; text-align: center; margin: 16px 0 0 0; padding: 12px; font-weight: 500; background: #FEF2F2; border-radius: 8px;">Booking Cancelled. Platform Fee and Taxes are non-refundable.</p>`
                                     : `<div class="traveler-experience-completed-note" style="margin-top: 16px; font-size: 13px;">This experience is completed.</div>`) 
                                 : `<button class="traveler-experience-continue-btn" type="button" id="traveler-experience-continue-btn" ${!state.selectedSlotId ? "disabled" : ""} style="min-height: 48px; border-radius: 12px; font-size: 16px; margin-top: 16px;">Continue</button>`)
                         }

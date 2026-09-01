@@ -52,7 +52,7 @@
 
     <div class="modal-header">
       <h2>Add New Experience</h2>
-      <button type="button" class="close" data-close-modal="addModal" aria-label="Close add experience">✕</button>
+      <button type="button" class="close" data-close-modal="addModal" aria-label="Close add experience">Γ£ò</button>
     </div>
 
     <form id="addExperienceForm" class="experience-form" novalidate>
@@ -61,6 +61,10 @@
           <span>Experience Name</span>
           <input id="expName" name="title" required maxlength="80">
           <small class="field-error" data-error-for="expName"></small>
+        </label>
+        <label class="field-group" for="expLocation">
+          <span>Assigned Location (Fixed)</span>
+          <input id="expLocation" name="location" readonly disabled style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 600; color: #1e293b;">
         </label>
 
         <label class="field-group" for="expCategory">
@@ -73,72 +77,92 @@
             <option value="attraction tickets">Attraction Tickets</option>
             <option value="water sports">Water Sports</option>
             <option value="cruises">Cruises</option>
+            <option value="family">Family</option>
+            <option value="luxury">Luxury</option>
+            <option value="weekend getaway">Weekend Getaway</option>
+            <option value="honeymoon">Honeymoon</option>
+            <option value="pilgrimage">Pilgrimage</option>
           </select>
           <small class="field-error" data-error-for="expCategory"></small>
         </label>
+      </div>
 
-        <label class="field-group field-group-full" for="expDescription">
-          <span>Description</span>
-          <textarea id="expDescription" name="description" required rows="3" maxlength="300" placeholder="Describe the experience..."></textarea>
-          <small class="field-error" data-error-for="expDescription"></small>
-        </label>
-
+      <div class="section form-grid">
         <label class="field-group" for="expPrice">
-          <span>Base Price ($)</span>
-          <input id="expPrice" name="price" type="number" min="1" step="1" required>
+          <span>Price per Person (Γé╣)</span>
+          <input id="expPrice" name="price" type="number" min="0" step="1" required>
           <small class="field-error" data-error-for="expPrice"></small>
         </label>
 
         <label class="field-group" for="expDuration">
           <span>Duration (hours)</span>
-          <input id="expDuration" name="duration" type="number" min="1" step="1" required>
+          <input id="expDuration" name="durationHours" type="number" min="0.5" step="0.5" required>
           <small class="field-error" data-error-for="expDuration"></small>
         </label>
 
-
-        <label class="field-group field-group-full add-upload-field" for="expImage">
-          <span>Experience Image</span>
-          <input type="file" id="expImage" name="image" accept="image/*" multiple class="visually-hidden">
-          <span class="add-upload-group">
-            <span class="edit-upload-icon">⇪</span>
-            <small class="edit-upload-copy">Click to upload or drag and drop</small>
-            <small class="edit-upload-meta">PNG, JPG up to 10MB each</small>
-          </span>
-          <small id="thumbnailHint" class="upload-thumbnail-hint hidden">Click a preview below to choose the thumbnail.</small>
-          <small class="field-error" data-error-for="expImage"></small>
-          <div id="imagePreviewGrid" class="experience-image-preview-grid hidden" aria-live="polite"></div>
+        <label class="field-group" for="expCapacity">
+          <span>Capacity per Slot</span>
+          <input id="expCapacity" name="capacity" type="number" min="1" step="1" required>
+          <small class="field-error" data-error-for="expCapacity"></small>
         </label>
       </div>
 
-      <p id="addExperienceMessage" class="form-message" role="alert"></p>
+      <div class="section form-grid">
+        <div class="field-group field-group-full">
+          <span>Experience Image</span>
+          <label class="hotel-file-dropzone" for="expImage" id="expImageDropzone" style="margin-top: 8px;">
+            <div class="dropzone-content" id="expDropzoneContent">
+              <span class="dropzone-icon">≡ƒôü</span>
+              <span class="dropzone-text">Click or drag & drop to upload</span>
+              <span class="dropzone-subtext">SVG, PNG, JPG or GIF (max. 5MB)</span>
+            </div>
+            <input id="expImage" type="file" accept="image/*" class="hidden-file-input" style="display: none;">
+            <input id="expImageUrl" name="image" type="hidden">
+            <img id="expImagePreview" src="" style="display: none; max-width: 100%; max-height: 200px; border-radius: 8px; margin: 0 auto;">
+            <div class="change-image-btn" id="expChangeImageBtn" style="display: none;">Change Image</div>
+          </label>
+          <small class="field-error" data-error-for="expImage"></small>
+        </div>
 
-      <div class="modal-actions">
-        <button type="button" data-close-modal="addModal">Cancel</button>
-        <button class="primary-btn" type="submit">Save</button>
+        <label class="field-group field-group-full" for="expDescription">
+          <span>Short Description</span>
+          <textarea id="expDescription" name="description" rows="3" required maxlength="300"></textarea>
+          <small class="field-error" data-error-for="expDescription"></small>
+        </label>
+      </div>
+
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" data-close-modal="addModal">Cancel</button>
+        <button type="submit" class="btn-primary" id="btnSaveExperience">Save Experience</button>
       </div>
     </form>
-
   </div>
 </div>
 
-<!-- ================= EDIT MODAL ================= -->
+<!-- EDIT EXPERIENCE MODAL -->
 <div id="editModal" class="modal">
-  <div class="modal-box edit-modal-box">
-
+  <div class="modal-box">
     <div class="modal-header">
       <h2>Edit Experience</h2>
-      <button type="button" class="close" data-close-modal="editModal" aria-label="Close edit experience">✕</button>
+      <button type="button" class="close" data-close-modal="editModal" aria-label="Close edit experience">Γ£ò</button>
     </div>
 
-    <hr class="slots-modal-divider">
-
     <form id="editExperienceForm" class="experience-form" novalidate>
-      <div class="edit-modal-body">
+      <input type="hidden" id="editExpId">
+
+
+      <div id="editTabDetails" class="edit-tab-content active">
         <div class="section form-grid">
           <label class="field-group field-group-full" for="editName">
             <span>Experience Name</span>
             <input id="editName" name="title" required maxlength="80">
             <small class="field-error" data-error-for="editName"></small>
+          </label>
+
+          <label class="field-group field-group-full" for="editLocation">
+            <span>Assigned Location (Fixed)</span>
+            <input id="editLocation" name="location" readonly disabled style="background-color: #f1f5f9; cursor: not-allowed; font-weight: 600; color: #1e293b;">
           </label>
 
           <label class="field-group field-group-full" for="editCategory">
@@ -151,6 +175,11 @@
               <option value="attraction tickets">Attraction Tickets</option>
               <option value="water sports">Water Sports</option>
               <option value="cruises">Cruises</option>
+              <option value="family">Family</option>
+              <option value="luxury">Luxury</option>
+              <option value="weekend getaway">Weekend Getaway</option>
+              <option value="honeymoon">Honeymoon</option>
+              <option value="pilgrimage">Pilgrimage</option>
             </select>
             <small class="field-error" data-error-for="editCategory"></small>
           </label>
@@ -174,14 +203,21 @@
           </label>
 
 
-          <label class="field-group field-group-full edit-upload-group" for="editImage">
-            <span>Experience Image <em>(Optional)</em></span>
-            <input type="file" id="editImage" name="editImage" accept="image/*" class="visually-hidden">
-            <span class="edit-upload-icon">⇪</span>
-            <small class="edit-upload-copy">Click to upload or drag and drop</small>
-            <small class="edit-upload-meta">PNG, JPG up to 10MB</small>
-          </label>
-        </div>
+          <div class="field-group field-group-full">
+            <span>Experience Image</span>
+            <label class="hotel-file-dropzone" for="editImage" id="editImageDropzone" style="margin-top: 8px;">
+              <div class="dropzone-content" id="editDropzoneContent">
+                <span class="dropzone-icon">≡ƒôü</span>
+                <span class="dropzone-text">Click or drag & drop to upload</span>
+                <span class="dropzone-subtext">SVG, PNG, JPG or GIF (max. 5MB)</span>
+              </div>
+              <input id="editImage" type="file" accept="image/*" class="hidden-file-input" style="display: none;">
+              <input id="editImageUrl" name="image" type="hidden">
+              <img id="editImagePreview" src="" style="display: none; max-width: 100%; max-height: 200px; border-radius: 8px; margin: 0 auto;">
+              <div class="change-image-btn" id="editChangeImageBtn" style="display: none;">Change Image</div>
+            </label>
+            <small class="field-error" data-error-for="editImage"></small>
+          </div>
 
         <p id="editExperienceMessage" class="form-message" role="alert"></p>
       </div>
@@ -196,47 +232,7 @@
 
   </div>
 </div>
-<div id="slotsModal" class="modal">
-  <div class="modal-box slots-modal-box">
 
-    <div class="modal-header">
-      <h2 id="slotsModalTitle">Add Slot</h2>
-      <button type="button" class="close" data-close-modal="slotsModal" aria-label="Close session editor">✕</button>
-    </div>
-
-    <hr class="slots-modal-divider">
-
-    <form id="slotsForm" class="experience-form" novalidate>
-      <div class="section form-grid">
-        <label class="field-group" for="slotDate">
-          <span>Date</span>
-          <input id="slotDate" name="slotDate" type="date" required>
-          <small class="field-error" data-error-for="slotDate"></small>
-        </label>
-
-        <label class="field-group" for="slotTime">
-          <span>Session Time</span>
-          <input id="slotTime" name="slotTime" type="time" required>
-          <small class="field-error" data-error-for="slotTime"></small>
-        </label>
-
-        <label class="field-group" for="slotCapacity">
-          <span>Capacity</span>
-          <input id="slotCapacity" name="capacity" type="number" min="1" step="1" required>
-          <small class="field-error" data-error-for="slotCapacity"></small>
-        </label>
-      </div>
-
-      <p id="slotsMessage" class="form-message" role="alert"></p>
-
-      <div class="modal-actions">
-        <button type="button" data-close-modal="slotsModal">Cancel</button>
-        <button class="primary-btn" id="slotsSubmitBtn" type="submit">Add Slot</button>
-      </div>
-    </form>
-
-  </div>
-</div>
 
 <script type="module" src="../js/app.js"></script>
 

@@ -7,6 +7,7 @@ import {
 import { HotelsRepository } from '../hotels/hotels.repository';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { BookingsRepository } from './bookings.repository';
+import { assertActorLocationMatch } from '../common/utils/location-scope';
 
 @Injectable()
 export class BookingsService {
@@ -71,10 +72,13 @@ export class BookingsService {
     return { ...booking, hotel };
   }
 
-  cancelBooking(id: string) {
+  cancelBooking(id: string, userId: string | undefined) {
     const booking = this.bookingsRepository.findAll().find((b) => b.id === id);
     if (!booking) {
       throw new NotFoundException(`Booking ${id} not found`);
+    }
+    if (booking.travellerId !== userId) {
+      throw new ForbiddenException('Only the owner can cancel this booking');
     }
     if (booking.status === 'CANCELLED') {
       throw new BadRequestException(`Booking ${id} is already cancelled`);
@@ -93,7 +97,7 @@ export class BookingsService {
     return cancelledBooking;
   }
 
-  checkInBooking(id: string, partnerId: string | undefined) {
+  checkInBooking(id: string, partnerId: string | undefined, partnerLocation: string | undefined) {
     if (!partnerId) {
       throw new ForbiddenException('x-user-id header is required for PARTNER');
     }
@@ -110,6 +114,10 @@ export class BookingsService {
       );
     }
 
+    if (partnerLocation) {
+      assertActorLocationMatch(partnerLocation, hotel.location, 'hotel');
+    }
+
     if (booking.status !== 'CONFIRMED') {
       throw new BadRequestException(
         `Only CONFIRMED bookings can be checked in (current status: ${booking.status})`,
@@ -119,7 +127,7 @@ export class BookingsService {
     return this.bookingsRepository.checkIn(id);
   }
 
-  checkOutBooking(id: string, partnerId: string | undefined) {
+  checkOutBooking(id: string, partnerId: string | undefined, partnerLocation: string | undefined) {
     if (!partnerId) {
       throw new ForbiddenException('x-user-id header is required for PARTNER');
     }
@@ -134,6 +142,10 @@ export class BookingsService {
       throw new ForbiddenException(
         'You do not have permission to check out this booking',
       );
+    }
+
+    if (partnerLocation) {
+      assertActorLocationMatch(partnerLocation, hotel.location, 'hotel');
     }
 
     if (booking.status !== 'CHECKED_IN') {
@@ -179,6 +191,17 @@ export class BookingsService {
 
     const bookings = this.bookingsRepository.findByTravellerId(travellerId);
 
+    return bookings.map((booking) => {
+      const hotel = this.hotelsRepository.findById(booking.hotelId);
+      return {
+        ...booking,
+        hotel: hotel,
+      };
+    });
+  }
+
+  findAll() {
+    const bookings = this.bookingsRepository.findAll();
     return bookings.map((booking) => {
       const hotel = this.hotelsRepository.findById(booking.hotelId);
       return {

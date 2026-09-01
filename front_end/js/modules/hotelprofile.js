@@ -1,5 +1,6 @@
 // hotelprofile.js
 import { users } from '../api/legacyData.js';
+import { getApiSession } from '../api/session.js';
 
 export function initHotelProfile() {
     const profileForm = document.getElementById('profileForm');
@@ -132,30 +133,34 @@ export function initHotelProfile() {
         { node: profileForm.querySelector('input[name="contactNumber"]'), type: 'contactNumber' },
         { node: profileForm.querySelector('input[name="email"]'), type: 'email' },
         { node: profileForm.querySelector('input[name="gst"]'), type: 'gst' },
-        { node: profileForm.querySelector('input[name="bankAccount"]'), type: 'bankAccount' },
-        { node: profileForm.querySelector('input[name="checkInTime"]'), type: 'checkIn' },
-        { node: profileForm.querySelector('input[name="checkOutTime"]'), type: 'checkOut' }
+        { node: profileForm.querySelector('input[name="bankAccount"]'), type: 'bankAccount' }
     ];
 
     // --- DYNAMIC DATA FETCHING ---
-    const activeHotel = users.find(u => u.role === "hotel");
+    const session = getApiSession();
+    const activeHotel = session?.user;
+
     if (activeHotel) {
         // Load into mapped fields
         const nameInput = mainRules.find(r => r.type === 'hotelName')?.node;
         const locInput = mainRules.find(r => r.type === 'location')?.node;
         const phoneInput = mainRules.find(r => r.type === 'contactNumber')?.node;
         const emailInput = mainRules.find(r => r.type === 'email')?.node;
+        const gstInput = mainRules.find(r => r.type === 'gst')?.node;
+        const bankInput = mainRules.find(r => r.type === 'bankAccount')?.node;
 
-        if (nameInput) nameInput.value = activeHotel.name || "";
-        if (locInput) locInput.value = activeHotel.address || "";
-        if (phoneInput) phoneInput.value = activeHotel.phno || "";
+        if (nameInput) nameInput.value = activeHotel.businessName || activeHotel.name || "";
+        if (locInput) locInput.value = activeHotel.location || activeHotel.address || "";
+        if (phoneInput) phoneInput.value = activeHotel.phone || activeHotel.phno || "";
         if (emailInput) emailInput.value = activeHotel.email || "";
+        if (gstInput) gstInput.value = activeHotel.taxId || "";
+        if (bankInput) bankInput.value = activeHotel.bankAccount || "";
 
         // Load into top card display profile header
         const displayHotelName = document.querySelector('.profile-hotel-info h2');
         const displayLocation = document.querySelector('.profile-hotel-info .location-text');
-        if (displayHotelName) displayHotelName.textContent = activeHotel.name || "";
-        if (displayLocation) displayLocation.innerHTML = `<span class="loc-pin"></span> ${activeHotel.address}`;
+        if (displayHotelName) displayHotelName.textContent = activeHotel.businessName || activeHotel.name || "";
+        if (displayLocation) displayLocation.innerHTML = `<span class="loc-pin"></span> ${activeHotel.location || activeHotel.address}`;
     }
 
     const saveMainBtn = document.getElementById('saveProfileBtn');
@@ -211,7 +216,7 @@ export function initHotelProfile() {
 
     // --- BLOCK-BASED VIEW / EDIT MODE TOGGLE ---
     const blocks = document.querySelectorAll('.hotel-content-card.section-card');
-    
+
     blocks.forEach(block => {
         const editBtn = block.querySelector('.edit-block-btn');
         const cancelBtn = block.querySelector('.cancel-block-btn');
@@ -260,12 +265,12 @@ export function initHotelProfile() {
                     // It will show validation errors using existing logic
                     return;
                 }
-                
+
                 // if valid, mimic form save
                 if (saveMainBtn) {
                     saveMainBtn.click(); // trigger form submit to run existing save code
                 }
-                
+
                 // visually update button then revert to view mode
                 const originalText = saveBtn.innerHTML;
                 saveBtn.innerHTML = "✅ Saved!";

@@ -6,10 +6,10 @@ import { createId } from '../common/utils/id';
 export class SuperadminRepository {
   private admins: Superadmin[] = [
     {
-      adminId: 'seed-superadmin-1',
-      fname: 'Raj',
-      lname: 'Sharma',
-      email: 'raj@xploreo.com',
+      adminId: '00001',
+      fname: 'Rahul',
+      lname: 'Varma',
+      email: 'rahul@xploreo.com',
       phone_number: 9988776655,
     },
   ];

@@ -214,7 +214,7 @@ export function initTripPlannerPage(containerId) {
             const pkgMatch = catalog.find(p => p.id === planId) || catalog[0];
             if (pkgMatch) {
                 hydrateForm({
-                    origin: pkgMatch.origin || "New Delhi",
+                    origin: pkgMatch.origin || "Delhi",
                     destination: pkgMatch.destination || "Destination",
                     departure: new Date().toISOString().split("T")[0],
                     duration: parseInt(String(pkgMatch.days || "5").replace(/\D/g, ""), 10) || 5,

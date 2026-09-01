@@ -1,4 +1,4 @@
-import { IsEnum, IsInt, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsString, Max, Min, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -35,5 +35,6 @@ export class CreateReviewDto {
 
   @ApiProperty({ example: 'photo.jpg', required: false })
   @IsString()
+  @IsOptional()
   image?: string;
 }

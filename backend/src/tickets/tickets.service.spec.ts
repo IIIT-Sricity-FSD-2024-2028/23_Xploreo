@@ -9,16 +9,30 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 describe('TicketsService', () => {
   let service: TicketsService;
   let repository: TicketsRepository;
-  let authRepository: AuthRepository;
+  const mockAuthRepository = {
+    findById: jest.fn((id: string) => {
+      if (id === '10001') return { name: 'Sreekar', role: 'guide' };
+      if (id === 'partner-1') return { name: 'Xploreo Hotel Partner', role: 'hotel' };
+      return undefined;
+    }),
+    findByUsername: jest.fn((username: string) => {
+      if (username === '10001') return { name: 'Sreekar', role: 'guide' };
+      if (username === 'partner-1') return { name: 'Xploreo Hotel Partner', role: 'hotel' };
+      return undefined;
+    }),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TicketsService, TicketsRepository, AuthRepository],
+      providers: [
+        TicketsService,
+        TicketsRepository,
+        { provide: AuthRepository, useValue: mockAuthRepository },
+      ],
     }).compile();
 
     service = module.get<TicketsService>(TicketsService);
     repository = module.get<TicketsRepository>(TicketsRepository);
-    authRepository = module.get<AuthRepository>(AuthRepository);
   });
 
   it('should be defined', () => {

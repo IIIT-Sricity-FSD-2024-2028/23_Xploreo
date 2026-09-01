@@ -50,7 +50,7 @@ export function renderTour(containerId, currentUser, showAll = false) {
                             <td>${req.destination}</td>
                             <td>${req.dateTime}</td>
                             <td>${req.guests}</td>
-                            <td class="amount-cell">$${req.amount}</td>
+                            <td class="amount-cell">₹${req.amount}</td>
                             <td><span class="status-tag ${req.status}">${req.status}</span></td>
                         </tr>
                     `).join('')}

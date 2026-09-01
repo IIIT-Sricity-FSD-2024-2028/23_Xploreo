@@ -134,7 +134,7 @@ export async function renderPageContent(user) {
     );
     return;
   } else if (user.role === "superadmin" && page === "dashboard.html") {
-    renderAdminDashboard("admin-dashboard");
+    await renderAdminDashboard("admin-dashboard");
     const main = document.getElementById("main");
     const admin = document.getElementById("admin-dashboard");
     const hotel = document.getElementById("hotel-dashboard");
@@ -142,13 +142,9 @@ export async function renderPageContent(user) {
     if (main) main.style.display = "none";
     if (hotel) hotel.style.display = "none";
     document.getElementById("tech-admin-dash").style.display = "none";
-  } else if (user.role === "superadmin" && page === "users.html") {
+  } else if ((user.role === "superadmin" || user.role === "nontechadmin") && page === "users.html") {
     initUsers();
-  } else if (
-    (user.role === "superadmin" || user.role === "nontechadmin") &&
-    page === "guide.html"
-  ) {
-    renderGuideCrudPage("main", user);
+
   } else if (
     (user.role === "superadmin" || user.role === "nontechadmin") &&
     page === "plans.html"
@@ -178,12 +174,12 @@ export async function renderPageContent(user) {
     renderTechAdminDashboard("tech-admin-dash");
     document.getElementById("tech-admin-dash").style.display = "block";
   } else if (
-    (role === "techadmin" || role === "TECH_ADMIN") &&
+    (role === "techadmin" || role === "TECH_ADMIN" || role === "superadmin") &&
     page === "tech_tickets.html"
   ) {
     initTicketManagement();
   } else if (
-    (role === "techadmin" || role === "TECH_ADMIN") &&
+    (role === "techadmin" || role === "TECH_ADMIN" || role === "superadmin") &&
     page === "tech_ticket_detail.html"
   ) {
     renderTechTicketDetail("main");
@@ -242,8 +238,16 @@ export async function renderPageContent(user) {
     page === "hotelRooms.html"
   ) {
     await renderSafely("Render hotel partner services", () =>
-      renderServicesPage("main", user),
+      renderServicesPage("main"),
     );
+  } else if (
+    (role === "hotel" || role === "PARTNER") &&
+    page === "hotelReviews.html"
+  ) {
+    await renderSafely("Render hotel partner reviews", async () => {
+      const { renderHotelReviews } = await import("./modules/hotel-reviews.js");
+      renderHotelReviews("reviews-section-h");
+    });
   } else if (
     (role === "hotel" || role === "PARTNER") &&
     page === "hotelEarning.html"

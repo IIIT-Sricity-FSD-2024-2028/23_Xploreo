@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -9,12 +10,14 @@ import { AuthRepository } from './auth.repository';
 import { RegisterDto } from './dto/create-auth.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import { Role } from './entities/auth.entity';
+import { normalizeAllowedLocation } from '../common/utils/location-scope';
 
 @Injectable()
 export class AuthService {
-  private readonly saltRounds = 12;
+  private readonly saltRounds = process.env.NODE_ENV === 'test' ? 1 : 10;
 
-  constructor(private readonly authRepository: AuthRepository) {}
+  constructor(private readonly authRepository: AuthRepository) { }
 
   async register(dto: RegisterDto) {
     const existing = await this.authRepository.findByUsername(dto.username);
@@ -22,6 +25,26 @@ export class AuthService {
 
     const existingEmail = await this.authRepository.findByEmail(dto.email);
     if (existingEmail) throw new ConflictException('Email already exists');
+
+    const actorRoles = [
+      Role.HOTEL,
+      Role.PARTNER,
+      Role.GUIDE,
+      Role.EXPERIENCE,
+      Role.EXPERIENCE_PARTNER,
+      Role.NONTECHADMIN,
+    ];
+    let location = dto.location ? normalizeAllowedLocation(dto.location) : undefined;
+    if (dto.location && !location) {
+      throw new BadRequestException(
+        `Invalid location '${dto.location}'. Allowed locations: Jaipur, Goa, Delhi, Mumbai, Kerala`,
+      );
+    }
+    if (!location && actorRoles.includes(dto.role)) {
+      throw new BadRequestException(
+        'Location is required for actor accounts and must be one of: Jaipur, Goa, Delhi, Mumbai, Kerala',
+      );
+    }
 
     const hashedPassword = await bcrypt.hash(dto.password, this.saltRounds);
 
@@ -33,7 +56,11 @@ export class AuthService {
       name: dto.name,
       email: dto.email,
       phone: dto.phone,
+      location: location || undefined,
       status: 'active',
+      businessName: dto.businessName,
+      taxId: dto.taxId,
+      bankAccount: dto.bankAccount,
     });
 
     const { password: _pw, ...safe } = user;
@@ -54,6 +81,7 @@ export class AuthService {
       headers: {
         'x-user-id': user.userId,
         'x-user-role': toApiHeaderRole(user.role),
+        ...(user.location ? { 'x-user-location': user.location } : {}),
       },
     };
   }

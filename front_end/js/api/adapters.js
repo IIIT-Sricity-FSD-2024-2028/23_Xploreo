@@ -16,12 +16,13 @@ export function mapHotelToSearchCard(hotel) {
         oldPrice: Math.round(Number(hotel.pricePerNight) * 1.18),
         offer: "Flexible cancellation",
         price: Number(hotel.pricePerNight),
-        taxes: Number(hotel.taxesAndFees || 0),
+        taxes: Math.round(Number(hotel.pricePerNight) * 0.05),
         stars: Number(hotel.stars),
         maxGuests: 4,
         promoted: Number(hotel.rating) >= 4.7,
         totalRooms: hotel.totalRooms || 10,
-        availableRooms: hotel.availableRooms ?? hotel.totalRooms ?? 10
+        availableRooms: hotel.availableRooms ?? hotel.totalRooms ?? 10,
+        images: hotel.images || []
     };
 }
 
@@ -67,9 +68,9 @@ export function mapPlanToPackage(plan, searchValues = {}) {
         totalPriceDisplay: Number(plan.pricePerPerson) * guestCount,
         budgetBucket:
             Number(plan.pricePerPerson) < 500 ? "under-500" :
-            Number(plan.pricePerPerson) <= 1000 ? "500-1000" :
-            Number(plan.pricePerPerson) <= 2000 ? "1000-2000" :
-            "above-2000",
+                Number(plan.pricePerPerson) <= 1000 ? "500-1000" :
+                    Number(plan.pricePerPerson) <= 2000 ? "1000-2000" :
+                        "above-2000",
         departureDate: searchValues.departureDate || "",
         tags: plan.tags || [],
         itinerary: plan.itinerary || []
