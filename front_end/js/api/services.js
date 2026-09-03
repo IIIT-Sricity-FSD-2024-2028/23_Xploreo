@@ -189,9 +189,11 @@ export function deleteHotel(id) {
    EXPERIENCES
 =================================================== */
 export function fetchExperiences() {
-  return apiGet(API_ENDPOINTS.experiences).then((response) =>
-    Array.isArray(response) ? response : [],
-  );
+  return apiGet(API_ENDPOINTS.experiences).then((response) => {
+    if (Array.isArray(response)) return response;
+    if (response && Array.isArray(response.data)) return response.data;
+    return [];
+  });
 }
 
 export function fetchExperience(id) {

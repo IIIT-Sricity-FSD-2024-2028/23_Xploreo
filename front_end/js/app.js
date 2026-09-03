@@ -38,12 +38,13 @@ async function initApp() {
     // Attempt to sync the latest user status from the API
     try {
         const role = String(currentUser.role).toLowerCase().replace(/_/g, '');
+        const actorId = currentUser.id || currentUser.userId;
         let endpoint = '';
-        if (role === 'guide') endpoint = `/guide/${currentUser.id}`;
-        else if (role === 'traveller') endpoint = `/traveller/${currentUser.id}`;
-        else if (role === 'hotel') endpoint = `/hotels/${currentUser.id}`;
-        else if (role === 'experience') endpoint = `/experiences/${currentUser.id}`;
-        else if (role === 'superadmin') endpoint = `/superadmin/${currentUser.id}`;
+        if (role === 'guide') endpoint = `/guide/${actorId}`;
+        else if (role === 'traveller') endpoint = `/traveller/${actorId}`;
+        else if (role === 'hotel') endpoint = `/hotels/${actorId}`;
+        else if (role === 'experience') endpoint = `/experiences/${actorId}`;
+        else if (role === 'superadmin') endpoint = `/superadmin/${actorId}`;
         
         if (endpoint) {
             const latestData = await apiGet(endpoint);
@@ -73,7 +74,7 @@ async function initApp() {
                     /* Push body down to accommodate fixed banner */
                     body { padding-top: 48px !important; }
                     /* Disable main interactive areas */
-                    main, #main, .main-content, .dashboard-wrapper, .crud-panel {
+                    main, #main, .main-content, .dashboard-wrapper, .crud-panel, #hotel-dashboard, #experience-dashboard, #nta-dashboard, #admin-dashboard {
                         pointer-events: none;
                         opacity: 0.6;
                         user-select: none;

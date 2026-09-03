@@ -50,6 +50,8 @@
 
     align-items: center;
 
+    z-index: 1000;
+
     justify-content: space-between;
 
     padding-left: 24px;

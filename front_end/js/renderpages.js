@@ -142,16 +142,16 @@ export async function renderPageContent(user) {
     if (main) main.style.display = "none";
     if (hotel) hotel.style.display = "none";
     document.getElementById("tech-admin-dash").style.display = "none";
-  } else if ((user.role === "superadmin" || user.role === "nontechadmin") && page === "users.html") {
-    initUsers();
+  } else if ((user.role === "superadmin" || role === "techadmin" || role === "tech_admin") && page === "users.html") {
+    initUsers(user);
 
   } else if (
-    (user.role === "superadmin" || user.role === "nontechadmin") &&
+    (user.role === "nontechadmin") &&
     page === "plans.html"
   ) {
     renderPlansCrudPage("main", user);
   } else if (
-    (user.role === "superadmin" || user.role === "nontechadmin") &&
+    (user.role === "nontechadmin") &&
     page === "trips.html"
   ) {
     renderTripsCrudPage("main", user);

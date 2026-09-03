@@ -18,6 +18,7 @@ export const API_ENDPOINTS = Object.freeze({
   login: "/auth/login",
   register: "/auth/register",
   users: "/auth/users",
+  admins: "/auth/admins",
 
   // Traveller
   traveller: "/traveller",

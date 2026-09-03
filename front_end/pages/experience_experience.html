@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Experiences</title>
   <link rel="stylesheet" href="../css/styles.css">
   <link rel="stylesheet" href="../css/experiencestyles.css">
@@ -52,7 +53,12 @@
 
     <div class="modal-header">
       <h2>Add New Experience</h2>
-      <button type="button" class="close" data-close-modal="addModal" aria-label="Close add experience">Γ£ò</button>
+      <button type="button" class="close" data-close-modal="addModal" aria-label="Close add experience">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <form id="addExperienceForm" class="experience-form" novalidate>
@@ -89,7 +95,7 @@
 
       <div class="section form-grid">
         <label class="field-group" for="expPrice">
-          <span>Price per Person (Γé╣)</span>
+          <span>Price per Person (&#8377;)</span>
           <input id="expPrice" name="price" type="number" min="0" step="1" required>
           <small class="field-error" data-error-for="expPrice"></small>
         </label>
@@ -112,7 +118,13 @@
           <span>Experience Image</span>
           <label class="hotel-file-dropzone" for="expImage" id="expImageDropzone" style="margin-top: 8px;">
             <div class="dropzone-content" id="expDropzoneContent">
-              <span class="dropzone-icon">≡ƒôü</span>
+              <span class="dropzone-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748b;">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </span>
               <span class="dropzone-text">Click or drag & drop to upload</span>
               <span class="dropzone-subtext">SVG, PNG, JPG or GIF (max. 5MB)</span>
             </div>
@@ -145,7 +157,12 @@
   <div class="modal-box">
     <div class="modal-header">
       <h2>Edit Experience</h2>
-      <button type="button" class="close" data-close-modal="editModal" aria-label="Close edit experience">Γ£ò</button>
+      <button type="button" class="close" data-close-modal="editModal" aria-label="Close edit experience">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <form id="editExperienceForm" class="experience-form" novalidate>
@@ -207,7 +224,7 @@
             <span>Experience Image</span>
             <label class="hotel-file-dropzone" for="editImage" id="editImageDropzone" style="margin-top: 8px;">
               <div class="dropzone-content" id="editDropzoneContent">
-                <span class="dropzone-icon">≡ƒôü</span>
+                <span class="dropzone-icon">&#128228;</span>
                 <span class="dropzone-text">Click or drag & drop to upload</span>
                 <span class="dropzone-subtext">SVG, PNG, JPG or GIF (max. 5MB)</span>
               </div>

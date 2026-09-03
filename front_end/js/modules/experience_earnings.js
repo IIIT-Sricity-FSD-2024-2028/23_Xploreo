@@ -1,3 +1,4 @@
+import { fetchExperiencePartnerBookings } from "../api/services.js";
 import { earningsData } from "../api/legacyData.js";
 import {
     formatCurrency,
@@ -5,8 +6,27 @@ import {
     setElementText
 } from "./experience_shared.js";
 
-export function renderExperienceEarningsPage() {
-    const data = readStorage("experienceEarnings", earningsData);
+export async function renderExperienceEarningsPage() {
+    let rawBookings = [];
+    try {
+        rawBookings = await fetchExperiencePartnerBookings();
+    } catch(e) {
+        console.warn("Failed to fetch bookings for earnings", e);
+    }
+    
+    let data = [];
+    if (rawBookings && rawBookings.length > 0) {
+        data = rawBookings.map(b => ({
+           user: b.guestName || "Traveller",
+           title: b.experience?.title || "Experience",
+           amount: b.totalAmount || 0,
+           date: b.date || b.createdAt || new Date().toISOString(),
+           status: (b.status || "").toLowerCase() === "cancelled" ? "Refunded" : ((b.status || "").toLowerCase() === "confirmed" ? "Completed" : "Pending")
+        }));
+    } else {
+        data = readStorage("experienceEarnings", earningsData);
+    }
+
     const table = document.getElementById("earningsTable");
     const filter = document.getElementById("dateFilter");
     const statusFilter = document.getElementById("transactionStatusFilter");
@@ -84,6 +104,12 @@ export function renderExperienceEarningsPage() {
         setElementText("bestDay", getMaxKey(dayMap));
         setElementText("utilization", bookingsCount ? `${Math.min(100, bookingsCount * 10)}%` : "0%");
         setElementText("cancelRate", bookingsCount ? `${((cancelled / bookingsCount) * 100).toFixed(1)}%` : "0%");
+        
+        // Dynamically compute simple trends or placeholders
+        setElementText("totalRevenueTrend", "--");
+        setElementText("earningsTrend", "--");
+        setElementText("refundTrend", "--");
+        setElementText("avgBookingTrend", "--");
 
         const refundPercent = total ? ((refunded / total) * 100).toFixed(1) : "0.0";
         setElementText("refundAmountBig", formatCurrency(refunded));

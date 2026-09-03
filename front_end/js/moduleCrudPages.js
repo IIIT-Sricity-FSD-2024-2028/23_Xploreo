@@ -42,26 +42,64 @@ function parseJson(value, fallback, label) {
 function renderShell(container, title, subtitle, formHtml, listTitle, toolbarHtml = "") {
     container.innerHTML = `
         <div class="crud-page">
-            <header class="crud-page-header">
+            <header class="crud-page-header" style="margin-bottom: 24px;">
                 <div>
-                    <h1>${title}</h1>
-                    <p>${subtitle}</p>
+                    <h1 style="margin: 0; font-size: 28px; color: #1a202c;">${title}</h1>
+                    <p style="margin: 5px 0 0; color: #718096; font-size: 14px;">${subtitle}</p>
                 </div>
             </header>
-            <section class="crud-panel">
-                <h2 id="formTitle">Add ${title.slice(0, -1) || title}</h2>
-                <div id="crudMessage" class="crud-message" hidden></div>
-                ${formHtml}
-            </section>
-            <section class="crud-panel">
-                <div class="crud-toolbar">
-                    <h2>${listTitle}</h2>
-                    ${toolbarHtml}
+            
+            <section class="crud-panel" style="background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #edf2f7;">
+                <div class="crud-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #edf2f7;">
+                    <h2 style="margin: 0; font-size: 18px; color: #2d3748;">${listTitle}</h2>
+                    <div style="display: flex; gap: 12px; align-items: center;">
+                        ${toolbarHtml}
+                        <button id="openAddModalBtn" style="background: #3182ce; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.2s; white-space: nowrap;" onmouseover="this.style.background='#2b6cb0'" onmouseout="this.style.background='#3182ce'">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Add ${title.slice(0, -1) || title}
+                        </button>
+                    </div>
                 </div>
+                <div id="crudMessage" class="crud-message" hidden style="margin-bottom: 16px;"></div>
                 <div id="crudList" class="crud-grid"></div>
             </section>
         </div>
+
+        <!-- Modal Overlay -->
+        <div id="crudModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px);">
+            <div style="background: #fff; width: 90%; max-width: 650px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid #edf2f7; position: sticky; top: 0; background: #fff; z-index: 10;">
+                    <h2 id="formTitle" style="margin: 0; font-size: 20px; color: #1a202c;">Add ${title.slice(0, -1) || title}</h2>
+                    <button id="closeModalBtn" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #a0aec0; line-height: 1; padding: 0;">&times;</button>
+                </div>
+                <div style="padding: 24px;">
+                    ${formHtml}
+                </div>
+            </div>
+        </div>
     `;
+
+    const modal = document.getElementById("crudModal");
+    const openBtn = document.getElementById("openAddModalBtn");
+    const closeBtn = document.getElementById("closeModalBtn");
+
+    if (openBtn && modal && closeBtn) {
+        openBtn.onclick = () => {
+            const formTitle = document.getElementById("formTitle");
+            if(formTitle) formTitle.textContent = "Add " + (title.slice(0, -1) || title);
+            const resetBtn = document.getElementById("resetBtn");
+            if(resetBtn) resetBtn.click(); // clear form when opening for "Add"
+            modal.style.display = "flex";
+        };
+        closeBtn.onclick = () => {
+            modal.style.display = "none";
+        };
+        window.addEventListener("click", (event) => {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+    }
 }
 
 export function renderGuideCrudPage(containerId) {
@@ -71,6 +109,8 @@ export function renderGuideCrudPage(containerId) {
     renderShell(container, "Guides", "Create, update, and manage guide profiles.", `
         <form id="crudForm" class="crud-form">
             <input type="hidden" id="guideId">
+            <label>Username<input id="username" required minlength="3" title="Unique username for login"></label>
+            <label id="passwordLabel">Password<input type="password" id="password" minlength="6" required title="Password for login"></label>
             <label>First name<input id="fname" required minlength="2" pattern="[a-zA-Z ]+" title="First name should only contain letters"></label>
             <label>Last name<input id="lname" required minlength="1" pattern="[a-zA-Z ]+" title="Last name should only contain letters"></label>
             <label>Email<input id="email" type="email" required></label>
@@ -90,7 +130,7 @@ export function renderGuideCrudPage(containerId) {
             </div>
         </form>
     `, "All Guides", `
-        <input type="text" id="guideSearchInput" placeholder="Search guides..." style="padding: 6px 12px; border: 1px solid #dbe2ef; border-radius: 6px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto;">
+        <input type="text" id="guideSearchInput" placeholder="Search guides..." style="padding: 10px 16px; border: 1px solid #dbe2ef; border-radius: 8px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto; outline: none; transition: border-color 0.2s; box-sizing: border-box; height: 40px;">
     `);
 
     const form = document.getElementById("crudForm");
@@ -102,6 +142,7 @@ export function renderGuideCrudPage(containerId) {
 
     const guideIdOf = (guide) => guide.userId || guide.id;
     const payload = () => ({
+        userId: document.getElementById("username").value.trim(),
         fname: document.getElementById("fname").value.trim(),
         lname: document.getElementById("lname").value.trim(),
         email: document.getElementById("email").value.trim(),
@@ -115,12 +156,20 @@ export function renderGuideCrudPage(containerId) {
     const reset = () => {
         form.reset();
         document.getElementById("guideId").value = "";
+        document.getElementById("username").disabled = false;
+        document.getElementById("passwordLabel").hidden = false;
+        document.getElementById("password").required = true;
+        document.getElementById("password").value = "";
         formTitle.textContent = "Add Guide";
         clearMessage(message);
     };
 
     const fill = (guide) => {
         document.getElementById("guideId").value = guideIdOf(guide);
+        document.getElementById("username").value = guide.userId || "";
+        document.getElementById("username").disabled = true;
+        document.getElementById("passwordLabel").hidden = true;
+        document.getElementById("password").required = false;
         document.getElementById("fname").value = guide.fname || "";
         document.getElementById("lname").value = guide.lname || "";
         document.getElementById("email").value = guide.email || "";
@@ -200,10 +249,31 @@ export function renderGuideCrudPage(containerId) {
         event.preventDefault();
         const id = document.getElementById("guideId").value;
         try {
-            if (id) await apiPatch(`/guide/${encodeURIComponent(id)}`, payload());
-            else await apiPost("/guide", payload());
+            if (id) {
+                await apiPatch(`/guide/${encodeURIComponent(id)}`, payload());
+            } else {
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value;
+                const email = document.getElementById("email").value.trim();
+                const fname = document.getElementById("fname").value.trim();
+                const lname = document.getElementById("lname").value.trim();
+                const location = document.getElementById("location").value.trim();
+                const phone = document.getElementById("phone").value.trim();
+                
+                await apiPost("/auth/register", {
+                    username: username,
+                    password: password,
+                    email: email,
+                    role: "guide",
+                    name: fname + " " + lname,
+                    location: location,
+                    phone: phone
+                });
+                await apiPost("/guide", payload());
+            }
             showMessage(message, id ? "Guide updated successfully." : "Guide created successfully.", true);
             reset();
+            document.getElementById("crudModal").style.display = "none";
             await load();
         } catch (error) {
             showMessage(message, error.message);
@@ -215,7 +285,10 @@ export function renderGuideCrudPage(containerId) {
         if (!button) return;
         const id = button.dataset.id;
         const guide = guides.find((item) => String(guideIdOf(item)) === String(id));
-        if (button.dataset.action === "edit" && guide) fill(guide);
+        if (button.dataset.action === "edit" && guide) {
+            fill(guide);
+            document.getElementById("crudModal").style.display = "flex";
+        }
         if (button.dataset.action === "delete") {
             if (confirm("Restrict this guide? They will be unable to access their account.")) {
                 try {
@@ -375,6 +448,7 @@ export function renderPlansCrudPage(containerId) {
             }
             showMessage(message, "Plan saved successfully.", true);
             reset();
+            document.getElementById("crudModal").style.display = "none";
             await load();
         } catch (error) {
             showMessage(message, error.message);
@@ -386,7 +460,10 @@ export function renderPlansCrudPage(containerId) {
         if (!button) return;
         const id = button.dataset.id;
         const plan = plans.find((item) => String(item.id) === String(id));
-        if (button.dataset.action === "edit" && plan) fill(plan);
+        if (button.dataset.action === "edit" && plan) {
+            fill(plan);
+            document.getElementById("crudModal").style.display = "flex";
+        }
         if (button.dataset.action === "delete") {
             try {
                 await apiDelete(`/plans/${encodeURIComponent(id)}`);
@@ -538,6 +615,7 @@ export function renderTripsCrudPage(containerId, currentUser = {}) {
             }
             showMessage(message, "Trip saved successfully.", true);
             reset();
+            document.getElementById("crudModal").style.display = "none";
             await load();
         } catch (error) {
             showMessage(message, error.message);
@@ -549,7 +627,10 @@ export function renderTripsCrudPage(containerId, currentUser = {}) {
         if (!button) return;
         const id = button.dataset.id;
         const trip = trips.find((item) => String(item.id) === String(id));
-        if (button.dataset.action === "edit" && trip) fill(trip);
+        if (button.dataset.action === "edit" && trip) {
+            fill(trip);
+            document.getElementById("crudModal").style.display = "flex";
+        }
         if (button.dataset.action === "delete") {
             try {
                 await apiDelete(`/trips/${encodeURIComponent(id)}`);
@@ -566,225 +647,682 @@ export function renderTripsCrudPage(containerId, currentUser = {}) {
     void load();
 }
 
-export function renderTravellerGrid(containerId) {
+export function renderTravellerCrudPage(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
-    container.innerHTML = `
-        <div class="crud-page">
-            <header class="crud-page-header">
-                <div>
-                    <h1>Travelers</h1>
-                    <p>View registered travelers in the system.</p>
-                </div>
-            </header>
-            <section class="crud-panel">
-                <div class="crud-toolbar">
-                    <h2>All Travelers</h2>
-                    <input type="text" id="travellerSearchInput" placeholder="Search travelers..." style="padding: 6px 12px; border: 1px solid #dbe2ef; border-radius: 6px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto;">
-                </div>
-                <div id="travellerMessage" class="crud-message" hidden></div>
-                <div id="travellerList"></div>
-            </section>
-        </div>
-    `;
 
-    const list = document.getElementById("travellerList");
-    const message = document.getElementById("travellerMessage");
+    renderShell(container, "Travellers", "Create, update, and manage traveller profiles.", `
+        <form id="crudForm" class="crud-form">
+            <input type="hidden" id="travellerId">
+            <label>Username<input id="username" required minlength="3" title="Unique username for login"></label>
+            <label id="passwordLabel">Password<input type="password" id="password" minlength="6" required title="Password for login"></label>
+            <label>First name<input id="fname" required minlength="2" pattern="[a-zA-Z ]+" title="First name should only contain letters"></label>
+            <label>Last name<input id="lname" required minlength="1" pattern="[a-zA-Z ]+" title="Last name should only contain letters"></label>
+            <label>Email<input id="email" type="email" required></label>
+            <label>Phone
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                    <span style="font-weight: 600; color: #4B5563; padding-left: 8px;">+91</span>
+                    <input id="phone" type="tel" pattern="[6-9][0-9]{9}" maxlength="10" title="Please enter a valid 10-digit Indian mobile number starting with 6-9" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex: 1; margin-top: 0;">
+                </div>
+            </label>
+            <label>Gender
+                <select id="gender">
+                    <option value="">Select...</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                </select>
+            </label>
+            <label>DOB<input id="dob" type="date"></label>
+            <label>Languages<input id="lang_spoken" placeholder="English, Hindi"></label>
+            <label class="crud-full">Bio<textarea id="bio"></textarea></label>
+            <div class="crud-actions crud-full">
+                <button type="submit" class="crud-btn crud-primary">Save Traveller</button>
+                <button type="button" id="resetBtn" class="crud-btn">Clear</button>
+            </div>
+        </form>
+    `, "All Travellers", `
+        <input type="text" id="travellerSearchInput" placeholder="Search travellers..." style="padding: 10px 16px; border: 1px solid #dbe2ef; border-radius: 8px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto; outline: none; transition: border-color 0.2s; box-sizing: border-box; height: 40px;">
+    `);
+
+    const form = document.getElementById("crudForm");
+    const list = document.getElementById("crudList");
+    const message = document.getElementById("crudMessage");
+    const formTitle = document.getElementById("formTitle");
     const searchInput = document.getElementById("travellerSearchInput");
-    let items = [];
+    let travellers = [];
+
+    const travellerIdOf = (traveller) => traveller.userId || traveller.id;
+    const payload = () => ({
+        userId: document.getElementById("username").value.trim(),
+        fname: document.getElementById("fname").value.trim(),
+        lname: document.getElementById("lname").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phno: Number(document.getElementById("phone").value.trim()),
+        plang: splitList(document.getElementById("lang_spoken").value),
+        gender: document.getElementById("gender").value,
+        dob: document.getElementById("dob").value,
+        bio: document.getElementById("bio").value.trim()
+    });
+
+    const reset = () => {
+        form.reset();
+        document.getElementById("travellerId").value = "";
+        document.getElementById("username").disabled = false;
+        document.getElementById("passwordLabel").hidden = false;
+        document.getElementById("password").required = true;
+        document.getElementById("password").value = "";
+        formTitle.textContent = "Add Traveller";
+        clearMessage(message);
+    };
+
+    const fill = (traveller) => {
+        document.getElementById("travellerId").value = travellerIdOf(traveller);
+        document.getElementById("username").value = traveller.userId || "";
+        document.getElementById("username").disabled = true;
+        document.getElementById("passwordLabel").hidden = true;
+        document.getElementById("password").required = false;
+        document.getElementById("fname").value = traveller.fname || "";
+        document.getElementById("lname").value = traveller.lname || "";
+        document.getElementById("email").value = traveller.email || "";
+        document.getElementById("phone").value = (traveller.phno || "").toString().replace(/^\+91\s*/, "");
+        document.getElementById("gender").value = traveller.gender || "";
+        document.getElementById("dob").value = traveller.dob || "";
+        document.getElementById("lang_spoken").value = (traveller.plang || []).join(", ");
+        document.getElementById("bio").value = traveller.bio || "";
+        formTitle.textContent = `Edit Traveller ${travellerIdOf(traveller)}`;
+    };
 
     const render = () => {
-        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
-        const filtered = items.filter(t => {
+        const searchTerm = (searchInput ? searchInput.value.toLowerCase().trim() : "");
+        const filtered = travellers.filter(t => {
             if (!searchTerm) return true;
             return (t.fname || "").toLowerCase().includes(searchTerm) ||
                    (t.lname || "").toLowerCase().includes(searchTerm) ||
                    (t.email || "").toLowerCase().includes(searchTerm);
         });
 
-        if (filtered.length === 0) {
-            list.innerHTML = '<p class="crud-meta">No travelers found.</p>';
-            return;
-        }
+        const activeTravellers = filtered.filter(t => t.status !== 'restricted' && !t.isDeleted);
+        const restrictedTravellers = filtered.filter(t => t.status === 'restricted' || t.isDeleted);
 
-        list.innerHTML = `<div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-            ${filtered.map(t => `
-                <article class="crud-card">
-                    <h3>${t.fname || ""} ${t.lname || ""}</h3>
-                    <div class="crud-meta">
-                        <strong>ID:</strong> ${t.userId || t.id}<br>
-                        <strong>Email:</strong> ${t.email || "-"}<br>
-                        <strong>Phone:</strong> ${t.phno || "-"}<br>
-                        <strong>Languages:</strong> ${(t.plang || []).join(", ") || "-"}
+        const renderCards = (items) => items.length ? items.map((t) => `
+            <article class="crud-card ${t.status === 'restricted' ? 'restricted-card' : ''}" style="${t.status === 'restricted' ? 'opacity: 0.7; background: #fff1f2; border-color: #fecdd3;' : ''}">
+                <h3>${t.fname || ""} ${t.lname || ""} ${t.status === 'restricted' ? '<span style="color:red;font-size:12px;">(Restricted)</span>' : ''}</h3>
+                <div class="crud-meta">
+                    <strong>ID:</strong> ${travellerIdOf(t)}<br>
+                    <strong>Email:</strong> ${t.email || "-"}<br>
+                    <strong>Phone:</strong> ${t.phno || "-"}<br>
+                    <strong>Languages:</strong> ${(t.plang || []).join(", ") || "-"}
+                </div>
+                <div class="crud-card-actions">
+                    <button class="crud-btn" data-action="edit" data-id="${travellerIdOf(t)}">Edit</button>
+                    ${t.status === 'restricted' 
+                        ? `<button class="crud-btn" style="background:#22c55e;color:white;" data-action="restore" data-id="${travellerIdOf(t)}">Restore</button>` 
+                        : `<button class="crud-btn crud-danger" data-action="delete" data-id="${travellerIdOf(t)}">Restrict</button>`
+                    }
+                </div>
+            </article>
+        `).join("") : '<p class="crud-meta" style="grid-column: 1 / -1;">No travellers found in this section.</p>';
+
+        list.classList.remove("crud-grid");
+        
+        list.innerHTML = `
+            <div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                ${renderCards(activeTravellers)}
+            </div>
+            ${restrictedTravellers.length > 0 ? `
+                <div class="restricted-guides-section" style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <h3 style="color: #ef4444; margin-bottom: 16px;">Restricted Travellers</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                        ${renderCards(restrictedTravellers)}
                     </div>
-                </article>
-            `).join("")}
-        </div>`;
+                </div>
+            ` : ''}
+        `;
     };
 
-    if (searchInput) searchInput.addEventListener("input", render);
+    if (searchInput) {
+        searchInput.addEventListener("input", render);
+    }
 
     const load = async () => {
         try {
-            items = await apiGet("/traveller");
+            clearMessage(message);
+            travellers = await apiGet("/traveller");
             render();
         } catch (error) {
-            if (message) {
-                message.textContent = "Error loading travelers: " + error.message;
-                message.className = "crud-message error";
-                message.hidden = false;
-            }
-            list.innerHTML = '<p class="crud-meta">Unable to load travelers.</p>';
+            showMessage(message, error.message);
+            list.innerHTML = '<p class="crud-meta">Unable to load travellers.</p>';
         }
     };
-    load();
+
+    form.onsubmit = async (event) => {
+        event.preventDefault();
+        const id = document.getElementById("travellerId").value;
+        try {
+            if (id) {
+                await apiPatch(`/traveller/${encodeURIComponent(id)}`, payload());
+            } else {
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value;
+                const email = document.getElementById("email").value.trim();
+                const fname = document.getElementById("fname").value.trim();
+                const lname = document.getElementById("lname").value.trim();
+                const phone = document.getElementById("phone").value.trim();
+                
+                await apiPost("/auth/register", {
+                    username: username,
+                    password: password,
+                    email: email,
+                    role: "traveller",
+                    name: fname + " " + lname,
+                    phone: phone
+                });
+                await apiPost("/traveller", payload());
+            }
+            showMessage(message, id ? "Traveller updated successfully." : "Traveller created successfully.", true);
+            reset();
+            document.getElementById("crudModal").style.display = "none";
+            await load();
+        } catch (error) {
+            showMessage(message, error.message);
+        }
+    };
+
+    list.onclick = async (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const id = button.dataset.id;
+        const traveller = travellers.find((item) => String(travellerIdOf(item)) === String(id));
+        if (button.dataset.action === "edit" && traveller) {
+            fill(traveller);
+            document.getElementById("crudModal").style.display = "flex";
+        }
+        if (button.dataset.action === "delete") {
+            if (confirm("Restrict this traveller? They will be unable to access their account.")) {
+                try {
+                    await apiPatch(`/traveller/${encodeURIComponent(id)}`, { status: "restricted" });
+                    showMessage(message, "Traveller restricted successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+        if (button.dataset.action === "restore") {
+            if (confirm("Restore this traveller? They will regain access to their account.")) {
+                try {
+                    await apiPatch(`/traveller/${encodeURIComponent(id)}`, { status: "active" });
+                    showMessage(message, "Traveller restored successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+    };
+
+    document.getElementById("resetBtn").onclick = reset;
+    void load();
 }
 
-export function renderHotelGrid(containerId) {
+export function renderHotelCrudPage(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
-    container.innerHTML = `
-        <div class="crud-page">
-            <header class="crud-page-header">
-                <div>
-                    <h1>Hotel Partners</h1>
-                    <p>View registered hotel partners in the system.</p>
-                </div>
-            </header>
-            <section class="crud-panel">
-                <div class="crud-toolbar">
-                    <h2>All Hotels</h2>
-                    <input type="text" id="hotelSearchInput" placeholder="Search hotels..." style="padding: 6px 12px; border: 1px solid #dbe2ef; border-radius: 6px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto;">
-                </div>
-                <div id="hotelMessage" class="crud-message" hidden></div>
-                <div id="hotelList"></div>
-            </section>
-        </div>
-    `;
 
-    const list = document.getElementById("hotelList");
-    const message = document.getElementById("hotelMessage");
+    renderShell(container, "Hotel Partners", "Create, update, and manage hotel partners and their properties.", `
+        <form id="crudForm" class="crud-form">
+            <input type="hidden" id="hotelId">
+            <label>Username (Partner ID)<input id="username" required minlength="3" title="Unique username for login"></label>
+            <label id="passwordLabel">Password<input type="password" id="password" minlength="6" required title="Password for login"></label>
+            <label>Partner Name<input id="partnerName" required minlength="2" title="Name of the person managing this account"></label>
+            <label>Email<input id="email" type="email" required></label>
+            <label>Phone
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                    <span style="font-weight: 600; color: #4B5563; padding-left: 8px;">+91</span>
+                    <input id="phone" type="tel" pattern="[6-9][0-9]{9}" maxlength="10" title="Please enter a valid 10-digit Indian mobile number starting with 6-9" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex: 1; margin-top: 0;">
+                </div>
+            </label>
+            <hr style="grid-column: 1 / -1; margin: 10px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <label style="grid-column: 1 / -1; font-weight: bold; color: #374151;">Hotel Property Details</label>
+            <label>Hotel Name<input id="hotelName" required minlength="2"></label>
+            <label>City<input id="city" required></label>
+            <label>Location<input id="location" required></label>
+            <label>Stars<input id="stars" type="number" min="1" max="5" required></label>
+            <label>Price per Night (₹)<input id="pricePerNight" type="number" min="0" required></label>
+            <label>Total Rooms<input id="totalRooms" type="number" min="1" required></label>
+            <label class="crud-full">Amenities (comma separated)<input id="amenities" placeholder="Pool, WiFi, Breakfast"></label>
+            <label class="crud-full">Description<textarea id="description" required></textarea></label>
+            <div class="crud-actions crud-full">
+                <button type="submit" class="crud-btn crud-primary">Save Hotel Partner</button>
+                <button type="button" id="resetBtn" class="crud-btn">Clear</button>
+            </div>
+        </form>
+    `, "All Hotels", `
+        <input type="text" id="hotelSearchInput" placeholder="Search hotels..." style="padding: 10px 16px; border: 1px solid #dbe2ef; border-radius: 8px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto; outline: none; transition: border-color 0.2s; box-sizing: border-box; height: 40px;">
+    `);
+
+    const form = document.getElementById("crudForm");
+    const list = document.getElementById("crudList");
+    const message = document.getElementById("crudMessage");
+    const formTitle = document.getElementById("formTitle");
     const searchInput = document.getElementById("hotelSearchInput");
     let items = [];
 
+    const payload = () => ({
+        partnerId: document.getElementById("username").value.trim(),
+        name: document.getElementById("hotelName").value.trim(),
+        city: document.getElementById("city").value.trim(),
+        location: document.getElementById("location").value.trim(),
+        stars: Number(document.getElementById("stars").value),
+        pricePerNight: Number(document.getElementById("pricePerNight").value),
+        totalRooms: Number(document.getElementById("totalRooms").value),
+        amenities: splitList(document.getElementById("amenities").value),
+        description: document.getElementById("description").value.trim()
+    });
+
+    const reset = () => {
+        form.reset();
+        document.getElementById("hotelId").value = "";
+        document.getElementById("username").disabled = false;
+        document.getElementById("passwordLabel").hidden = false;
+        document.getElementById("password").required = true;
+        document.getElementById("password").value = "";
+        formTitle.textContent = "Add Hotel Partner";
+        clearMessage(message);
+    };
+
+    const fill = (hotel) => {
+        document.getElementById("hotelId").value = hotel.id;
+        document.getElementById("username").value = hotel.partnerId || "";
+        document.getElementById("username").disabled = true;
+        document.getElementById("passwordLabel").hidden = true;
+        document.getElementById("password").required = false;
+        document.getElementById("partnerName").value = "Partner (Cannot edit name here)";
+        document.getElementById("partnerName").disabled = true;
+        document.getElementById("email").value = "hidden@example.com";
+        document.getElementById("email").disabled = true;
+        document.getElementById("phone").value = "0000000000";
+        document.getElementById("phone").disabled = true;
+        
+        document.getElementById("hotelName").value = hotel.name || "";
+        document.getElementById("city").value = hotel.city || "";
+        document.getElementById("location").value = hotel.location || "";
+        document.getElementById("stars").value = hotel.stars || 1;
+        document.getElementById("pricePerNight").value = hotel.pricePerNight || 0;
+        document.getElementById("totalRooms").value = hotel.totalRooms || 1;
+        document.getElementById("amenities").value = (hotel.amenities || []).join(", ");
+        document.getElementById("description").value = hotel.description || "";
+        
+        formTitle.textContent = `Edit Hotel ${hotel.name}`;
+    };
+
     const render = () => {
-        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const searchTerm = (searchInput ? searchInput.value.toLowerCase().trim() : "");
         const filtered = items.filter(h => {
             if (!searchTerm) return true;
-            return (h.hotelName || "").toLowerCase().includes(searchTerm) ||
+            return (h.name || "").toLowerCase().includes(searchTerm) ||
+                   (h.city || "").toLowerCase().includes(searchTerm) ||
                    (h.location || "").toLowerCase().includes(searchTerm);
         });
 
-        if (filtered.length === 0) {
-            list.innerHTML = '<p class="crud-meta">No hotels found.</p>';
-            return;
-        }
+        const activeHotels = filtered.filter(h => h.status !== 'restricted' && !h.isDeleted);
+        const restrictedHotels = filtered.filter(h => h.status === 'restricted' || h.isDeleted);
 
-        list.innerHTML = `<div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-            ${filtered.map(h => `
-                <article class="crud-card">
-                    <h3>${h.name || h.hotelName || "Unnamed Hotel"}</h3>
-                    <div class="crud-meta">
-                        <strong>ID:</strong> ${h.id || h.partnerId}<br>
-                        <strong>Location:</strong> ${h.city || h.location || "-"}<br>
-                        <strong>Amenities:</strong> ${Array.isArray(h.amenities) ? h.amenities.slice(0, 3).join(", ") : "-"}<br>
-                        <strong>Capacity:</strong> ${h.totalRooms || h.capacity || 0} rooms
+        const renderCards = (list) => list.length ? list.map((h) => `
+            <article class="crud-card ${h.status === 'restricted' ? 'restricted-card' : ''}" style="${h.status === 'restricted' ? 'opacity: 0.7; background: #fff1f2; border-color: #fecdd3;' : ''}">
+                <h3>${h.name || ""} ${h.status === 'restricted' ? '<span style="color:red;font-size:12px;">(Restricted)</span>' : ''}</h3>
+                <div class="crud-meta">
+                    <strong>Hotel ID:</strong> ${h.id}<br>
+                    <strong>Partner ID:</strong> ${h.partnerId || "-"}<br>
+                    <strong>City:</strong> ${h.city || "-"}<br>
+                    <strong>Amenities:</strong> ${(h.amenities || []).slice(0,3).join(", ") || "-"}
+                </div>
+                <div class="crud-card-actions">
+                    <button class="crud-btn" data-action="edit" data-id="${h.id}">Edit</button>
+                    ${h.status === 'restricted' 
+                        ? `<button class="crud-btn" style="background:#22c55e;color:white;" data-action="restore" data-id="${h.id}">Restore</button>` 
+                        : `<button class="crud-btn crud-danger" data-action="delete" data-id="${h.id}">Restrict</button>`
+                    }
+                </div>
+            </article>
+        `).join("") : '<p class="crud-meta" style="grid-column: 1 / -1;">No hotels found in this section.</p>';
+
+        list.classList.remove("crud-grid");
+        
+        list.innerHTML = `
+            <div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                ${renderCards(activeHotels)}
+            </div>
+            ${restrictedHotels.length > 0 ? `
+                <div class="restricted-guides-section" style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <h3 style="color: #ef4444; margin-bottom: 16px;">Restricted Hotels</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                        ${renderCards(restrictedHotels)}
                     </div>
-                </article>
-            `).join("")}
-        </div>`;
+                </div>
+            ` : ''}
+        `;
     };
 
-    if (searchInput) searchInput.addEventListener("input", render);
+    if (searchInput) {
+        searchInput.addEventListener("input", render);
+    }
 
     const load = async () => {
         try {
+            clearMessage(message);
             items = await apiGet("/hotels");
             render();
         } catch (error) {
-            if (message) {
-                message.textContent = "Error loading hotels: " + error.message;
-                message.className = "crud-message error";
-                message.hidden = false;
-            }
+            showMessage(message, error.message);
             list.innerHTML = '<p class="crud-meta">Unable to load hotels.</p>';
         }
     };
-    load();
+
+    form.onsubmit = async (event) => {
+        event.preventDefault();
+        const id = document.getElementById("hotelId").value;
+        try {
+            if (id) {
+                await apiPatch(`/hotels/${encodeURIComponent(id)}`, payload());
+            } else {
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value;
+                const email = document.getElementById("email").value.trim();
+                const partnerName = document.getElementById("partnerName").value.trim();
+                const phone = document.getElementById("phone").value.trim();
+                const location = document.getElementById("city").value.trim();
+                
+                await apiPost("/auth/register", {
+                    username: username,
+                    password: password,
+                    email: email,
+                    role: "hotel",
+                    name: partnerName,
+                    location: location,
+                    phone: phone
+                });
+                await apiPost("/hotels", payload());
+            }
+            showMessage(message, id ? "Hotel updated successfully." : "Hotel Partner created successfully.", true);
+            reset();
+            document.getElementById("crudModal").style.display = "none";
+            await load();
+        } catch (error) {
+            showMessage(message, error.message);
+        }
+    };
+
+    list.onclick = async (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const id = button.dataset.id;
+        const hotel = items.find((item) => String(item.id) === String(id));
+        if (button.dataset.action === "edit" && hotel) {
+            fill(hotel);
+            document.getElementById("crudModal").style.display = "flex";
+        }
+        if (button.dataset.action === "delete") {
+            if (confirm("Restrict this hotel partner?")) {
+                try {
+                    await apiPatch(`/hotels/${encodeURIComponent(id)}`, { status: "restricted" });
+                    showMessage(message, "Hotel restricted successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+        if (button.dataset.action === "restore") {
+            if (confirm("Restore this hotel partner?")) {
+                try {
+                    await apiPatch(`/hotels/${encodeURIComponent(id)}`, { status: "active" });
+                    showMessage(message, "Hotel restored successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+    };
+
+    document.getElementById("resetBtn").onclick = reset;
+    void load();
 }
 
-export function renderExperienceGrid(containerId) {
+export function renderExperienceCrudPage(containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    
-    container.innerHTML = `
-        <div class="crud-page">
-            <header class="crud-page-header">
-                <div>
-                    <h1>Experience Partners</h1>
-                    <p>View registered experience providers in the system.</p>
-                </div>
-            </header>
-            <section class="crud-panel">
-                <div class="crud-toolbar">
-                    <h2>All Experiences</h2>
-                    <input type="text" id="expSearchInput" placeholder="Search experiences..." style="padding: 6px 12px; border: 1px solid #dbe2ef; border-radius: 6px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto;">
-                </div>
-                <div id="expMessage" class="crud-message" hidden></div>
-                <div id="expList"></div>
-            </section>
-        </div>
-    `;
 
-    const list = document.getElementById("expList");
-    const message = document.getElementById("expMessage");
+    renderShell(container, "Experience Partners", "Create, update, and manage experience partners and their offerings.", `
+        <form id="crudForm" class="crud-form">
+            <input type="hidden" id="expId">
+            <label>Username (Partner ID)<input id="username" required minlength="3" title="Unique username for login"></label>
+            <label id="passwordLabel">Password<input type="password" id="password" minlength="6" required title="Password for login"></label>
+            <label>Partner Name<input id="partnerName" required minlength="2" title="Name of the person managing this account"></label>
+            <label>Email<input id="email" type="email" required></label>
+            <label>Phone
+                <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px;">
+                    <span style="font-weight: 600; color: #4B5563; padding-left: 8px;">+91</span>
+                    <input id="phone" type="tel" pattern="[6-9][0-9]{9}" maxlength="10" title="Please enter a valid 10-digit Indian mobile number starting with 6-9" oninput="this.value = this.value.replace(/[^0-9]/g, '')" required style="flex: 1; margin-top: 0;">
+                </div>
+            </label>
+            <hr style="grid-column: 1 / -1; margin: 10px 0; border: none; border-top: 1px solid #e5e7eb;">
+            <label style="grid-column: 1 / -1; font-weight: bold; color: #374151;">Experience Details</label>
+            <label>Experience Title<input id="expTitle" required minlength="2"></label>
+            <label>Destination<input id="destination" required></label>
+            <label>Category
+                <select id="category" required>
+                    <option value="">Select...</option>
+                    <option value="adventure">Adventure</option>
+                    <option value="culture">Culture</option>
+                    <option value="culinary">Culinary</option>
+                    <option value="wellness">Wellness</option>
+                    <option value="wildlife">Wildlife</option>
+                    <option value="photography">Photography</option>
+                    <option value="tours">Tours</option>
+                    <option value="water sports">Water Sports</option>
+                </select>
+            </label>
+            <label>Price (₹)<input id="price" type="number" min="0" required></label>
+            <label>Duration (Hours)<input id="durationHours" type="number" min="1" required></label>
+            <label>Capacity<input id="capacity" type="number" min="1" required></label>
+            <label class="crud-full">Description<textarea id="description" required></textarea></label>
+            <div class="crud-actions crud-full">
+                <button type="submit" class="crud-btn crud-primary">Save Experience Partner</button>
+                <button type="button" id="resetBtn" class="crud-btn">Clear</button>
+            </div>
+        </form>
+    `, "All Experiences", `
+        <input type="text" id="expSearchInput" placeholder="Search experiences..." style="padding: 10px 16px; border: 1px solid #dbe2ef; border-radius: 8px; font-size: 14px; width: 100%; max-width: 300px; margin-left: auto; outline: none; transition: border-color 0.2s; box-sizing: border-box; height: 40px;">
+    `);
+
+    const form = document.getElementById("crudForm");
+    const list = document.getElementById("crudList");
+    const message = document.getElementById("crudMessage");
+    const formTitle = document.getElementById("formTitle");
     const searchInput = document.getElementById("expSearchInput");
     let items = [];
 
+    const payload = () => ({
+        partnerId: document.getElementById("username").value.trim(),
+        title: document.getElementById("expTitle").value.trim(),
+        destination: document.getElementById("destination").value.trim(),
+        category: document.getElementById("category").value,
+        price: Number(document.getElementById("price").value),
+        durationHours: Number(document.getElementById("durationHours").value),
+        capacity: Number(document.getElementById("capacity").value),
+        description: document.getElementById("description").value.trim()
+    });
+
+    const reset = () => {
+        form.reset();
+        document.getElementById("expId").value = "";
+        document.getElementById("username").disabled = false;
+        document.getElementById("passwordLabel").hidden = false;
+        document.getElementById("password").required = true;
+        document.getElementById("password").value = "";
+        formTitle.textContent = "Add Experience Partner";
+        clearMessage(message);
+    };
+
+    const fill = (exp) => {
+        document.getElementById("expId").value = exp.id;
+        document.getElementById("username").value = exp.partnerId || "";
+        document.getElementById("username").disabled = true;
+        document.getElementById("passwordLabel").hidden = true;
+        document.getElementById("password").required = false;
+        document.getElementById("partnerName").value = "Partner (Cannot edit name here)";
+        document.getElementById("partnerName").disabled = true;
+        document.getElementById("email").value = "hidden@example.com";
+        document.getElementById("email").disabled = true;
+        document.getElementById("phone").value = "0000000000";
+        document.getElementById("phone").disabled = true;
+        
+        document.getElementById("expTitle").value = exp.title || "";
+        document.getElementById("destination").value = exp.destination || "";
+        document.getElementById("category").value = exp.category || "";
+        document.getElementById("price").value = exp.price || 0;
+        document.getElementById("durationHours").value = exp.durationHours || 1;
+        document.getElementById("capacity").value = exp.capacity || 1;
+        document.getElementById("description").value = exp.description || "";
+        
+        formTitle.textContent = `Edit Experience ${exp.title}`;
+    };
+
     const render = () => {
-        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : "";
+        const searchTerm = (searchInput ? searchInput.value.toLowerCase().trim() : "");
         const filtered = items.filter(e => {
             if (!searchTerm) return true;
             return (e.title || "").toLowerCase().includes(searchTerm) ||
-                   (e.location || "").toLowerCase().includes(searchTerm);
+                   (e.destination || "").toLowerCase().includes(searchTerm) ||
+                   (e.category || "").toLowerCase().includes(searchTerm);
         });
 
-        if (filtered.length === 0) {
-            list.innerHTML = '<p class="crud-meta">No experiences found.</p>';
-            return;
-        }
+        const activeExps = filtered.filter(e => e.status !== 'restricted' && !e.isDeleted);
+        const restrictedExps = filtered.filter(e => e.status === 'restricted' || e.isDeleted);
 
-        list.innerHTML = `<div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
-            ${filtered.map(e => `
-                <article class="crud-card">
-                    <h3>${e.title || "Unnamed Experience"}</h3>
-                    <div class="crud-meta">
-                        <strong>ID:</strong> ${e.id || e.partnerId}<br>
-                        <strong>Location:</strong> ${e.destination || e.location || "-"}<br>
-                        <strong>Category:</strong> ${e.category || e.type || "-"}<br>
-                        <strong>Price:</strong> $${e.price || 0} / person
+        const renderCards = (list) => list.length ? list.map((e) => `
+            <article class="crud-card ${e.status === 'restricted' ? 'restricted-card' : ''}" style="${e.status === 'restricted' ? 'opacity: 0.7; background: #fff1f2; border-color: #fecdd3;' : ''}">
+                <h3>${e.title || ""} ${e.status === 'restricted' ? '<span style="color:red;font-size:12px;">(Restricted)</span>' : ''}</h3>
+                <div class="crud-meta">
+                    <strong>Exp ID:</strong> ${e.id}<br>
+                    <strong>Partner ID:</strong> ${e.partnerId || "-"}<br>
+                    <strong>Destination:</strong> ${e.destination || "-"}<br>
+                    <strong>Category:</strong> ${e.category || "-"}
+                </div>
+                <div class="crud-card-actions">
+                    <button class="crud-btn" data-action="edit" data-id="${e.id}">Edit</button>
+                    ${e.status === 'restricted' 
+                        ? `<button class="crud-btn" style="background:#22c55e;color:white;" data-action="restore" data-id="${e.id}">Restore</button>` 
+                        : `<button class="crud-btn crud-danger" data-action="delete" data-id="${e.id}">Restrict</button>`
+                    }
+                </div>
+            </article>
+        `).join("") : '<p class="crud-meta" style="grid-column: 1 / -1;">No experiences found in this section.</p>';
+
+        list.classList.remove("crud-grid");
+        
+        list.innerHTML = `
+            <div class="active-guides-section" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                ${renderCards(activeExps)}
+            </div>
+            ${restrictedExps.length > 0 ? `
+                <div class="restricted-guides-section" style="margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                    <h3 style="color: #ef4444; margin-bottom: 16px;">Restricted Experiences</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;">
+                        ${renderCards(restrictedExps)}
                     </div>
-                </article>
-            `).join("")}
-        </div>`;
+                </div>
+            ` : ''}
+        `;
     };
 
-    if (searchInput) searchInput.addEventListener("input", render);
+    if (searchInput) {
+        searchInput.addEventListener("input", render);
+    }
 
     const load = async () => {
         try {
+            clearMessage(message);
             items = await apiGet("/experiences");
             render();
         } catch (error) {
-            if (message) {
-                message.textContent = "Error loading experiences: " + error.message;
-                message.className = "crud-message error";
-                message.hidden = false;
-            }
+            showMessage(message, error.message);
             list.innerHTML = '<p class="crud-meta">Unable to load experiences.</p>';
         }
     };
-    load();
+
+    form.onsubmit = async (event) => {
+        event.preventDefault();
+        const id = document.getElementById("expId").value;
+        try {
+            if (id) {
+                await apiPatch(`/experiences/${encodeURIComponent(id)}`, payload());
+            } else {
+                const username = document.getElementById("username").value.trim();
+                const password = document.getElementById("password").value;
+                const email = document.getElementById("email").value.trim();
+                const partnerName = document.getElementById("partnerName").value.trim();
+                const phone = document.getElementById("phone").value.trim();
+                const location = document.getElementById("destination").value.trim();
+                
+                await apiPost("/auth/register", {
+                    username: username,
+                    password: password,
+                    email: email,
+                    role: "experience",
+                    name: partnerName,
+                    location: location,
+                    phone: phone
+                });
+                await apiPost("/experiences", payload());
+            }
+            showMessage(message, id ? "Experience updated successfully." : "Experience Partner created successfully.", true);
+            reset();
+            document.getElementById("crudModal").style.display = "none";
+            await load();
+        } catch (error) {
+            showMessage(message, error.message);
+        }
+    };
+
+    list.onclick = async (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        const id = button.dataset.id;
+        const exp = items.find((item) => String(item.id) === String(id));
+        if (button.dataset.action === "edit" && exp) {
+            fill(exp);
+            document.getElementById("crudModal").style.display = "flex";
+        }
+        if (button.dataset.action === "delete") {
+            if (confirm("Restrict this experience partner?")) {
+                try {
+                    await apiPatch(`/experiences/${encodeURIComponent(id)}`, { status: "restricted" });
+                    showMessage(message, "Experience restricted successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+        if (button.dataset.action === "restore") {
+            if (confirm("Restore this experience partner?")) {
+                try {
+                    await apiPatch(`/experiences/${encodeURIComponent(id)}`, { status: "active" });
+                    showMessage(message, "Experience restored successfully.", true);
+                    await load();
+                } catch (error) {
+                    showMessage(message, error.message);
+                }
+            }
+        }
+    };
+
+    document.getElementById("resetBtn").onclick = reset;
+    void load();
 }
+
+

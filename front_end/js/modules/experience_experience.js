@@ -480,7 +480,7 @@ export async function renderExperienceCatalogPage() {
             return `
             <article class="card experience-catalog-card">
                 <div class="experience-card-row">
-                    ${exp.image ? `<img src="${exp.image}" class="exp-img" alt="${exp.title}" onerror="this.style.display='none'" />` : `<div class="exp-img" style="display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#999; border-radius:8px; font-size:12px;">No Image</div>`}
+                    ${exp.image ? `<img src="${exp.image}" class="exp-img" alt="${exp.title}" onerror="this.onerror=null;this.src='../components/ui/exploreIcon.jpg';" />` : `<div class="exp-img" style="display:flex; align-items:center; justify-content:center; background:#f5f5f5; color:#999; border-radius:8px; font-size:12px;">No Image</div>`}
                     <div class="exp-content">
                         <div class="experience-card-header-line catalog-card-header">
                             <div class="catalog-title-block">
@@ -856,68 +856,71 @@ export async function renderExperienceCatalogPage() {
         setFormMessage("editExperienceMessage", "Experience updated successfully.", "success");
     };
 
-    slotsForm.onsubmit = (event) => {
-        event.preventDefault();
-        resetCatalogMessages();
-        const payload = validateSlotPayload();
+    if (slotsForm) {
+        slotsForm.onsubmit = (event) => {
+            event.preventDefault();
+            resetCatalogMessages();
+            const payload = validateSlotPayload();
 
-        if (!payload.isValid) {
-            setFormMessage("slotsMessage", "Please fix the highlighted fields before saving.");
-            return;
-        }
-
-        const exp = getManagedExperience();
-        if (!exp) return;
-
-        const isDuplicate = exp.slots.some(
-            (item) => item.date === payload.date &&
-                item.time === payload.time &&
-                (slotModalMode === "add" || String(item.id) !== String(currentSlotId))
-        );
-
-        if (isDuplicate) {
-            setFieldError("slotTime", "A session already exists for this date and time.");
-            setFormMessage("slotsMessage", "Please fix the highlighted fields before saving.");
-            return;
-        }
-
-        if (slotModalMode === "edit") {
-            const slot = exp.slots.find((item) => String(item.id) === String(currentSlotId));
-            if (!slot) return;
-            slot.date = payload.date;
-            slot.time = payload.time;
-            slot.capacity = Math.max(slot.booked, payload.capacity);
-            slot.available = slot.booked < slot.capacity;
-        } else {
-            exp.slots.push({
-                id: `${exp.id}-${Date.now()}`,
-                date: payload.date,
-                time: payload.time,
-                booked: 0,
-                capacity: payload.capacity,
-                available: true
-            });
-
-            if (slotsDateFilter) {
-                slotsDateFilter.value = payload.date;
+            if (!payload.isValid) {
+                setFormMessage("slotsMessage", "Please fix the highlighted fields before saving.");
+                return;
             }
-        }
 
-        exp.slots = sortSlots(exp.slots);
-        const nextOpenSlot = exp.slots.find((slot) => slot.available) || exp.slots[0];
-        if (nextOpenSlot) {
-            exp.nextSlot = nextOpenSlot.time;
-            exp.booked = nextOpenSlot.booked;
-            exp.capacity = nextOpenSlot.capacity;
-        }
+            const exp = getManagedExperience();
+            if (!exp) return;
 
-        persistExperiences();
-        syncExperienceSlots(exp);
-        closeModal("slotsModal");
-        renderCatalog();
-        renderSlotsManager();
-        setFormMessage("slotsMessage", slotModalMode === "edit" ? "Session details updated." : "Slot added successfully.", "success");
-    };
+            const isDuplicate = exp.slots.some(
+                (item) => item.date === payload.date &&
+                    item.time === payload.time &&
+                    (slotModalMode === "add" || String(item.id) !== String(currentSlotId))
+            );
+
+            if (isDuplicate) {
+                setFieldError("slotTime", "A session already exists for this date and time.");
+                setFormMessage("slotsMessage", "Please fix the highlighted fields before saving.");
+                return;
+            }
+
+            if (slotModalMode === "edit") {
+                const slot = exp.slots.find((item) => String(item.id) === String(currentSlotId));
+                if (!slot) return;
+                slot.date = payload.date;
+                slot.time = payload.time;
+                slot.capacity = Math.max(slot.booked, payload.capacity);
+                slot.available = slot.booked < slot.capacity;
+            } else {
+                exp.slots.push({
+                    id: `${exp.id}-${Date.now()}`,
+                    date: payload.date,
+                    time: payload.time,
+                    booked: 0,
+                    capacity: payload.capacity,
+                    available: true
+                });
+
+                if (slotsDateFilter) {
+                    slotsDateFilter.value = payload.date;
+                }
+            }
+
+            exp.slots = sortSlots(exp.slots);
+            const nextOpenSlot = exp.slots.find((slot) => slot.available) || exp.slots[0];
+            if (nextOpenSlot) {
+                exp.nextSlot = nextOpenSlot.time;
+                exp.booked = nextOpenSlot.booked;
+                exp.capacity = nextOpenSlot.capacity;
+            }
+
+            persistExperiences();
+            syncExperienceSlots(exp);
+            closeModal("slotsModal");
+            renderCatalog();
+            renderSlotsManager();
+            setFormMessage("slotsMessage", slotModalMode === "edit" ? "Session details updated." : "Slot added successfully.", "success");
+        };
+    }
+
 
     attachModalDismissals();
     renderCatalog();
