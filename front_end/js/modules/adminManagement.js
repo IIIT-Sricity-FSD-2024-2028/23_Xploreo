@@ -21,7 +21,7 @@
  *  - Delete confirmation modal (calls DELETE /auth/users/:id)
  */
 
-import { fetchAdmins, registerWithApi, updateUser, deleteUser } from "../api/services.js";
+import { fetchAdmins, registerWithApi, updateUser, deleteUser, toggleHighLevelAdmin } from "../api/services.js";
 import { getCurrentUser } from "../api/session.js";
 
 // ─────────────────────────────────────────────────────
@@ -31,6 +31,7 @@ import { getCurrentUser } from "../api/session.js";
 const ALLOWED_LOCATIONS = ["Jaipur", "Goa", "Delhi", "Mumbai", "Kerala"];
 
 const ADMIN_TYPES = {
+  superadmin: { label: "Super Admin", badgeClass: "badge-super" },
   techadmin: { label: "Technical", badgeClass: "badge-tech" },
   nontechadmin: { label: "Non-Technical", badgeClass: "badge-nontech" },
 };
@@ -41,6 +42,9 @@ const ADMIN_TYPES = {
 
 let allAdmins = [];
 let filteredAdmins = [];
+
+let isSuperAdmin = false;
+let isHighLevelTechAdmin = false;
 
 let editingAdminId = null;
 
@@ -66,17 +70,22 @@ let currentTriggerBtn = null;
 // Entry Point
 // ─────────────────────────────────────────────────────
 
-export async function initAdminManagement() {
-  // Frontend role guard
-  const currentUser = getCurrentUser();
+export async function initAdminManagement(passedUser) {
+  // Frontend role guard: Super Admin OR High-Level Tech Admin
+  const currentUser = passedUser || getCurrentUser();
   const normalizedRole = (currentUser?.role || "").toLowerCase().replace(/_/g, "");
-  if (normalizedRole !== "superadmin") {
+  isSuperAdmin = normalizedRole === "superadmin";
+  isHighLevelTechAdmin =
+    (normalizedRole === "techadmin" || normalizedRole === "tech_admin") &&
+    Boolean(currentUser?.isHighLevelAdmin);
+
+  if (!isSuperAdmin && !isHighLevelTechAdmin) {
     const main = document.getElementById("main");
     if (main) {
       main.innerHTML = `
         <div class="content-card" style="text-align:center; padding: 60px 40px; margin-top: 40px;">
           <h2 style="color:#dc2626; margin-bottom: 12px;">Access Denied</h2>
-          <p style="color:#6b7280;">Only Super Admins can access Admin Management.</p>
+          <p style="color:#6b7280;">Only Super Admins and authorized High-Level Technical Admins can access Admin Management.</p>
         </div>`;
       main.style.display = "block";
     }
@@ -114,7 +123,7 @@ function createBodyDropdown() {
   document.body.appendChild(dropdownEl);
 }
 
-function showDropdown(triggerBtn, adminId, adminStatus) {
+function showDropdown(triggerBtn, adminId, adminStatus, adminRole, isTargetHighLevel) {
   if (!dropdownEl) return;
 
   const isOpen = dropdownEl.style.display === "block" && currentTriggerBtn === triggerBtn;
@@ -127,14 +136,27 @@ function showDropdown(triggerBtn, adminId, adminStatus) {
 
   currentTriggerBtn = triggerBtn;
   const isActive = adminStatus === "active";
+  const canToggleHl = isSuperAdmin && adminRole === "techadmin";
 
-  dropdownEl.innerHTML = `
+  let itemsHtml = `
     <button class="am-dropdown-item" data-action="view" data-id="${adminId}">
       <span>👁</span> View Details
     </button>
     <button class="am-dropdown-item" data-action="edit" data-id="${adminId}">
       <span>✏️</span> Edit
     </button>
+  `;
+
+  if (canToggleHl) {
+    itemsHtml += `
+      <div class="am-dropdown-divider"></div>
+      <button class="am-dropdown-item" data-action="toggle-high-level" data-id="${adminId}" data-target-hl="${isTargetHighLevel ? "false" : "true"}">
+        <span>⭐</span> ${isTargetHighLevel ? "Revoke High-Level" : "Grant High-Level"}
+      </button>
+    `;
+  }
+
+  itemsHtml += `
     <div class="am-dropdown-divider"></div>
     <button class="am-dropdown-item" data-action="toggle-status" data-id="${adminId}" data-status="${adminStatus}">
       <span>${isActive ? "🔴" : "🟢"}</span> ${isActive ? "Deactivate" : "Activate"}
@@ -148,22 +170,24 @@ function showDropdown(triggerBtn, adminId, adminStatus) {
     </button>
   `;
 
+  dropdownEl.innerHTML = itemsHtml;
+
   // Attach click listeners to menu items
   dropdownEl.querySelectorAll(".am-dropdown-item[data-action]").forEach((item) => {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
       const action = item.dataset.action;
       const id = item.dataset.id;
-      const status = item.dataset.status;
+      const targetHl = item.dataset.targetHl;
       hideDropdown();
-      handleDropdownAction(action, id, status);
+      handleDropdownAction(action, id, targetHl);
     });
   });
 
   // Calculate position relative to viewport (fixed positioning)
   const rect = triggerBtn.getBoundingClientRect();
-  const dropdownWidth = 185;
-  const dropdownHeight = 220; // 5 items + 2 dividers
+  const dropdownWidth = 195;
+  const dropdownHeight = canToggleHl ? 260 : 220;
 
   // Horizontal placement: align right edge with button right edge, fallback to left
   const spaceRight = window.innerWidth - rect.right;
@@ -207,7 +231,7 @@ function registerGlobalClickListener() {
 // Dropdown Action Handler
 // ─────────────────────────────────────────────────────
 
-function handleDropdownAction(action, adminId) {
+function handleDropdownAction(action, adminId, targetHl) {
   const admin = allAdmins.find((a) => a.userId === adminId);
   if (!admin && action !== "delete") {
     showToast("Admin not found. Please refresh the page.", "error");
@@ -220,6 +244,9 @@ function handleDropdownAction(action, adminId) {
       break;
     case "edit":
       openEditModal(admin);
+      break;
+    case "toggle-high-level":
+      handleToggleHighLevel(admin.userId, targetHl === "true", admin.name || admin.username);
       break;
     case "toggle-status":
       openStatusModal(admin);
@@ -236,6 +263,36 @@ function handleDropdownAction(action, adminId) {
 }
 
 // ─────────────────────────────────────────────────────
+// High-Level Tech Admin Privilege Toggle
+// ─────────────────────────────────────────────────────
+
+async function handleToggleHighLevel(adminId, newStatus, adminName) {
+  if (!isSuperAdmin) {
+    showToast("Only Super Admins can alter High-Level Admin privileges.", "error");
+    return;
+  }
+
+  try {
+    await toggleHighLevelAdmin(adminId, newStatus);
+    const idx = allAdmins.findIndex((a) => a.userId === adminId);
+    if (idx !== -1) {
+      allAdmins[idx] = { ...allAdmins[idx], isHighLevelAdmin: newStatus };
+    }
+    applyFiltersAndRender();
+    renderStatCards();
+    showToast(
+      newStatus
+        ? `⭐ "${adminName}" has been granted High-Level Tech Admin privileges!`
+        : `"${adminName}" is now a Standard Technical Admin.`,
+      "success"
+    );
+  } catch (err) {
+    console.error("Failed to toggle High-Level Admin status:", err);
+    showToast(`Failed to update privileges: ${err.message || "Unknown error"}`, "error");
+  }
+}
+
+// ─────────────────────────────────────────────────────
 // Page Shell
 // ─────────────────────────────────────────────────────
 
@@ -248,7 +305,11 @@ function renderPageShell() {
     <div class="admin-mgmt-header">
       <div>
         <h1 class="page-title" style="margin-bottom: 4px;">Admin Management</h1>
-        <p class="page-subtitle">Manage technical and non-technical administrators.</p>
+        <p class="page-subtitle">${
+          isSuperAdmin
+            ? "Manage technical and non-technical administrators, grant or revoke high-level privileges."
+            : "High-Level Technical Admin Console: Manage administrators and platform operations (Super Admins are protected)."
+        }</p>
       </div>
       <button class="crud-btn crud-primary" id="am-add-btn" style="height: 42px; padding: 0 20px; display: flex; align-items: center; gap: 8px; white-space: nowrap;">
         <span style="font-size: 18px; line-height: 1;">+</span> Add Admin
@@ -278,6 +339,7 @@ function renderPageShell() {
           <div class="internal-navbar" style="border-bottom: none; gap: 0; margin: 0; padding: 0;">
             <button class="tab-btn am-type-btn active" data-type="all" style="padding: 8px 14px;">All</button>
             <button class="tab-btn am-type-btn" data-type="techadmin" style="padding: 8px 14px;">Technical</button>
+            <button class="tab-btn am-type-btn" data-type="highlevel" style="padding: 8px 14px;">⭐ High-Level</button>
             <button class="tab-btn am-type-btn" data-type="nontechadmin" style="padding: 8px 14px;">Non-Technical</button>
           </div>
         </div>
@@ -346,10 +408,98 @@ function renderPageShell() {
         font-size: 13px;
         flex-shrink: 0;
       }
+      .am-avatar-super { background: #e0e7ff; color: #3730a3; }
       .am-avatar-tech { background: #ede9fe; color: #6d28d9; }
       .am-avatar-nontech { background: #fff7ed; color: #c2410c; }
       .am-name { font-weight: 600; font-size: 14px; color: #111827; }
       .am-email { font-size: 12px; color: #6b7280; }
+      .badge-super {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #e0e7ff;
+        color: #3730a3;
+      }
+      .badge-super-crown {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #fef3c7;
+        color: #92400e;
+        border: 1px solid #fde68a;
+      }
+      .badge-protected {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #f1f5f9;
+        color: #64748b;
+        border: 1px solid #e2e8f0;
+      }
+      .badge-hl-active {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+      }
+      .badge-hl-inactive {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        background: #f3f4f6;
+        color: #6b7280;
+      }
+      .am-hl-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        font-family: inherit;
+      }
+      .am-hl-toggle-btn.hl-active {
+        background: #ecfdf5;
+        color: #065f46;
+        border-color: #a7f3d0;
+      }
+      .am-hl-toggle-btn.hl-active:hover {
+        background: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
+      }
+      .am-hl-toggle-btn.hl-inactive {
+        background: #f8fafc;
+        color: #475569;
+        border-color: #cbd5e1;
+      }
+      .am-hl-toggle-btn.hl-inactive:hover {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-color: #93c5fd;
+      }
       .badge-tech {
         display: inline-block;
         padding: 3px 10px;
@@ -593,12 +743,19 @@ function renderStatCards(error = false) {
   if (!container) return;
 
   const techAdmins = allAdmins.filter((a) => a.role === "techadmin");
+  const hlTechAdmins = allAdmins.filter((a) => a.role === "techadmin" && Boolean(a.isHighLevelAdmin));
   const nonTechAdmins = allAdmins.filter((a) => a.role === "nontechadmin");
   const activeAdmins = allAdmins.filter((a) => a.status === "active");
 
   const cards = [
     { label: "TOTAL ADMINS", value: error ? "—" : allAdmins.length, color: "blue", icon: "../components/ui/users.png" },
-    { label: "TECHNICAL ADMINS", value: error ? "—" : techAdmins.length, color: "violet", icon: "../components/ui/system.png" },
+    {
+      label: "TECHNICAL ADMINS",
+      value: error ? "—" : `${techAdmins.length}`,
+      subtext: `${hlTechAdmins.length} High-Level`,
+      color: "violet",
+      icon: "../components/ui/system.png",
+    },
     { label: "NON-TECHNICAL ADMINS", value: error ? "—" : nonTechAdmins.length, color: "orange", icon: "../components/ui/operations.png" },
     { label: "ACTIVE ADMINS", value: error ? "—" : activeAdmins.length, color: "dark-green", icon: "../components/ui/users.png" },
   ];
@@ -609,7 +766,7 @@ function renderStatCards(error = false) {
         <img src="${c.icon}" alt="" style="width:24px;height:24px;object-fit:contain;opacity:0.75;">
       </div>
       <p class="stat-label">${c.label}</p>
-      <h2 class="stat-value">${c.value}</h2>
+      <h2 class="stat-value">${c.value} ${c.subtext ? `<span style="font-size:12px; font-weight:600; color:#7c3aed; background:#ede9fe; padding:2px 8px; border-radius:12px; vertical-align:middle; margin-left:6px;">${c.subtext}</span>` : ""}</h2>
     </div>
   `).join("");
 }
@@ -620,7 +777,15 @@ function renderStatCards(error = false) {
 
 function applyFiltersAndRender() {
   filteredAdmins = allAdmins.filter((admin) => {
-    const matchType   = filterType === "all" || admin.role === filterType;
+    let matchType = false;
+    if (filterType === "all") {
+      matchType = true;
+    } else if (filterType === "highlevel") {
+      matchType = admin.role === "techadmin" && Boolean(admin.isHighLevelAdmin);
+    } else {
+      matchType = admin.role === filterType;
+    }
+
     const matchStatus = filterStatus === "all" || admin.status === filterStatus;
     const matchSearch = !searchQuery
       || (admin.name     || "").toLowerCase().includes(searchQuery)
@@ -663,7 +828,58 @@ function renderTable() {
     const initials  = getInitials(admin.name);
     const typeInfo  = ADMIN_TYPES[admin.role] || { label: admin.role, badgeClass: "badge-nontech" };
     const isActive  = admin.status === "active";
-    const avatarCls = admin.role === "techadmin" ? "am-avatar-tech" : "am-avatar-nontech";
+    const avatarCls = admin.role === "techadmin"
+      ? "am-avatar-tech"
+      : admin.role === "superadmin"
+      ? "am-avatar-super"
+      : "am-avatar-nontech";
+
+    const isTargetSuper = admin.role === "superadmin";
+    const isTargetTech = admin.role === "techadmin";
+    const isTargetHighLevel = Boolean(admin.isHighLevelAdmin);
+
+    let hlCellHtml = `<span style="color:#9ca3af; font-size:13px;">—</span>`;
+    if (isTargetSuper) {
+      hlCellHtml = `<span class="badge-super-crown">👑 Super Admin</span>`;
+    } else if (isTargetTech) {
+      if (isSuperAdmin) {
+        // Super Admin gets an interactive toggle button
+        hlCellHtml = `
+          <button
+            class="am-hl-toggle-btn ${isTargetHighLevel ? "hl-active" : "hl-inactive"}"
+            data-admin-id="${escHtml(admin.userId)}"
+            data-admin-name="${escHtml(admin.name || admin.username)}"
+            data-new-hl="${isTargetHighLevel ? "false" : "true"}"
+            title="${isTargetHighLevel ? "Click to revoke High-Level Admin privileges" : "Click to grant High-Level Admin privileges"}"
+          >
+            ${isTargetHighLevel ? "⭐ High-Level (Enabled)" : "⚪ Standard (Disabled)"}
+          </button>
+        `;
+      } else {
+        // High-Level Tech Admin gets a clear read-only badge
+        hlCellHtml = isTargetHighLevel
+          ? `<span class="badge-hl-active">⭐ High-Level</span>`
+          : `<span class="badge-hl-inactive">Standard</span>`;
+      }
+    }
+
+    let actionsCellHtml = "";
+    if (isTargetSuper && !isSuperAdmin) {
+      // High-Level Tech Admin cannot manage Super Admin
+      actionsCellHtml = `<span class="badge-protected" title="Super Admin is protected and cannot be modified by technical admins">🔒 Protected</span>`;
+    } else {
+      actionsCellHtml = `
+        <button
+          class="am-action-trigger"
+          data-admin-id="${escHtml(admin.userId)}"
+          data-admin-status="${escHtml(admin.status)}"
+          data-admin-role="${escHtml(admin.role)}"
+          data-admin-hl="${isTargetHighLevel ? "true" : "false"}"
+        >
+          Actions ▾
+        </button>
+      `;
+    }
 
     return `
       <tr>
@@ -677,6 +893,7 @@ function renderTable() {
           </div>
         </td>
         <td><span class="${typeInfo.badgeClass}">${typeInfo.label}</span></td>
+        <td>${hlCellHtml}</td>
         <td>
           <span class="${isActive ? "badge-active" : "badge-inactive"}">
             ${isActive ? "Active" : "Inactive"}
@@ -684,13 +901,7 @@ function renderTable() {
         </td>
         <td style="color:#4b5563; font-size:14px;">${escHtml(admin.location || "—")}</td>
         <td style="text-align: right; white-space: nowrap;">
-          <button
-            class="am-action-trigger"
-            data-admin-id="${escHtml(admin.userId)}"
-            data-admin-status="${escHtml(admin.status)}"
-          >
-            Actions ▾
-          </button>
+          ${actionsCellHtml}
         </td>
       </tr>
     `;
@@ -703,6 +914,7 @@ function renderTable() {
           <tr>
             <th>Admin</th>
             <th>Type</th>
+            <th>High-Level Privileges</th>
             <th>Status</th>
             <th>Location</th>
             <th style="text-align: right;">Actions</th>
@@ -716,9 +928,24 @@ function renderTable() {
   wrap.querySelectorAll(".am-action-trigger").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
-      const adminId     = btn.dataset.adminId;
-      const adminStatus = btn.dataset.adminStatus;
-      showDropdown(btn, adminId, adminStatus);
+      const adminId          = btn.dataset.adminId;
+      const adminStatus      = btn.dataset.adminStatus;
+      const adminRole        = btn.dataset.adminRole;
+      const isTargetHighLevel = btn.dataset.adminHl === "true";
+      showDropdown(btn, adminId, adminStatus, adminRole, isTargetHighLevel);
+    });
+  });
+
+  // Wire click listener to High-Level toggle buttons (for Super Admin)
+  wrap.querySelectorAll(".am-hl-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const adminId   = btn.dataset.adminId;
+      const adminName = btn.dataset.adminName;
+      const newHl     = btn.dataset.newHl === "true";
+      btn.disabled = true;
+      btn.textContent = "Updating…";
+      await handleToggleHighLevel(adminId, newHl, adminName);
     });
   });
 }
@@ -728,6 +955,11 @@ function renderTable() {
 // ─────────────────────────────────────────────────────
 
 function openStatusModal(admin) {
+  if (admin.role === "superadmin" && !isSuperAdmin) {
+    showToast("Super Admin status cannot be altered.", "error");
+    return;
+  }
+
   statusTargetAdminId = admin.userId;
   statusTargetNewStatus = admin.status === "active" ? "inactive" : "active";
   statusTargetAdminName = admin.name || admin.username || admin.userId;
@@ -792,6 +1024,12 @@ async function handleStatusConfirm() {
 // ─────────────────────────────────────────────────────
 
 function openDeleteConfirm(adminId, adminName) {
+  const target = allAdmins.find((a) => a.userId === adminId);
+  if (target?.role === "superadmin" && !isSuperAdmin) {
+    showToast("Super Admin accounts cannot be deleted by technical admins.", "error");
+    return;
+  }
+
   deletingAdminId   = adminId;
   deletingAdminName = adminName;
   const msgEl = document.getElementById("admin-delete-msg");
@@ -840,6 +1078,11 @@ async function handleDeleteConfirm() {
 // ─────────────────────────────────────────────────────
 
 function openResetPasswordModal(admin) {
+  if (admin.role === "superadmin" && !isSuperAdmin) {
+    showToast("Super Admin passwords cannot be reset by technical admins.", "error");
+    return;
+  }
+
   resetPasswordAdminId = admin.userId;
 
   const descEl = document.getElementById("admin-reset-desc");
@@ -976,18 +1219,23 @@ function openViewModal(admin) {
 
   const typeInfo = ADMIN_TYPES[admin.role] || { label: admin.role, badgeClass: "badge-nontech" };
   const isActive = admin.status === "active";
+  const isTargetSuper = admin.role === "superadmin";
+  const isTargetTech = admin.role === "techadmin";
+  const canEdit = isSuperAdmin || !isTargetSuper;
 
   body.innerHTML = `
     <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #f3f4f6;">
-      <div class="am-avatar ${admin.role === "techadmin" ? "am-avatar-tech" : "am-avatar-nontech"}" style="width: 56px; height: 56px; font-size: 20px;">
+      <div class="am-avatar ${isTargetTech ? "am-avatar-tech" : (isTargetSuper ? "am-avatar-super" : "am-avatar-nontech")}" style="width: 56px; height: 56px; font-size: 20px;">
         ${getInitials(admin.name)}
       </div>
       <div>
         <div style="font-size: 20px; font-weight: 700; color: #111827;">${escHtml(admin.name || admin.username)}</div>
         <div style="font-size: 14px; color: #6b7280; margin-top: 2px;">${escHtml(admin.email || "—")}</div>
         <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
-          <span class="${typeInfo.badgeClass}">${typeInfo.label} Admin</span>
+          <span class="${typeInfo.badgeClass}">${typeInfo.label}</span>
           <span class="${isActive ? "badge-active" : "badge-inactive"}">${isActive ? "Active" : "Inactive"}</span>
+          ${isTargetSuper ? `<span class="badge-super-crown">👑 Super Admin</span>` : ""}
+          ${isTargetTech && admin.isHighLevelAdmin ? `<span class="badge-hl-active">⭐ High-Level Admin</span>` : ""}
         </div>
       </div>
     </div>
@@ -1008,18 +1256,26 @@ function openViewModal(admin) {
         <label>Location</label>
         <span>${escHtml(admin.location || "—")}</span>
       </div>
+      ${isTargetTech ? `
+      <div class="am-view-item" style="grid-column: 1 / -1;">
+        <label>High-Level Technical Privileges</label>
+        <span>${admin.isHighLevelAdmin ? "⭐ Enabled — Has admin management powers (except Super Admin)." : "⚪ Disabled — Standard technical administrator (flag = 0)."}</span>
+      </div>
+      ` : ""}
     </div>
     <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid #f3f4f6;">
       <button class="crud-btn" id="am-view-close-btn">Close</button>
-      <button class="crud-btn crud-primary" id="am-view-edit-btn">Edit Admin</button>
+      ${canEdit ? `<button class="crud-btn crud-primary" id="am-view-edit-btn">Edit Admin</button>` : `<span class="badge-protected" style="align-self:center;">🔒 Protected Super Admin</span>`}
     </div>
   `;
 
   safeOn("am-view-close-btn", "click", () => closeModal("admin-view-modal"));
-  safeOn("am-view-edit-btn", "click", () => {
-    closeModal("admin-view-modal");
-    openEditModal(admin);
-  });
+  if (canEdit) {
+    safeOn("am-view-edit-btn", "click", () => {
+      closeModal("admin-view-modal");
+      openEditModal(admin);
+    });
+  }
 
   openModal("admin-view-modal");
 }
@@ -1041,6 +1297,11 @@ function openAddModal() {
 // ─────────────────────────────────────────────────────
 
 function openEditModal(admin) {
+  if (admin.role === "superadmin" && !isSuperAdmin) {
+    showToast("Super Admin accounts cannot be modified by technical admins.", "error");
+    return;
+  }
+
   editingAdminId = admin.userId;
   const titleEl = document.getElementById("admin-modal-title");
   if (titleEl) titleEl.textContent = "Edit Admin";
@@ -1125,6 +1386,16 @@ function renderAdminForm(admin) {
         </div>
         ` : ""}
 
+        ${isEdit && isSuperAdmin && admin?.role === "techadmin" ? `
+        <div class="am-form-field am-form-full">
+          <label for="am-f-highlevel">High-Level Technical Admin Privileges</label>
+          <select id="am-f-highlevel">
+            <option value="false" ${!admin?.isHighLevelAdmin ? "selected" : ""}>⚪ Disabled — Standard Technical Admin (Cannot manage admins)</option>
+            <option value="true"  ${admin?.isHighLevelAdmin  ? "selected" : ""}>⭐ Enabled — High-Level Tech Admin (Can manage all admins except Super Admin)</option>
+          </select>
+        </div>
+        ` : ""}
+
       </div>
       <div class="am-form-actions">
         <button type="button" class="crud-btn" id="am-form-cancel">Cancel</button>
@@ -1149,6 +1420,7 @@ async function handleFormSubmit(e) {
   const errorEl   = document.getElementById("am-form-error");
   const submitBtn = document.getElementById("am-form-submit");
   const isEdit    = !!editingAdminId;
+  const currentTargetAdmin = isEdit ? allAdmins.find((a) => a.userId === editingAdminId) : null;
 
   const name     = document.getElementById("am-f-name")?.value.trim();
   const username = document.getElementById("am-f-username")?.value.trim();
@@ -1158,6 +1430,8 @@ async function handleFormSubmit(e) {
   const location = document.getElementById("am-f-location")?.value;
   const password = document.getElementById("am-f-password")?.value;
   const status   = document.getElementById("am-f-status")?.value;
+  const highLevelEl = document.getElementById("am-f-highlevel");
+  const isHighLevel = highLevelEl ? highLevelEl.value === "true" : undefined;
 
   if (!name)                          return showFormError(errorEl, "Full Name is required.");
   if (!isEdit && !username)           return showFormError(errorEl, "Username is required.");
@@ -1179,12 +1453,23 @@ async function handleFormSubmit(e) {
       const payload = { name, email, phone, location };
       if (status)   payload.status   = status;
       if (password) payload.password = password;
+      if (isSuperAdmin && currentTargetAdmin?.role === "techadmin" && isHighLevel !== undefined) {
+        payload.isHighLevelAdmin = isHighLevel;
+      }
 
       await updateUser(editingAdminId, payload);
 
       const idx = allAdmins.findIndex((a) => a.userId === editingAdminId);
       if (idx !== -1) {
-        allAdmins[idx] = { ...allAdmins[idx], name, email, phone, location, ...(status ? { status } : {}) };
+        allAdmins[idx] = {
+          ...allAdmins[idx],
+          name,
+          email,
+          phone,
+          location,
+          ...(status ? { status } : {}),
+          ...(payload.isHighLevelAdmin !== undefined ? { isHighLevelAdmin: payload.isHighLevelAdmin } : {}),
+        };
       }
       showToast(`${name} has been updated.`, "success");
     } else {

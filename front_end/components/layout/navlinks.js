@@ -48,6 +48,13 @@ const navlinks = [
     icon: "../components/ui/finance.png",
     roles: ["superadmin"]
   },
+  {
+    name: "Admins",
+    path: "../pages/admins.html",
+    icon: "../components/ui/users.png",
+    roles: ["superadmin"],
+    allowHighLevelTechAdmin: true
+  },
   
   {
     name: "Earnings",
@@ -140,12 +147,27 @@ const navlinks = [
   }
 ];
 
-export function getNavLinks(role){
+export function getNavLinks(roleOrUser, maybeUser){
+  let user = typeof roleOrUser === "object" && roleOrUser !== null ? roleOrUser : (maybeUser || {});
+  if (!user || Object.keys(user).length === 0) {
+    try {
+      user = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    } catch {}
+  }
+  const role = typeof roleOrUser === "string" ? roleOrUser : (user.role || "");
   const currentPage = window.location.pathname.split("/").pop();
   const normalizedRole = (role || "").toLowerCase().replace(/_/g, "");
+  const isHighLevelTechAdmin =
+    normalizedRole === "techadmin" &&
+    (Boolean(user.isHighLevelAdmin) || user.isHighLevelAdmin === 1 || user.isHighLevelAdmin === "1" || user.isHighLevelAdmin === "true");
 
   return navlinks
-    .filter(link => link.roles.some(r => r.toLowerCase().replace(/_/g, "") === normalizedRole))
+    .filter(link => {
+      if (link.allowHighLevelTechAdmin && isHighLevelTechAdmin) {
+        return true;
+      }
+      return link.roles.some(r => r.toLowerCase().replace(/_/g, "") === normalizedRole);
+    })
     .map(link => {
       const pageName = link.path.split("/").pop();
       return `

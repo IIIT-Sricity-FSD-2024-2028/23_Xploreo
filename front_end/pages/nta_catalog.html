@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Catalog Directory</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <link rel="stylesheet" href="../css/nta_catalog.css">
+</head>
+<body class="nta-catalog-page">
+  <div id="navbar"></div>
+
+  <div id="main" class="main-content" style="display: none;">
+    <div class="catalog-header">
+      <h1>Catalog Directory</h1>
+      <p>Browse and manage the full inventory of Hotels and Experiences to build packages.</p>
+    </div>
+
+    <div class="catalog-container">
+      <!-- Top Bar: Filters -->
+      <div class="catalog-filters-top">
+        <div class="filter-group">
+          <h3>Location</h3>
+          <select id="filterLocation">
+            <option value="">All Locations</option>
+            <option value="Goa">Goa</option>
+            <option value="Kerala">Kerala</option>
+            <option value="Manali">Manali</option>
+            <option value="Rajasthan">Rajasthan</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <h3>Partner ID</h3>
+          <input type="text" id="filterPartner" placeholder="e.g. hotel-partner-1" />
+        </div>
+
+        <div class="filter-group">
+          <h3>Cost / Price</h3>
+          <div class="price-range">
+            <input type="number" id="filterMinPrice" placeholder="Min ₹" />
+            <span>-</span>
+            <input type="number" id="filterMaxPrice" placeholder="Max ₹" />
+          </div>
+        </div>
+
+        <div class="filter-actions">
+          <button id="applyFiltersBtn" class="primary-btn">Apply Filters</button>
+          <button id="clearFiltersBtn" class="secondary-btn">Clear</button>
+        </div>
+      </div>
+
+      <!-- Right Area: Two Columns (Hotels | Experiences) -->
+      <div class="catalog-grid">
+        <!-- Hotels Column -->
+        <section class="catalog-column">
+          <div class="column-header">
+            <h2>Hotels <span id="hotelCount" class="badge">0</span></h2>
+            <select id="sortHotels">
+              <option value="default">Sort By</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+            </select>
+          </div>
+          <div id="hotelsList" class="catalog-list">
+            <!-- Dynamically populated -->
+            <div class="loading-state">Loading hotels...</div>
+          </div>
+        </section>
+
+        <!-- Experiences Column -->
+        <section class="catalog-column">
+          <div class="column-header">
+            <h2>Experiences <span id="expCount" class="badge">0</span></h2>
+            <select id="sortExperiences">
+              <option value="default">Sort By</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+            </select>
+          </div>
+          <div id="experiencesList" class="catalog-list">
+            <!-- Dynamically populated -->
+            <div class="loading-state">Loading experiences...</div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="../js/app.js"></script>
+</body>
+</html>

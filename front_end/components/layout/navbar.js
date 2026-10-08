@@ -16,7 +16,7 @@ export function renderNavbar(user) {
       
       </div>
       <div class="navbar-center">
-        ${getNavLinks(user.role)}
+        ${getNavLinks(user)}
       </div>
       <div class="navbar-right">
         ${getNotification()}

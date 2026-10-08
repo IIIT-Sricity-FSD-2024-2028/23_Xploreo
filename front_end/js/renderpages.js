@@ -31,6 +31,7 @@ import { renderNtaDashboard } from "./modules/ntaDashboard.js";
 import { initNtaPlans } from "./modules/ntaPlans.js";
 import { renderGuideDashboard } from "./modules/guide_dashboard.js";
 import { initNtaGuideApplications } from "./modules/nta_guide_applications.js";
+import { initAdminManagement } from "./modules/adminManagement.js";
 
 // Traveler modules
 import { renderTravelerDashboard as renderTravellerDashboard } from "./modules/travelerDashboard.js?v=traveller-ui-6";
@@ -144,6 +145,24 @@ export async function renderPageContent(user) {
     document.getElementById("tech-admin-dash").style.display = "none";
   } else if ((user.role === "superadmin" || role === "techadmin" || role === "tech_admin") && page === "users.html") {
     initUsers(user);
+  } else if (page === "admins.html") {
+    const isSuperAdmin = (user?.role || "").toLowerCase().replace(/_/g, "") === "superadmin";
+    const isHighLevelTechAdmin = ((role || "").toLowerCase().replace(/_/g, "") === "techadmin" || (role || "").toLowerCase().replace(/_/g, "") === "tech_admin") && Boolean(user?.isHighLevelAdmin);
+    const main = document.getElementById("main");
+    if (main) main.style.display = "block";
+    showOnlyDashboard("main");
+
+    if (isSuperAdmin || isHighLevelTechAdmin) {
+      await renderSafely("Render admin management", () => initAdminManagement(user));
+    } else {
+      if (main) {
+        main.innerHTML = `
+          <div class="content-card" style="text-align:center; padding: 60px 40px; margin-top: 40px;">
+            <h2 style="color:#dc2626; margin-bottom: 12px;">Access Denied</h2>
+            <p style="color:#6b7280;">Only Super Admins and authorized High-Level Technical Admins can access Admin Management.</p>
+          </div>`;
+      }
+    }
 
   } else if (
     (user.role === "nontechadmin") &&

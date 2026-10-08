@@ -69,7 +69,7 @@ export function initLogin() {
       const submitBtn = loginForm.querySelector("button[type='submit']");
 
       const username = usernameElement.value.trim();
-      const password = passwordElement.value;
+      const password = passwordElement.value.trim();
 
       // Clear existing UI errors
       clearError(usernameElement);
