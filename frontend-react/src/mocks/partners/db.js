@@ -58,6 +58,15 @@ export const users = [
   { userId: 'guide-ker-1', username: 'anil.guide', name: 'Anil Nair (Guide)', email: 'anil@guides.example', phone: '+91 98765 50005', role: 'guide', location: 'Kerala', businessName: '' },
 ];
 
+// Guide professional details (backend: /guide/:id, GuideEntity). Only the fields the profile page edits.
+export const guideProfiles = [
+  { id: 'guide-jpr-1', location: 'Jaipur', prof_title: 'Heritage Guide', years_exp: 6, lang_spoken: ['English', 'Hindi', 'Rajasthani'], bio: 'Born and raised in Jaipur. I lead small-group walks through the Pink City, forts and bazaars.' },
+  { id: 'guide-goa-1', location: 'Goa', prof_title: 'Culture Guide', years_exp: 4, lang_spoken: ['English', 'Konkani', 'Portuguese'], bio: 'Old Goa historian and food-walk host, always up for the long way round.' },
+  { id: 'guide-del-1', location: 'Delhi', prof_title: 'City Guide', years_exp: 9, lang_spoken: ['English', 'Hindi', 'Urdu'], bio: 'Nine years of Delhi walks from Chandni Chowk to Lutyens\' Delhi.' },
+  { id: 'guide-mum-1', location: 'Mumbai', prof_title: 'City Guide', years_exp: 5, lang_spoken: ['English', 'Hindi', 'Marathi'], bio: 'Mumbai local-train, street-food and Bollywood-history tours.' },
+  { id: 'guide-ker-1', location: 'Kerala', prof_title: 'Backwater Guide', years_exp: 7, lang_spoken: ['English', 'Malayalam', 'Tamil'], bio: 'Kerala backwaters, spice gardens and temple festivals, by canoe and on foot.' },
+];
+
 // ── Experiences ───────────────────────────────────────────────────────────────
 const TEMPLATES = {
   'exp-goa-1': [
@@ -256,6 +265,9 @@ export function findExperience(id) {
 }
 export function findBooking(id) {
   return bookings.find((b) => b.id === id);
+}
+export function findGuideProfile(id) {
+  return guideProfiles.find((g) => g.id === id);
 }
 export function findUser(id) {
   return users.find((u) => u.userId === id);

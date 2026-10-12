@@ -1,16 +1,17 @@
-// Loading / empty / error building blocks shared by every M2 screen.
+// Loading / empty / error blocks, built from the old stylesheet's own classes
+// (.empty-state, .alert-banner, .form-message) so they look like the rest of the old UI.
+
 export function LoadingBlock({ label = 'Loading…' }) {
   return (
-    <div className="exp-loading" role="status" aria-live="polite">
-      <span className="exp-spinner" aria-hidden="true" />
-      {label}
+    <div className="empty-state compact" role="status" aria-live="polite">
+      <h3>{label}</h3>
     </div>
   );
 }
 
-export function EmptyState({ title, children, action }) {
+export function EmptyState({ title, children, action, compact = false }) {
   return (
-    <div className="exp-empty">
+    <div className={`empty-state${compact ? ' compact' : ''}`}>
       <h3>{title}</h3>
       {children ? <p>{children}</p> : null}
       {action}
@@ -25,52 +26,30 @@ export function ErrorNotice({ error, onRetry }) {
   const ended = error.status === 401;
   const title = forbidden ? 'Not permitted' : ended ? 'Session ended' : 'Something went wrong';
   return (
-    <div role="alert" className={`exp-notice ${forbidden ? 'exp-notice-warning' : 'exp-notice-danger'}`}>
-      <div>
-        <strong>{title}</strong>
-        <p>{error.message}</p>
-      </div>
+    <article role="alert" className={`alert-main alert-banner ${forbidden ? 'alert-medium' : 'alert-high'}`} style={{ marginBottom: 20 }}>
+      <span className="alert-icon">!</span>
+      <p>
+        <strong>{title}.</strong> {error.message}
+      </p>
       {!forbidden && !ended && onRetry ? (
-        <button type="button" className="exp-btn exp-btn-ghost" onClick={onRetry}>
+        <button type="button" onClick={onRetry} style={{ marginLeft: 'auto' }}>
           Try again
         </button>
       ) : null}
-    </div>
+    </article>
   );
 }
 
-export function FormMessage({ tone = 'danger', children }) {
-  if (!children) return null;
+// <p class="form-message form-message-error|success"> from the old forms.
+export function FormMessage({ tone = 'error', children }) {
   return (
-    <p role={tone === 'danger' ? 'alert' : 'status'} className={`exp-form-message exp-form-message-${tone}`}>
+    <p className={`form-message ${children ? `form-message-${tone}` : ''}`} role={tone === 'error' ? 'alert' : 'status'}>
       {children}
     </p>
   );
 }
 
-export function Field({ id, label, error, hint, className = '', children }) {
-  return (
-    <div className={`exp-field ${error ? 'has-error' : ''} ${className}`}>
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {hint && !error ? <span className="exp-field-hint">{hint}</span> : null}
-      {error ? (
-        <span className="exp-field-error" id={`${id}-error`}>
-          {error}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-export function ImagePlaceholder() {
-  // TODO(M3): replace with the shared <ImageUploader /> once it lands (M3 owns it).
-  return (
-    <div className="exp-image-placeholder">
-      <button type="button" className="exp-btn exp-btn-ghost" disabled>
-        Upload image
-      </button>
-      <span className="exp-field-hint">Image upload arrives with the shared uploader.</span>
-    </div>
-  );
+// <label class="field-group"><span>Label</span> input <small class="field-error"></small></label>
+export function FieldError({ children }) {
+  return <small className="field-error">{children}</small>;
 }

@@ -55,6 +55,12 @@ registerMock('GET', '/experience-bookings/earnings', (ctx) => {
     weekday.set(d, (weekday.get(d) ?? 0) + 1);
   });
   const top = [...byExp.entries()].sort((a, b) => b[1] - a[1])[0];
+  const refundedGross = round2(rows.filter((r) => r.status === 'refunded').reduce((s, r) => s + r.gross, 0));
+  const liveGross = sum(live, 'gross');
+  const todayIso = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+  const heldSlots = [...mine.values()].flatMap((e) => e.slots).filter((s) => s.date <= todayIso && (!days || s.date >= cutoffIso));
+  const seatsOffered = heldSlots.reduce((n, s) => n + s.capacity, 0);
+  const seatsBooked = heldSlots.reduce((n, s) => n + s.booked, 0);
   const best = [...weekday.entries()].sort((a, b) => b[1] - a[1])[0];
 
   return {
@@ -70,7 +76,9 @@ registerMock('GET', '/experience-bookings/earnings', (ctx) => {
       net: totalNet,
       paidOut: sum(live.filter((r) => r.status === 'completed'), 'net'),
       pending: sum(live.filter((r) => r.status === 'pending'), 'net'),
-      refunded: round2(rows.filter((r) => r.status === 'refunded').reduce((s, r) => s + r.gross, 0)),
+      refunded: refundedGross,
+      refundPercent: liveGross + refundedGross ? round2((refundedGross / (liveGross + refundedGross)) * 100) : 0,
+      utilizationPercent: seatsOffered ? Math.round((seatsBooked / seatsOffered) * 100) : 0,
       avgBookingNet: live.length ? round2(totalNet / live.length) : 0,
       topExperience: top ? mine.get(top[0]).title : null,
       bestDay: best ? best[0] : null,

@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Modal } from '@/foundation';
 import { to12Hour, to24Hour, tomorrowIso } from '@/lib/datetime.js';
-import { Field, FormMessage } from './Feedback.jsx';
+import ModalFrame, { CloseButton } from './ModalFrame.jsx';
+import { FieldError, FormMessage } from './Feedback.jsx';
 
 // Add or edit one session. onSubmit({ date, time, capacity }) must throw an ApiError on failure.
+// Built from the old stylesheet's own slot-modal classes (.slots-modal-box ...).
 export default function SlotModal({ mode, slot, defaultCapacity, onClose, onSubmit }) {
   const editing = mode === 'edit';
   const minCapacity = Math.max(1, slot?.booked ?? 0);
   const [values, setValues] = useState({
     date: slot?.date ?? '',
-    time: slot ? to24Hour(slot.time) : '',
+    time: slot ? to24Hour(slot.time) : '10:00',
     capacity: String(slot?.capacity ?? (defaultCapacity || 10)),
   });
   const [errors, setErrors] = useState({});
@@ -17,6 +18,7 @@ export default function SlotModal({ mode, slot, defaultCapacity, onClose, onSubm
   const [saving, setSaving] = useState(false);
 
   const set = (field) => (event) => setValues((v) => ({ ...v, [field]: event.target.value }));
+  const close = saving ? undefined : onClose;
 
   function validate() {
     const found = {};
@@ -29,7 +31,7 @@ export default function SlotModal({ mode, slot, defaultCapacity, onClose, onSubm
     if (!Number.isInteger(capacity) || capacity < minCapacity) {
       found.capacity = editing && minCapacity > 1
         ? `Capacity cannot be lower than the ${minCapacity} guests already booked.`
-        : 'Capacity must be a positive whole number.';
+        : 'Capacity must be a positive integer.';
     }
     return found;
   }
@@ -60,35 +62,42 @@ export default function SlotModal({ mode, slot, defaultCapacity, onClose, onSubm
   }
 
   return (
-    <Modal
-      open
-      title={editing ? 'Edit session' : 'Add a slot'}
-      onClose={saving ? undefined : onClose}
-      footer={
-        <>
-          <button type="button" className="exp-btn exp-btn-ghost" onClick={onClose} disabled={saving}>
-            Cancel
+    <ModalFrame id="slotsModal" boxClass="slots-modal-box" labelledBy="slotsModalTitle" onClose={close}>
+      <div className="modal-header">
+        <h2 id="slotsModalTitle">{editing ? 'Edit Slot' : 'Add New Slot'}</h2>
+        <CloseButton label="Close slot form" onClick={close} />
+      </div>
+
+      <form id="slotsForm" className="experience-form" noValidate onSubmit={submit}>
+        <div className="section form-grid">
+          <label className="field-group" htmlFor="slotDate">
+            <span>Session Date</span>
+            <input id="slotDate" type="date" min={editing ? undefined : tomorrowIso()} value={values.date} onChange={set('date')} />
+            <FieldError>{errors.date}</FieldError>
+          </label>
+
+          <label className="field-group" htmlFor="slotTime">
+            <span>Session Time</span>
+            <input id="slotTime" type="time" value={values.time} onChange={set('time')} />
+            <FieldError>{errors.time}</FieldError>
+          </label>
+
+          <label className="field-group" htmlFor="slotCapacity">
+            <span>Capacity</span>
+            <input id="slotCapacity" type="number" min={minCapacity} step="1" value={values.capacity} onChange={set('capacity')} />
+            <FieldError>{errors.capacity}</FieldError>
+          </label>
+        </div>
+
+        <FormMessage>{formError}</FormMessage>
+
+        <div className="modal-actions">
+          <button type="button" onClick={close} disabled={saving}>Cancel</button>
+          <button type="submit" className="primary-btn" id="slotsSubmitBtn" disabled={saving}>
+            {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Slot'}
           </button>
-          <button type="submit" form="exp-slot-form" className="exp-btn exp-btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save session' : 'Add slot'}
-          </button>
-        </>
-      }
-    >
-      <form id="exp-slot-form" className="exp-form" onSubmit={submit} noValidate>
-        <Field id="slot-date" label="Date" error={errors.date}>
-          <input id="slot-date" type="date" min={editing ? undefined : tomorrowIso()} value={values.date} onChange={set('date')} aria-invalid={Boolean(errors.date)} aria-describedby={errors.date ? 'slot-date-error' : undefined} />
-        </Field>
-        <Field id="slot-time" label="Start time" error={errors.time}>
-          <input id="slot-time" type="time" value={values.time} onChange={set('time')} aria-invalid={Boolean(errors.time)} aria-describedby={errors.time ? 'slot-time-error' : undefined} />
-        </Field>
-        <Field id="slot-capacity" label="Capacity (guests)" error={errors.capacity} hint={editing && slot.booked ? `${slot.booked} guests already booked` : undefined} className="exp-span-2">
-          <input id="slot-capacity" type="number" min={minCapacity} step="1" value={values.capacity} onChange={set('capacity')} aria-invalid={Boolean(errors.capacity)} aria-describedby={errors.capacity ? 'slot-capacity-error' : undefined} />
-        </Field>
-        <div className="exp-span-2">
-          <FormMessage>{formError}</FormMessage>
         </div>
       </form>
-    </Modal>
+    </ModalFrame>
   );
 }

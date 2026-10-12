@@ -20,4 +20,4 @@ export {
   assertOwner,
   whitelist,
 } from '@/dev-stubs/mock/index.js';
-export { Modal, StatCard, StatusBadge, Navbar } from '@/dev-stubs/components/common/index.jsx';
+export { Navbar } from '@/dev-stubs/components/common/index.jsx';

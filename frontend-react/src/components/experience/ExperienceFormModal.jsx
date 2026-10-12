@@ -1,43 +1,51 @@
 import { useState } from 'react';
-import { Modal, useAuth } from '@/foundation';
+import { useAuth } from '@/foundation';
 import { createExperience, updateExperience } from '@/services/partners.api.js';
-import { Field, FormMessage, ImagePlaceholder } from './Feedback.jsx';
+import ModalFrame, { CloseButton } from './ModalFrame.jsx';
+import ImageDropzone from './ImageDropzone.jsx';
+import { FieldError, FormMessage } from './Feedback.jsx';
 
-// Values of the backend ExperienceCategory enum (value, label).
+// Values of the backend ExperienceCategory enum (value, label); the order follows the old form.
 const CATEGORIES = [
-  ['adventure', 'Adventure'], ['culture', 'Culture'], ['culinary', 'Culinary'], ['wellness', 'Wellness'],
-  ['wildlife', 'Wildlife'], ['photography', 'Photography'], ['tours', 'Tours'], ['attraction tickets', 'Attraction tickets'],
-  ['water sports', 'Water sports'], ['cruises', 'Cruises'], ['family', 'Family'], ['luxury', 'Luxury'],
-  ['weekend getaway', 'Weekend getaway'], ['honeymoon', 'Honeymoon'], ['pilgrimage', 'Pilgrimage'],
+  ['adventure', 'Adventure'], ['culture', 'Culture'], ['tours', 'Tours'], ['attraction tickets', 'Attraction Tickets'],
+  ['water sports', 'Water Sports'], ['cruises', 'Cruises'], ['family', 'Family'], ['luxury', 'Luxury'],
+  ['weekend getaway', 'Weekend Getaway'], ['honeymoon', 'Honeymoon'], ['pilgrimage', 'Pilgrimage'],
+  ['culinary', 'Culinary'], ['wellness', 'Wellness'], ['wildlife', 'Wildlife'], ['photography', 'Photography'],
 ];
-const FORM_FIELDS = ['title', 'description', 'category', 'price', 'durationHours', 'capacity', 'status'];
+const FORM_FIELDS = ['title', 'description', 'category', 'price', 'durationHours', 'capacity', 'status', 'image'];
+const LOCKED_LOCATION_STYLE = { backgroundColor: '#f1f5f9', cursor: 'not-allowed', fontWeight: 600, color: '#1e293b' };
 
 function toForm(exp) {
   return {
     title: exp?.title ?? '',
-    category: exp?.category ?? 'culture',
+    category: exp?.category ?? '',
     price: exp ? String(exp.price) : '',
     durationHours: exp ? String(exp.durationHours) : '',
     capacity: exp?.capacity ? String(exp.capacity) : '',
     description: exp?.description ?? '',
     status: exp?.status ?? 'active',
+    image: exp?.image ?? '',
   };
 }
 
-function validate(v) {
+function validate(v, editing) {
   const errors = {};
   if (v.title.trim().length < 3) errors.title = 'Enter a name with at least 3 characters.';
+  if (!v.category) errors.category = 'Select a category.';
   if (v.description.trim().length < 10) errors.description = 'Enter a description with at least 10 characters.';
   const price = Number(v.price);
-  if (v.price === '' || !Number.isFinite(price) || price <= 0) errors.price = 'Enter a price greater than 0.';
+  if (v.price === '' || !Number.isFinite(price) || price <= 0) errors.price = 'Enter a valid price greater than 0.';
   const hours = Number(v.durationHours);
-  if (v.durationHours === '' || !Number.isFinite(hours) || hours < 1) errors.durationHours = 'Duration must be at least 1 hour.';
-  const capacity = Number(v.capacity);
-  if (v.capacity === '' || !Number.isInteger(capacity) || capacity < 1) errors.capacity = 'Capacity must be a whole number of 1 or more.';
+  if (v.durationHours === '' || !Number.isFinite(hours) || hours <= 0) errors.durationHours = 'Enter a valid duration in hours greater than 0.';
+  if (!editing) {
+    const capacity = Number(v.capacity);
+    if (v.capacity === '' || !Number.isInteger(capacity) || capacity < 1) errors.capacity = 'Capacity must be a whole number of 1 or more.';
+  }
   return errors;
 }
 
-// The region is locked to the signed-in partner's own region (it comes from useAuth, never from the form).
+// Add and Edit are two different modals in the old UI (ids addModal / editModal, each with its own CSS),
+// so they keep their own markup here. The region is the signed-in partner's own and is never editable.
 export default function ExperienceFormModal({ experience, onClose, onSaved }) {
   const { region } = useAuth();
   const editing = Boolean(experience);
@@ -51,7 +59,7 @@ export default function ExperienceFormModal({ experience, onClose, onSaved }) {
   async function submit(event) {
     event.preventDefault();
     setFormError('');
-    const found = validate(values);
+    const found = validate(values, editing);
     setErrors(found);
     if (Object.keys(found).length) {
       setFormError('Please fix the highlighted fields before saving.');
@@ -64,9 +72,10 @@ export default function ExperienceFormModal({ experience, onClose, onSaved }) {
       category: values.category,
       price: Number(values.price),
       durationHours: Number(values.durationHours),
-      capacity: Number(values.capacity),
       status: values.status,
     };
+    if (values.image) payload.image = values.image;
+    if (!editing) payload.capacity = Number(values.capacity);
     setSaving(true);
     try {
       const saved = editing ? await updateExperience(experience.id, payload) : await createExperience(payload);
@@ -89,64 +98,152 @@ export default function ExperienceFormModal({ experience, onClose, onSaved }) {
     }
   }
 
-  return (
-    <Modal
-      open
-      title={editing ? 'Edit experience' : 'Add new experience'}
-      onClose={saving ? undefined : onClose}
-      footer={
-        <>
-          <button type="button" className="exp-btn exp-btn-ghost" onClick={onClose} disabled={saving}>
-            Cancel
-          </button>
-          <button type="submit" form="exp-experience-form" className="exp-btn exp-btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Save experience'}
-          </button>
-        </>
-      }
-    >
-      <form id="exp-experience-form" className="exp-form" onSubmit={submit} noValidate>
-        <Field id="exp-title" label="Experience name" error={errors.title} className="exp-span-2">
-          <input id="exp-title" value={values.title} onChange={set('title')} maxLength={80} aria-invalid={Boolean(errors.title)} aria-describedby={errors.title ? 'exp-title-error' : undefined} />
-        </Field>
-        <Field id="exp-region" label="Region" hint="Assigned to you by Xploreo">
-          <input id="exp-region" value={region ?? ''} readOnly disabled />
-        </Field>
-        <Field id="exp-category" label="Category" error={errors.category}>
-          <select id="exp-category" value={values.category} onChange={set('category')}>
-            {CATEGORIES.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </Field>
-        <Field id="exp-price" label="Price per guest (₹)" error={errors.price}>
-          <input id="exp-price" type="number" min="1" step="1" inputMode="numeric" value={values.price} onChange={set('price')} aria-invalid={Boolean(errors.price)} aria-describedby={errors.price ? 'exp-price-error' : undefined} />
-        </Field>
-        <Field id="exp-duration" label="Duration (hours)" error={errors.durationHours}>
-          <input id="exp-duration" type="number" min="1" step="0.5" value={values.durationHours} onChange={set('durationHours')} aria-invalid={Boolean(errors.durationHours)} aria-describedby={errors.durationHours ? 'exp-duration-error' : undefined} />
-        </Field>
-        <Field id="exp-capacity" label="Default capacity per session" error={errors.capacity} hint="Used as the starting capacity for new slots">
-          <input id="exp-capacity" type="number" min="1" step="1" value={values.capacity} onChange={set('capacity')} aria-invalid={Boolean(errors.capacity)} aria-describedby={errors.capacity ? 'exp-capacity-error' : undefined} />
-        </Field>
-        {editing ? (
-          <Field id="exp-status" label="Listing status" error={errors.status}>
-            <select id="exp-status" value={values.status} onChange={set('status')}>
-              <option value="active">Active</option>
-              <option value="inactive">Paused (hidden from travellers)</option>
-            </select>
-          </Field>
-        ) : null}
-        <Field id="exp-description" label="Description" error={errors.description} className="exp-span-2">
-          <textarea id="exp-description" rows={3} maxLength={300} value={values.description} onChange={set('description')} aria-invalid={Boolean(errors.description)} aria-describedby={errors.description ? 'exp-description-error' : undefined} />
-        </Field>
-        <div className="exp-span-2">
-          <span className="exp-label">Photo</span>
-          <ImagePlaceholder />
+  const categorySelect = (id) => (
+    <select id={id} name="category" value={values.category} onChange={set('category')} required>
+      <option value="" disabled>Select category</option>
+      {CATEGORIES.map(([value, label]) => (
+        <option key={value} value={value}>{label}</option>
+      ))}
+    </select>
+  );
+  const close = saving ? undefined : onClose;
+  const title = editing ? 'Edit Experience' : 'Add New Experience';
+
+  if (editing) {
+    return (
+      <ModalFrame id="editModal" labelledBy="editModalTitle" onClose={close}>
+        <div className="modal-header">
+          <h2 id="editModalTitle">{title}</h2>
+          <CloseButton label="Close edit experience" onClick={close} />
         </div>
-        <div className="exp-span-2">
-          <FormMessage>{formError}</FormMessage>
+
+        <form id="editExperienceForm" className="experience-form" noValidate onSubmit={submit}>
+          <div id="editTabDetails" className="edit-tab-content active">
+            <div className="section form-grid">
+              <label className="field-group field-group-full" htmlFor="editName">
+                <span>Experience Name</span>
+                <input id="editName" name="title" required maxLength={80} value={values.title} onChange={set('title')} />
+                <FieldError>{errors.title}</FieldError>
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editLocation">
+                <span>Assigned Location (Fixed)</span>
+                <input id="editLocation" name="location" readOnly disabled value={region ?? ''} style={LOCKED_LOCATION_STYLE} />
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editCategory">
+                <span>Category</span>
+                {categorySelect('editCategory')}
+                <FieldError>{errors.category}</FieldError>
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editDescription">
+                <span>Description</span>
+                <textarea id="editDescription" name="description" required rows={3} maxLength={300} value={values.description} onChange={set('description')} />
+                <FieldError>{errors.description}</FieldError>
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editPrice">
+                <span>Price per Person</span>
+                <input id="editPrice" name="price" type="number" min="1" step="1" required value={values.price} onChange={set('price')} />
+                <FieldError>{errors.price}</FieldError>
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editDuration">
+                <span>Duration (Hours)</span>
+                <input id="editDuration" name="duration" type="number" min="0.5" step="0.5" required value={values.durationHours} onChange={set('durationHours')} />
+                <FieldError>{errors.durationHours}</FieldError>
+              </label>
+
+              <label className="field-group field-group-full" htmlFor="editStatus">
+                <span>Listing Status</span>
+                <select id="editStatus" name="status" value={values.status} onChange={set('status')}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Paused (hidden from travellers)</option>
+                </select>
+                <FieldError>{errors.status}</FieldError>
+              </label>
+
+              <ImageDropzone id="editImage" value={values.image} onChange={(image) => setValues((v) => ({ ...v, image }))} />
+
+              <FormMessage>{formError}</FormMessage>
+            </div>
+          </div>
+
+          <div className="edit-modal-footer">
+            <div className="modal-actions">
+              <button type="button" onClick={close} disabled={saving}>Cancel</button>
+              <button className="primary-btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</button>
+            </div>
+          </div>
+        </form>
+      </ModalFrame>
+    );
+  }
+
+  return (
+    <ModalFrame id="addModal" labelledBy="addModalTitle" onClose={close}>
+      <div className="modal-header">
+        <h2 id="addModalTitle">{title}</h2>
+        <CloseButton label="Close add experience" onClick={close} />
+      </div>
+
+      <form id="addExperienceForm" className="experience-form" noValidate onSubmit={submit}>
+        <div className="section form-grid">
+          <label className="field-group" htmlFor="expName">
+            <span>Experience Name</span>
+            <input id="expName" name="title" required maxLength={80} value={values.title} onChange={set('title')} />
+            <FieldError>{errors.title}</FieldError>
+          </label>
+          <label className="field-group" htmlFor="expLocation">
+            <span>Assigned Location (Fixed)</span>
+            <input id="expLocation" name="location" readOnly disabled value={region ?? ''} style={LOCKED_LOCATION_STYLE} />
+          </label>
+
+          <label className="field-group" htmlFor="expCategory">
+            <span>Category</span>
+            {categorySelect('expCategory')}
+            <FieldError>{errors.category}</FieldError>
+          </label>
+        </div>
+
+        <div className="section form-grid">
+          <label className="field-group" htmlFor="expPrice">
+            <span>Price per Person (&#8377;)</span>
+            <input id="expPrice" name="price" type="number" min="0" step="1" required value={values.price} onChange={set('price')} />
+            <FieldError>{errors.price}</FieldError>
+          </label>
+
+          <label className="field-group" htmlFor="expDuration">
+            <span>Duration (hours)</span>
+            <input id="expDuration" name="durationHours" type="number" min="0.5" step="0.5" required value={values.durationHours} onChange={set('durationHours')} />
+            <FieldError>{errors.durationHours}</FieldError>
+          </label>
+
+          <label className="field-group" htmlFor="expCapacity">
+            <span>Capacity per Slot</span>
+            <input id="expCapacity" name="capacity" type="number" min="1" step="1" required value={values.capacity} onChange={set('capacity')} />
+            <FieldError>{errors.capacity}</FieldError>
+          </label>
+        </div>
+
+        <div className="section form-grid">
+          <ImageDropzone id="expImage" value={values.image} onChange={(image) => setValues((v) => ({ ...v, image }))} />
+
+          <label className="field-group field-group-full" htmlFor="expDescription">
+            <span>Short Description</span>
+            <textarea id="expDescription" name="description" rows={3} required maxLength={300} value={values.description} onChange={set('description')} />
+            <FieldError>{errors.description}</FieldError>
+          </label>
+        </div>
+
+        <FormMessage>{formError}</FormMessage>
+
+        <div className="modal-footer">
+          <button type="button" className="btn-secondary" onClick={close} disabled={saving}>Cancel</button>
+          <button type="submit" className="btn-primary" id="btnSaveExperience" disabled={saving}>{saving ? 'Saving…' : 'Save Experience'}</button>
         </div>
       </form>
-    </Modal>
+    </ModalFrame>
   );
 }

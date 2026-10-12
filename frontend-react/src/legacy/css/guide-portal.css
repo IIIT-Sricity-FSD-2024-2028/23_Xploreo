@@ -1,0 +1,98 @@
+/* ================================================
+   Guide Portal — Shared Header Styles
+   Used identically across Dashboard, Earnings, Reviews
+   ================================================ */
+
+/* Page wrapper — same across all three pages */
+.guide-page-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 36px;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  box-sizing: border-box;
+}
+
+/* ── Blue header banner ─────────────────────────────── */
+.guide-page-header {
+  background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+  border-radius: 18px;
+  padding: 28px 36px;
+  margin-bottom: 24px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  min-height: 96px;
+  box-sizing: border-box;
+}
+
+.guide-page-header-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.guide-page-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 700;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  flex-shrink: 0;
+}
+
+.guide-page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.guide-page-subtitle {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Right-side stat chips inside header ─────────────── */
+.guide-header-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.guide-header-stat {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  padding: 14px 20px;
+  text-align: center;
+  min-width: 86px;
+}
+
+.guide-header-stat-num {
+  display: block;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.guide-header-stat-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.78);
+  margin-top: 3px;
+}
+
+/* colour helpers */
+.guide-stat-green  { color: #4ade80 !important; }
+.guide-stat-yellow { color: #fbbf24 !important; }
+.guide-stat-blue   { color: #93c5fd !important; }

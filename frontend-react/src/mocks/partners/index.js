@@ -3,7 +3,7 @@
 // 400 for extra or invalid fields. Mirrors backend/src/experiences, experience-bookings, auth.
 import { ApiError, registerMock, requireRole, requireUser, assertRegion, assertOwner, whitelist } from '@/foundation';
 import {
-  ACTIVE, bookings, embedExperience, experiences, findBooking, findExperience, findUser,
+  ACTIVE, bookings, embedExperience, experiences, findBooking, findExperience, findGuideProfile, findUser,
   newExperienceId, refreshExperience,
 } from './db.js';
 import { EXPERIENCE_FIELDS, validateExperience } from './validate.js';
@@ -194,4 +194,32 @@ registerMock('PATCH', '/auth/users/:id', (ctx) => {
     if (body[field] !== undefined) target[field] = String(body[field]).trim();
   });
   return { ...target };
+});
+
+// ── Guide professional details (GET /guide/:id is readable by a signed-in user; PATCH is the guide only) ──
+const GUIDE_FIELDS = ['years_exp', 'bio', 'lang_spoken', 'prof_title'];
+
+registerMock('GET', '/guide/:id', (ctx) => {
+  requireUser(ctx);
+  const guide = findGuideProfile(ctx.params.id);
+  if (!guide) throw new ApiError(404, `Guide ${ctx.params.id} not found`);
+  return { ...guide };
+});
+
+registerMock('PATCH', '/guide/:id', (ctx) => {
+  requireRole(ctx, 'guide');
+  const guide = findGuideProfile(ctx.params.id);
+  if (!guide) throw new ApiError(404, `Guide ${ctx.params.id} not found`);
+  assertOwner(ctx, guide.id);
+  assertRegion(ctx, guide.location);
+  const body = whitelist(ctx.body, GUIDE_FIELDS);
+  const errors = {};
+  if (body.years_exp !== undefined && !(Number.isInteger(body.years_exp) && body.years_exp >= 0)) errors.years_exp = 'years_exp must not be less than 0';
+  if (body.bio !== undefined && String(body.bio).trim().length < 10) errors.bio = 'bio must be longer than or equal to 10 characters';
+  if (body.lang_spoken !== undefined && !(Array.isArray(body.lang_spoken) && body.lang_spoken.length && body.lang_spoken.every((l) => typeof l === 'string' && l.trim()))) {
+    errors.lang_spoken = 'lang_spoken must be a list of languages';
+  }
+  if (Object.keys(errors).length) throw new ApiError(400, Object.values(errors)[0], errors);
+  Object.assign(guide, body);
+  return { ...guide };
 });

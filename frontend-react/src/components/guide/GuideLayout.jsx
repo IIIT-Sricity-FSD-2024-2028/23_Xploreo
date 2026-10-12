@@ -1,18 +1,16 @@
 import { Outlet } from 'react-router-dom';
 import { Navbar, useAuth } from '@/foundation';
-import '@/styles/experience.css';
 
-// Guide portal pages (dashboard, tours, schedule, earnings, reviews, support) arrive in the next stage.
-const LINKS = [{ to: '/guide/profile', label: 'Profile' }];
+// The old guide navbar (Dashboard, Earnings, Reviews, ...) arrives with the other guide pages in the next
+// stage. Until then only the shared profile exists, reachable from the profile menu.
+const LINKS = [];
 
 export default function GuideLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   return (
-    <div className="exp-app">
-      <Navbar brand="Xploreo · Guides" links={LINKS} userLabel={`${user.name} · ${user.region}`} />
-      <main className="exp-shell">
-        <Outlet />
-      </main>
-    </div>
+    <>
+      <Navbar links={LINKS} userName={user.name} profileTo="/guide/profile" onLogout={logout} />
+      <Outlet />
+    </>
   );
 }

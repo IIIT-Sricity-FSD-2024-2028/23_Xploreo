@@ -54,11 +54,11 @@ export function formatDate(iso, options) {
   if (!iso) return '—';
   const date = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
   if (Number.isNaN(date.getTime())) return String(iso);
-  return date.toLocaleDateString('en-IN', options ?? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  return date.toLocaleDateString('en-US', options ?? { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function formatCurrency(value) {
-  return `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+  return `₹${Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
 // Display state for one slot. The server decides availability; this only labels it.

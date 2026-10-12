@@ -1,26 +1,20 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Modal, StatusBadge } from '@/foundation';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
 import { listExperienceBookings, updateExperienceBookingStatus } from '@/services/partners.api.js';
 import { compareSlots, formatCurrency, formatDate, todayIso } from '@/lib/datetime.js';
 import { STATUS_FILTERS, bookingStatusMeta } from '@/lib/bookingStatus.js';
-import { EmptyState, ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
+import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
+import ModalFrame, { CloseButton } from '@/components/experience/ModalFrame.jsx';
+import { ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
 
-const PAGE = 8;
-const WHEN = [
-  { value: 'upcoming', label: 'Upcoming & today' },
-  { value: 'past', label: 'Past' },
-  { value: 'all', label: 'All dates' },
-];
+const longDate = (iso) => formatDate(iso, { month: 'long', day: 'numeric', year: 'numeric' });
 
 export default function ExperienceBookings() {
   const [params] = useSearchParams();
   const { data, error, loading, reload, mutate } = useAsyncData(listExperienceBookings);
   const [experienceId, setExperienceId] = useState(params.get('experience') || 'all');
   const [status, setStatus] = useState('all');
-  const [when, setWhen] = useState('upcoming');
-  const [limit, setLimit] = useState(PAGE);
   const [details, setDetails] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -34,23 +28,19 @@ export default function ExperienceBookings() {
     return [...seen.entries()].map(([id, title]) => ({ id, title }));
   }, [bookings]);
 
+  // One card per session (experience + date + time), upcoming sessions first, then past ones (newest first).
   const groups = useMemo(() => {
-    const filtered = bookings.filter((b) => {
-      if (experienceId !== 'all' && b.experienceId !== experienceId) return false;
-      if (status !== 'all' && bookingStatusMeta(b.status).group !== status) return false;
-      if (when === 'upcoming' && b.date < today) return false;
-      if (when === 'past' && b.date >= today) return false;
-      return true;
-    });
     const byKey = new Map();
-    filtered.forEach((b) => {
-      const key = `${b.experienceId}|${b.date}|${b.time}`;
-      if (!byKey.has(key)) byKey.set(key, { key, title: b.experience?.title ?? 'Experience', date: b.date, time: b.time, items: [] });
-      byKey.get(key).items.push(b);
-    });
+    bookings
+      .filter((b) => (experienceId === 'all' || b.experienceId === experienceId) && (status === 'all' || bookingStatusMeta(b.status).group === status))
+      .forEach((b) => {
+        const key = `${b.experienceId}|${b.date}|${b.time}`;
+        if (!byKey.has(key)) byKey.set(key, { key, title: b.experience?.title ?? 'Experience', date: b.date, time: b.time, items: [] });
+        byKey.get(key).items.push(b);
+      });
     const list = [...byKey.values()].sort(compareSlots);
-    return when === 'past' ? list.reverse() : list;
-  }, [bookings, experienceId, status, when, today]);
+    return [...list.filter((g) => g.date >= today), ...list.filter((g) => g.date < today).reverse()];
+  }, [bookings, experienceId, status, today]);
 
   async function changeStatus(booking, next) {
     setBusyId(booking.id);
@@ -65,144 +55,173 @@ export default function ExperienceBookings() {
     }
   }
 
-  if (!data && loading) return <LoadingBlock label="Loading bookings…" />;
-  if (!data && error) return <ErrorNotice error={error} onRetry={reload} />;
-
-  const reset = (setter) => (event) => {
-    setter(event.target.value);
-    setLimit(PAGE);
-  };
+  const detailsMeta = details ? bookingStatusMeta(details.status) : null;
 
   return (
-    <div className="exp-page">
-      <header className="exp-page-header">
+    <ExperiencePage pageClass="experience-bookings-page" title="Bookings">
+      <section className="page-header experience-toolbar">
         <div>
-          <p className="exp-eyebrow">Guest management</p>
-          <h1>Bookings</h1>
-          <p className="exp-muted">Check guests in and close out finished sessions.</p>
+          <p className="experience-eyebrow">Guest Operations</p>
+          <h1 className="page-title">Bookings</h1>
+          <p className="page-subtitle">Manage all your experience bookings with quick filters and status actions.</p>
         </div>
-      </header>
+      </section>
 
+      <section className="content-card experience-card filter-panel">
+        <div className="filter-bar bookings-filter-bar">
+          <label className="experience-select-shell" htmlFor="experienceFilter">
+            <span>Experience</span>
+            <select id="experienceFilter" value={experienceId} onChange={(event) => setExperienceId(event.target.value)}>
+              <option value="all">All Experiences</option>
+              {experienceOptions.map((option) => (
+                <option key={option.id} value={option.id}>{option.title}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="experience-select-shell" htmlFor="statusFilter">
+            <span>Status</span>
+            <select id="statusFilter" value={status} onChange={(event) => setStatus(event.target.value)}>
+              {STATUS_FILTERS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      {!data && loading ? <LoadingBlock label="Loading bookings…" /> : null}
       <ErrorNotice error={error} onRetry={reload} />
       <ErrorNotice error={actionError} />
 
-      <div className="exp-filters">
-        <label>
-          <span>Experience</span>
-          <select value={experienceId} onChange={reset(setExperienceId)}>
-            <option value="all">All experiences</option>
-            {experienceOptions.map((o) => (
-              <option key={o.id} value={o.id}>{o.title}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>Status</span>
-          <select value={status} onChange={reset(setStatus)}>
-            {STATUS_FILTERS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span>When</span>
-          <select value={when} onChange={reset(setWhen)}>
-            {WHEN.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {bookings.length === 0 ? (
-        <EmptyState title="No bookings yet">Once travellers book one of your sessions, they will appear here.</EmptyState>
-      ) : groups.length === 0 ? (
-        <EmptyState title="No bookings match these filters">Try a different status or date range.</EmptyState>
-      ) : (
-        <>
-          <div className="exp-stack">
-            {groups.slice(0, limit).map((group) => {
+      {data ? (
+        <section id="bookingList" className="experience-bookings-stack">
+          {groups.length ? (
+            groups.map((group) => {
               const guests = group.items.reduce((sum, b) => sum + (b.status === 'CANCELLED' ? 0 : b.participants), 0);
               return (
-                <article key={group.key} className="exp-card" aria-label={`${group.title} on ${group.date} at ${group.time}`}>
-                  <header className="exp-card-head">
+                <article key={group.key} className="card booking-card" aria-label={`${group.title} on ${group.date} at ${group.time}`}>
+                  <header className="booking-card-header">
                     <div>
                       <h2>{group.title}</h2>
-                      <p className="exp-muted">{formatDate(group.date)} · {group.time}</p>
+                      <p>{longDate(group.date)} • {group.time}</p>
                     </div>
-                    <div className="exp-right">
-                      <StatusBadge tone="info">{group.items.length} booking{group.items.length === 1 ? '' : 's'}</StatusBadge>
-                      <p><strong>{guests}</strong> guests attending</p>
+                    <div className="booking-card-summary">
+                      <span className="section-chip">{group.items.length} bookings</span>
+                      <strong>Total Guests: {guests}</strong>
                     </div>
                   </header>
-                  <ul className="exp-list">
-                    {group.items.map((b) => {
-                      const meta = bookingStatusMeta(b.status);
-                      const busy = busyId === b.id;
-                      return (
-                        <li key={b.id} className="exp-list-row">
-                          <div>
-                            <strong>{b.guestName}</strong>
-                            <p className="exp-muted">{b.id} · {b.participants} guest{b.participants === 1 ? '' : 's'}</p>
-                          </div>
-                          <StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>
-                          <div className="exp-row-actions">
-                            <button type="button" className="exp-btn exp-btn-ghost" onClick={() => setDetails(b)}>
-                              View details
+                  <div className="booking-table-head">
+                    <span>Guest</span>
+                    <span>Party Size</span>
+                    <span>Status</span>
+                    <span>Actions</span>
+                  </div>
+                  {group.items.map((b) => {
+                    const meta = bookingStatusMeta(b.status);
+                    const busy = busyId === b.id;
+                    return (
+                      <div key={b.id} className="booking-user-row">
+                        <div>
+                          <strong>{b.guestName}</strong>
+                          <br />
+                          <span className="booking-subtext">{b.id}</span>
+                        </div>
+                        <div>{b.participants} guests</div>
+                        <div>
+                          <span className={`status ${meta.className}`}>{meta.label}</span>
+                        </div>
+                        <div className="booking-actions">
+                          <button type="button" onClick={() => setDetails(b)}>View Details</button>
+                          {b.status === 'CONFIRMED' ? (
+                            <button type="button" className="primary-btn" disabled={busy} onClick={() => changeStatus(b, 'CHECKED_IN')}>
+                              {busy ? 'Saving…' : 'Mark Check-in'}
                             </button>
-                            {b.status === 'CONFIRMED' ? (
-                              <button type="button" className="exp-btn exp-btn-primary" disabled={busy} onClick={() => changeStatus(b, 'CHECKED_IN')}>
-                                {busy ? 'Saving…' : 'Mark check-in'}
-                              </button>
-                            ) : null}
-                            {b.status === 'CHECKED_IN' ? (
-                              <button type="button" className="exp-btn exp-btn-outline" disabled={busy} onClick={() => changeStatus(b, 'END_REQUESTED')}>
-                                {busy ? 'Saving…' : 'Request end'}
-                              </button>
-                            ) : null}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                          ) : null}
+                          {b.status === 'CHECKED_IN' ? (
+                            <button type="button" className="btn-outline-blue" disabled={busy} onClick={() => changeStatus(b, 'END_REQUESTED')}>
+                              {busy ? 'Saving…' : 'Request End'}
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </article>
               );
-            })}
-          </div>
-          {groups.length > limit ? (
-            <div className="exp-center">
-              <button type="button" className="exp-btn exp-btn-ghost" onClick={() => setLimit((n) => n + PAGE)}>
-                Show more ({groups.length - limit} sessions left)
-              </button>
+            })
+          ) : (
+            <div className="empty-state">
+              <h3>No bookings found</h3>
+              <p>{bookings.length ? 'Try changing your filters.' : 'Once travellers book one of your sessions, they will appear here.'}</p>
             </div>
-          ) : null}
-        </>
-      )}
+          )}
+        </section>
+      ) : null}
 
-      <Modal
-        open={Boolean(details)}
-        title="Booking details"
-        onClose={() => setDetails(null)}
-        footer={
-          <button type="button" className="exp-btn exp-btn-ghost" onClick={() => setDetails(null)}>
-            Close
-          </button>
-        }
-      >
-        {details ? (
-          <dl className="exp-details">
-            <dt>Booking</dt><dd>{details.id}</dd>
-            <dt>Guest</dt><dd>{details.guestName}</dd>
-            <dt>Email</dt><dd>{details.email}</dd>
-            <dt>Phone</dt><dd>{details.phone}</dd>
-            <dt>Experience</dt><dd>{details.experience?.title ?? 'Experience'}</dd>
-            <dt>Session</dt><dd>{formatDate(details.date)} · {details.time}</dd>
-            <dt>Party size</dt><dd>{details.participants} guest{details.participants === 1 ? '' : 's'}</dd>
-            <dt>Booking total</dt><dd>{formatCurrency(details.totalAmount)}</dd>
-            <dt>Status</dt><dd><StatusBadge tone={bookingStatusMeta(details.status).tone}>{bookingStatusMeta(details.status).label}</StatusBadge></dd>
-          </dl>
-        ) : null}
-      </Modal>
-    </div>
+      {details ? (
+        <ModalFrame id="bookingModal" boxClass="booking-modal-box" labelledBy="modalName" onClose={() => setDetails(null)}>
+          <div className="modal-header">
+            <div>
+              <h2 id="modalName">{details.guestName}</h2>
+              <div className="modal-sub">
+                <span id="modalId">{details.id}</span>
+                <span id="modalStatus" className={`status-badge ${detailsMeta.className}`}>{detailsMeta.label}</span>
+              </div>
+            </div>
+            <CloseButton label="Close booking details" glyph="✕" onClick={() => setDetails(null)} />
+          </div>
+
+          <hr />
+
+          <div className="section">
+            <h3>Experience Details</h3>
+            <p className="label">Experience</p>
+            <p id="modalExperience">{details.experience?.title ?? 'Experience'}</p>
+            <div className="grid-3">
+              <div>
+                <p className="label">Date</p>
+                <p id="modalDate">{longDate(details.date)}</p>
+              </div>
+              <div>
+                <p className="label">Time</p>
+                <p id="modalTime">{details.time}</p>
+              </div>
+              <div>
+                <p className="label">Guests</p>
+                <p id="modalGuests">{details.participants} guests</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="section">
+            <h3>Customer Information</h3>
+            <p className="label">Name</p>
+            <p id="modalCustomer">{details.guestName}</p>
+            <div className="grid-2">
+              <div>
+                <p className="label">Phone</p>
+                <p id="modalPhone">{details.phone}</p>
+              </div>
+              <div>
+                <p className="label">Email</p>
+                <p id="modalEmail">{details.email}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="section">
+            <h3>Payment</h3>
+            <div className="payment-box">
+              <div>
+                <p className="label">Total Amount</p>
+                <h2 id="modalAmount">{formatCurrency(details.totalAmount)}</h2>
+              </div>
+              <span id="modalPaymentStatus" className="paid-badge">{details.status === 'CANCELLED' ? 'Refunded' : 'Paid'}</span>
+            </div>
+          </div>
+        </ModalFrame>
+      ) : null}
+    </ExperiencePage>
   );
 }

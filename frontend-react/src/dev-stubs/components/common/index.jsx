@@ -1,5 +1,3 @@
-// TEMP-STUB
-export { Modal } from './Modal.jsx';
-export { StatCard } from './StatCard.jsx';
-export { StatusBadge } from './StatusBadge.jsx';
+// TEMP-STUB. Only the navbar is stubbed: M2's screens use the ORIGINAL markup and stylesheets for
+// cards, stat cards, badges and modals (see src/legacy/), so they need no other common component.
 export { Navbar } from './Navbar.jsx';

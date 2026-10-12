@@ -41,3 +41,14 @@ export function updateExperienceBookingStatus(id, status) {
 export function updatePartnerProfile(userId, values) {
   return request(`/auth/users/${encodeURIComponent(userId)}`, { method: 'PATCH', body: pick(values, PROFILE_FIELDS) });
 }
+
+// Guide professional details live on /guide/:id (years_exp, bio, lang_spoken, prof_title).
+const GUIDE_FIELDS = ['years_exp', 'bio', 'lang_spoken', 'prof_title'];
+
+export function getGuideProfile(userId) {
+  return request(`/guide/${encodeURIComponent(userId)}`);
+}
+
+export function updateGuideProfile(userId, values) {
+  return request(`/guide/${encodeURIComponent(userId)}`, { method: 'PATCH', body: pick(values, GUIDE_FIELDS) });
+}
