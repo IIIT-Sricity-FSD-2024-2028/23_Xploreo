@@ -1,17 +1,28 @@
 import TravellerBookingsList from './TravellerBookingsList.jsx';
 import BookingDetailsView from './BookingDetailsView.jsx';
+import TravellerTripsList from './TravellerTripsList.jsx';
+import TravellerTripDetailsView from './TravellerTripDetailsView.jsx';
+import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 
 /**
- * Traveller Bookings Page
- * Primary entry point for traveller bookings in the React router.
+ * Traveller Bookings & Trips Hub
  * 
- * DESIGN CONVENTION COMPLIANCE:
- * - Does not use raw fetch, Axios, localStorage, or duplicate Auth.
- * - Accepts data via props for direct testability and parent container composition.
- * - When used in route without props, renders standard presentation view.
+ * Supports view modes via props:
+ * - mode="trips": Displays trips and live tracking view.
+ * - mode="bookings" (default): Displays booking history and details.
  */
-export default function TravellerBookingsPage(props) {
-  return <TravellerBookingsList {...props} />;
+export default function TravellerTripsPage({ mode = 'trips', ...props }) {
+  if (mode === 'bookings') {
+    return <TravellerBookingsList {...props} />;
+  }
+
+  return <TravellerTripsList {...props} />;
 }
 
-export { TravellerBookingsList, BookingDetailsView };
+export {
+  TravellerBookingsList,
+  BookingDetailsView,
+  TravellerTripsList,
+  TravellerTripDetailsView,
+  TripLiveTrackerWidget,
+};
