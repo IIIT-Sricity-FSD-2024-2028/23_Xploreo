@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
-import { reconcileTripTracking } from '../../utils/tripTrackingUtils.js';
+import { reconcileTripTracking, mapBackendTrip } from '../../utils/tripTrackingUtils.js';
+import { apiRequest, getSavedUser } from '../../services/api.js';
+import { sampleTripsList } from '../../preview/sampleData.js';
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 import TravellerTripDetailsView from './TravellerTripDetailsView.jsx';
 import './travellerTrips.css';
@@ -8,51 +10,187 @@ import './travellerTrips.css';
 /**
  * TravellerTripsList
  * Manages traveller trips with live REST polling and strict backend-driven state:
+ * - Real API integration via apiRequest('/trips/traveller/:travellerId')
+ * - Single-trip detail synchronization via apiRequest('/trips/:id')
  * - Loading, Error, Empty, and Populated list states
  * - Automatic REST polling when an active trip is ongoing
  * - Window focus / online event listeners for immediate state reconciliation
  * - Out-of-order & stale response protection via reconcileTripTracking()
- * - Drill-down to TravellerTripDetailsView
+ * - Strictly does not fall back to mock data after a failed API call
  */
 export default function TravellerTripsList({
-  trips = [],
-  isLoading = false,
-  error = null,
-  onRetry,
-  onPollRefresh,
+  trips: propTrips,
+  isLoading: propIsLoading,
+  error: propError,
+  onRetry: propOnRetry,
+  onPollRefresh: propOnPollRefresh,
   pollIntervalMs = 10000,
   currentTravellerId,
+  user,
+  useFixtures = false,
 }) {
+  const [liveTrips, setLiveTrips] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
-  // Compute reconciled trips derived cleanly without cascading setState effects
+  // Resolve effective traveller ID from props or saved session
+  const effectiveTravellerId = useMemo(() => {
+    if (currentTravellerId) return String(currentTravellerId).trim();
+    if (user?.userId) return String(user.userId).trim();
+    if (user?.id) return String(user.id).trim();
+    const saved = typeof getSavedUser === 'function' ? getSavedUser() : null;
+    if (saved?.userId) return String(saved.userId).trim();
+    if (saved?.id) return String(saved.id).trim();
+    return '';
+  }, [currentTravellerId, user]);
+
+  // Fetch all trips for traveller via GET /trips/traveller/:travellerId
+  const fetchLiveTrips = useCallback(async () => {
+    if (propTrips !== undefined || useFixtures) return;
+
+    if (!effectiveTravellerId) {
+      setLiveError('Authentication required. Missing or invalid saved session.');
+      setLiveTrips([]);
+      return;
+    }
+
+    setLiveLoading(true);
+    setLiveError(null);
+
+    try {
+      const rawData = await apiRequest(`/trips/traveller/${encodeURIComponent(effectiveTravellerId)}`);
+      const mapped = Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
+
+      setLiveTrips((prevTrips) => {
+        const prevMap = new Map((prevTrips || []).map((t) => [t.id, t]));
+        return mapped.map((incoming) => {
+          const existing = prevMap.get(incoming.id);
+          return existing ? reconcileTripTracking(existing, incoming) : incoming;
+        });
+      });
+      setLiveError(null);
+    } catch (err) {
+      setLiveError(err.message || 'Failed to load trips');
+      // Strictly do not fall back to fixtures on error
+      setLiveTrips([]);
+    } finally {
+      setLiveLoading(false);
+    }
+  }, [propTrips, useFixtures, effectiveTravellerId]);
+
+  // Initial load when in live mode
+  useEffect(() => {
+    let isCancelled = false;
+
+    const load = async () => {
+      await Promise.resolve();
+      if (!isCancelled && propTrips === undefined && !useFixtures) {
+        await fetchLiveTrips();
+      }
+    };
+
+    load();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [propTrips, useFixtures, fetchLiveTrips]);
+
+  // Refresh function used by periodic polling and manual refresh button
+  const refreshLiveTrips = useCallback(async () => {
+    if (propOnPollRefresh) {
+      await propOnPollRefresh();
+      return;
+    }
+
+    if (propTrips !== undefined || useFixtures) return;
+    if (!effectiveTravellerId) return;
+
+    try {
+      if (selectedTripId) {
+        // Detail view is open: fetch specific trip to avoid duplicate polling
+        const rawDetail = await apiRequest(`/trips/${encodeURIComponent(selectedTripId)}`);
+        if (rawDetail) {
+          const mappedDetail = mapBackendTrip(rawDetail);
+          setLiveTrips((prevTrips) =>
+            prevTrips.map((t) =>
+              t.id === selectedTripId ? reconcileTripTracking(t, mappedDetail) : t
+            )
+          );
+        }
+      } else {
+        // List view is open: poll all trips for traveller
+        const rawData = await apiRequest(`/trips/traveller/${encodeURIComponent(effectiveTravellerId)}`);
+        const mapped = Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
+
+        setLiveTrips((prevTrips) => {
+          const prevMap = new Map((prevTrips || []).map((t) => [t.id, t]));
+          return mapped.map((incoming) => {
+            const existing = prevMap.get(incoming.id);
+            return existing ? reconcileTripTracking(existing, incoming) : incoming;
+          });
+        });
+      }
+    } catch (err) {
+      // Background poll failure preserves current state without regressions
+      void err;
+    }
+  }, [propOnPollRefresh, propTrips, useFixtures, effectiveTravellerId, selectedTripId]);
+
+  // Active trips dataset
+  const activeTrips = propTrips !== undefined
+    ? propTrips
+    : (useFixtures ? sampleTripsList : liveTrips);
+
+  const activeLoading = propIsLoading !== undefined
+    ? propIsLoading
+    : (useFixtures ? false : liveLoading);
+
+  const activeError = propError !== undefined
+    ? propError
+    : (useFixtures ? null : liveError);
+
+  // Compute reconciled trips derived cleanly
   const reconciledTrips = useMemo(() => {
-    if (!trips || trips.length === 0) return [];
-    return trips.map((trip) => reconcileTripTracking(null, trip));
-  }, [trips]);
+    if (!activeTrips || activeTrips.length === 0) return [];
+    return activeTrips.map((trip) => reconcileTripTracking(null, trip));
+  }, [activeTrips]);
 
-  // REST Polling & Window Focus / Online listener setup
+  // Strict ownership check (presentation guard; authoritative check is server-side)
+  const authorizedTrips = effectiveTravellerId
+    ? reconciledTrips.filter((t) => !t.travellerId || t.travellerId === effectiveTravellerId)
+    : reconciledTrips;
+
+  const selectedTrip = selectedTripId
+    ? authorizedTrips.find((t) => t.id === selectedTripId) || activeTrips.find((t) => t.id === selectedTripId)
+    : null;
+
+  // Single polling & window focus/online listener setup
   useEffect(() => {
     let timer = null;
 
     const triggerRefresh = async () => {
-      if (onPollRefresh && !isRefreshing) {
-        setIsRefreshing(true);
-        try {
-          await onPollRefresh();
-        } finally {
-          setIsRefreshing(false);
-        }
+      if (isRefreshing) return;
+      setIsRefreshing(true);
+      try {
+        await refreshLiveTrips();
+      } finally {
+        setIsRefreshing(false);
       }
     };
 
-    // Periodic polling only if there are trips and onPollRefresh provided
-    if (onPollRefresh && pollIntervalMs > 0) {
+    // Periodic polling only if an ongoing trip exists
+    const hasOngoingTrip = selectedTrip
+      ? (selectedTrip.trackingStatus === 'ongoing' || selectedTrip.status === 'started')
+      : authorizedTrips.some((t) => t.trackingStatus === 'ongoing' || t.status === 'started');
+
+    if (pollIntervalMs > 0 && hasOngoingTrip) {
       timer = setInterval(triggerRefresh, pollIntervalMs);
     }
 
-    // Refresh when user returns to tab / regains network connectivity
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         triggerRefresh();
@@ -71,16 +209,53 @@ export default function TravellerTripsList({
       window.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
     };
-  }, [onPollRefresh, pollIntervalMs, isRefreshing]);
+  }, [pollIntervalMs, isRefreshing, refreshLiveTrips, selectedTrip, authorizedTrips]);
 
-  // Strict ownership check (presentation guard; authoritative check is server-side)
-  const authorizedTrips = currentTravellerId
-    ? reconciledTrips.filter((t) => t.travellerId === currentTravellerId)
-    : reconciledTrips;
+  // Drill down to detail view & fetch single trip details if in live mode
+  const handleSelectTrip = useCallback(async (tripId) => {
+    setSelectedTripId(tripId);
 
-  const selectedTrip = selectedTripId
-    ? authorizedTrips.find((t) => t.id === selectedTripId)
-    : null;
+    if (propTrips === undefined && !useFixtures && tripId) {
+      setDetailsLoading(true);
+      try {
+        const rawDetail = await apiRequest(`/trips/${encodeURIComponent(tripId)}`);
+        if (rawDetail) {
+          const mappedDetail = mapBackendTrip(rawDetail);
+          setLiveTrips((prevTrips) => {
+            const exists = prevTrips.some((t) => t.id === tripId);
+            if (exists) {
+              return prevTrips.map((t) =>
+                t.id === tripId ? reconcileTripTracking(t, mappedDetail) : t
+              );
+            }
+            return [...prevTrips, mappedDetail];
+          });
+        }
+      } catch (err) {
+        // Fall back cleanly to the trip already in list
+        void err;
+      } finally {
+        setDetailsLoading(false);
+      }
+    }
+  }, [propTrips, useFixtures]);
+
+  const handleRetry = () => {
+    if (typeof propOnRetry === 'function') {
+      propOnRetry();
+    } else if (propTrips === undefined && !useFixtures) {
+      fetchLiveTrips();
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshLiveTrips();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (selectedTrip) {
     return (
@@ -88,8 +263,8 @@ export default function TravellerTripsList({
         <TravellerTripDetailsView
           trip={selectedTrip}
           onBack={() => setSelectedTripId(null)}
-          onManualRefresh={onPollRefresh}
-          isRefreshing={isRefreshing}
+          onManualRefresh={handleManualRefresh}
+          isRefreshing={isRefreshing || detailsLoading}
         />
       </div>
     );
@@ -106,7 +281,7 @@ export default function TravellerTripsList({
       </div>
 
       {/* Loading State */}
-      {isLoading && (
+      {activeLoading && (
         <div className="trav-loading-container" role="status" aria-label="Loading trips">
           <div className="trav-skeleton-card" />
           <div className="trav-skeleton-card" />
@@ -114,20 +289,18 @@ export default function TravellerTripsList({
       )}
 
       {/* Error State */}
-      {!isLoading && error && (
+      {!activeLoading && activeError && (
         <div className="trav-state-error" role="alert">
           <h3>Failed to load trips</h3>
-          <p>{typeof error === 'string' ? error : error.message || 'An unexpected error occurred.'}</p>
-          {onRetry && (
-            <button type="button" className="trav-btn-retry" onClick={onRetry}>
-              Try Again
-            </button>
-          )}
+          <p>{typeof activeError === 'string' ? activeError : activeError.message || 'An unexpected error occurred.'}</p>
+          <button type="button" className="trav-btn-retry" onClick={handleRetry}>
+            Try Again
+          </button>
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && authorizedTrips.length === 0 && (
+      {!activeLoading && !activeError && authorizedTrips.length === 0 && (
         <div className="trav-state-empty" data-testid="traveller-trips-empty-state">
           <div className="trav-empty-icon" aria-hidden="true">🧭</div>
           <h3>No trips scheduled yet</h3>
@@ -139,7 +312,7 @@ export default function TravellerTripsList({
       )}
 
       {/* Populated State */}
-      {!isLoading && !error && authorizedTrips.length > 0 && (
+      {!activeLoading && !activeError && authorizedTrips.length > 0 && (
         <div data-testid="traveller-trips-grid">
           {authorizedTrips.map((trip) => {
             const isOngoing = trip.trackingStatus === 'ongoing';
@@ -155,7 +328,7 @@ export default function TravellerTripsList({
                     <div className="trav-trip-badge-group">
                       <span className="trav-booking-id">#{trip.id}</span>
                       <span className="trav-status-badge is-confirmed">
-                        {trip.status.toUpperCase()}
+                        {(trip.status || 'draft').toUpperCase()}
                       </span>
                     </div>
 
@@ -175,7 +348,7 @@ export default function TravellerTripsList({
                   <button
                     type="button"
                     className="trav-btn-view-details"
-                    onClick={() => setSelectedTripId(trip.id)}
+                    onClick={() => handleSelectTrip(trip.id)}
                     aria-label={`View live tracking for trip ${trip.id}`}
                   >
                     View Details & Itinerary

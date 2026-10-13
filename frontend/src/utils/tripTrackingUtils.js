@@ -138,3 +138,31 @@ export function formatLastUpdatedTime(isoDate) {
     return date.toLocaleTimeString();
   }
 }
+
+/**
+ * Maps raw backend Trip entity/DTO to frontend trip properties.
+ * Conforms to backend Trip entity:
+ * { id, travellerId, planId, guideId, status, itinerary, totalAmount, currentDay,
+ *   currentStop, currentLocation, trackingStatus, progressPercentage, lastUpdatedAt }
+ * @param {object} raw
+ * @returns {object|null}
+ */
+export function mapBackendTrip(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || `trip-${Math.random().toString(36).slice(2, 9)}`,
+    travellerId: String(raw.travellerId || '').trim(),
+    planId: raw.planId || '',
+    guideId: raw.guideId ? String(raw.guideId).trim() : null,
+    status: (raw.status || 'draft').toLowerCase(),
+    totalAmount: typeof raw.totalAmount === 'number' ? raw.totalAmount : (Number(raw.totalAmount) || 0),
+    currentDay: typeof raw.currentDay === 'number' ? raw.currentDay : (Number(raw.currentDay) || 1),
+    currentStop: raw.currentStop || 'Not started',
+    currentLocation: raw.currentLocation || '',
+    trackingStatus: (raw.trackingStatus || 'not_started').toLowerCase(),
+    progressPercentage: typeof raw.progressPercentage === 'number' ? raw.progressPercentage : (Number(raw.progressPercentage) || 0),
+    lastUpdatedAt: raw.lastUpdatedAt || new Date().toISOString(),
+    itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? raw.itinerary : {},
+  };
+}
+
