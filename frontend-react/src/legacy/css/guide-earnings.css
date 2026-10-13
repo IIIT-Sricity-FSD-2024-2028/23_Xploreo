@@ -1,0 +1,37 @@
+/* Verbatim from the <style> that front_end/js/earnings.js injected (injectEarnStyles). */
+    .earn-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .earn-stat-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .earn-stat-icon { font-size: 28px; }
+    .earn-stat-num { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .earn-stat-label { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .earn-green { color: #16a34a; }
+    .earn-yellow { color: #d97706; }
+    .earn-blue { color: #2563eb; }
+
+    .earn-section-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .earn-section-head h2 { margin: 0; font-size: 18px; font-weight: 700; color: #1e293b; }
+    .earn-filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .earn-filter-btn { padding: 6px 14px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; color: #475569; }
+    .earn-filter-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .earn-filter-btn:hover:not(.active) { border-color: #2563eb; color: #2563eb; }
+
+    .earn-list { display: flex; flex-direction: column; gap: 12px; }
+    .earn-empty { text-align: center; color: #94a3b8; padding: 48px; background: #fff; border-radius: 14px; border: 1.5px dashed #e2e8f0; font-size: 15px; }
+
+    .earn-trip-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; transition: box-shadow 0.2s, transform 0.2s; }
+    .earn-trip-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+    .earn-trip-confirmed { border-left: 4px solid #16a34a; }
+
+    .earn-trip-left { flex: 1; }
+    .earn-trip-dest { font-size: 12px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 3px 10px; border-radius: 20px; display: inline-block; margin-bottom: 6px; }
+    .earn-trip-name { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+    .earn-trip-meta { display: flex; gap: 16px; font-size: 13px; color: #64748b; }
+
+    .earn-trip-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .earn-trip-fee { text-align: right; }
+    .earn-fee-label { display: block; font-size: 11px; color: #94a3b8; }
+    .earn-fee-per { font-size: 14px; color: #475569; font-weight: 500; }
+    .earn-trip-total { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .earn-total-green { color: #16a34a; }
+    .earn-chip { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; border: 1px solid; white-space: nowrap; }
+  

@@ -8,6 +8,8 @@ export const DEV_USERS = [
   { id: 'exp-del-1', name: 'Delhi Heritage Walks', partnerType: 'experience', region: 'Delhi', email: 'walks@delhiheritage.example', phone: '+91 98765 40004', businessName: 'Delhi Heritage Walks' },
   { id: 'exp-ker-1', name: 'Kerala Backwater Co', partnerType: 'experience', region: 'Kerala', email: 'ahoy@keralabackwater.example', phone: '+91 98765 40005', businessName: 'Kerala Backwater Co' },
   { id: 'guide-jpr-1', name: 'Aarav Sharma (Guide)', partnerType: 'guide', region: 'Jaipur', email: 'aarav@guides.example', phone: '+91 98765 50001', businessName: '' },
+  { id: 'guide-goa-1', name: 'Maria Fernandes (Guide)', partnerType: 'guide', region: 'Goa', email: 'maria@guides.example', phone: '+91 98765 50002', businessName: '' },
+  { id: 'guide-del-1', name: 'Imran Khan (Guide)', partnerType: 'guide', region: 'Delhi', email: 'imran@guides.example', phone: '+91 98765 50003', businessName: '' },
 ];
 
 const KEY = 'xploreo.dev.identity';

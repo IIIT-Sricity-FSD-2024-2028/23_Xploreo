@@ -4,6 +4,7 @@ import { useAuth } from '@/foundation';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
 import { deleteExperience, listMyExperiences } from '@/services/partners.api.js';
 import { compareSlots, formatCurrency, todayIso } from '@/lib/datetime.js';
+import { fontPx, px } from '@/lib/density.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
 import ModalFrame, { CloseButton } from '@/components/experience/ModalFrame.jsx';
 import { ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
@@ -65,7 +66,7 @@ export default function ExperienceCatalog() {
               <h1>Experiences</h1>
               <p>
                 Assigned Region:{' '}
-                <span style={{ display: 'inline-block', padding: '2px 10px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 9999, fontWeight: 600, fontSize: 12 }}>
+                <span style={{ display: 'inline-block', padding: `${px(2)}px ${px(10)}px`, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 9999, fontWeight: 600, fontSize: fontPx(12) }}>
                   {region}
                 </span>{' '}
                 · Manage your experience offerings
@@ -85,9 +86,9 @@ export default function ExperienceCatalog() {
           ) : null}
 
           {data && experiences.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#617084', background: '#ffffff', borderRadius: 12, border: '1px dashed #d9e0ea' }}>
-              <h3 style={{ margin: '0 0 8px', fontSize: 18, color: '#273248' }}>No experiences right now</h3>
-              <p style={{ margin: 0, fontSize: 14 }}>You haven&apos;t added any experiences yet.</p>
+            <div style={{ textAlign: 'center', padding: `${px(60)}px ${px(20)}px`, color: '#617084', background: '#ffffff', borderRadius: px(12), border: '1px dashed #d9e0ea' }}>
+              <h3 style={{ margin: `0 0 ${px(8)}px`, fontSize: px(18), color: '#273248' }}>No experiences right now</h3>
+              <p style={{ margin: 0, fontSize: px(14) }}>You haven&apos;t added any experiences yet.</p>
             </div>
           ) : null}
 

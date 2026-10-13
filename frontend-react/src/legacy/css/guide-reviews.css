@@ -1,0 +1,29 @@
+/* Verbatim from the <style> that front_end/js/reviews.js injected (injectReviewStyles). */
+    .rv-avg-block { display: flex; align-items: center; gap: 16px; background: rgba(255,255,255,0.14); border-radius: 12px; padding: 12px 24px; border: 1px solid rgba(255,255,255,0.15); min-width: 120px; color: #fff; height: 72px; box-sizing: border-box; }
+    .rv-avg-left { display: flex; flex-direction: column; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.2); padding-right: 16px; }
+    .rv-avg-right { display: flex; flex-direction: column; justify-content: center; }
+    .rv-avg-num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+    .rv-avg-stars { font-size: 16px; letter-spacing: 2px; line-height: 1; }
+    .rv-avg-count { font-size: 11px; opacity: 0.8; margin-top: 4px; display: block; }
+    .rv-no-avg { font-size: 14px; font-weight: 500; opacity: 0.9; }
+
+    .rv-list { display: flex; flex-direction: column; gap: 14px; }
+    .rv-loading { text-align: center; color: #94a3b8; padding: 48px; font-size: 15px; }
+    .rv-empty { text-align: center; color: #94a3b8; padding: 56px 24px; background: #fff; border-radius: 14px; border: 1.5px dashed #e2e8f0; }
+    .rv-empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .rv-empty p { font-size: 15px; max-width: 360px; margin: 0 auto; line-height: 1.6; }
+
+    .rv-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; transition: box-shadow 0.2s, transform 0.2s; }
+    .rv-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); transform: translateY(-1px); }
+    .rv-card-top { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+    .rv-reviewer-avatar { width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; flex-shrink: 0; border: 2px solid #dbeafe; }
+    .rv-reviewer-info { flex: 1; }
+    .rv-reviewer-name { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .rv-reviewer-date { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .rv-card-stars { font-size: 18px; }
+    .rv-comment { margin: 0; font-size: 14px; color: #475569; line-height: 1.65; border-top: 1px solid #f1f5f9; padding-top: 12px; }
+
+    .rv-star-full { color: #f59e0b; }
+    .rv-star-half { color: #fbbf24; opacity: 0.7; }
+    .rv-star-empty { color: #d1d5db; }
+  

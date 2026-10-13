@@ -1,0 +1,67 @@
+/* Verbatim from the <style> that front_end/js/modules/guide_dashboard.js injected (injectStyles). */
+    .gd-tabs { display: flex; gap: 4px; background: #f1f5f9; border-radius: 12px; padding: 4px; margin-bottom: 20px; }
+    .gd-tab { flex: 1; border: none; background: transparent; padding: 10px 16px; border-radius: 9px; font-size: 14px; font-weight: 500; cursor: pointer; color: #64748b; transition: all 0.2s; }
+    .gd-tab.active { background: #fff; color: #1e3a5f; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .gd-tab:hover:not(.active) { background: rgba(255,255,255,0.6); }
+    .gd-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
+    .gd-section-header h2 { margin: 0; font-size: 18px; font-weight: 700; color: #1e293b; }
+    .gd-search { padding: 10px 16px; border: 1.5px solid #e2e8f0; border-radius: 10px; font-size: 14px; width: 280px; outline: none; transition: border-color 0.2s; }
+    .gd-search:focus { border-color: #2563eb; }
+    .gd-filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .gd-filter-btn { padding: 6px 14px; border: 1.5px solid #e2e8f0; border-radius: 20px; background: #fff; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.2s; color: #475569; }
+    .gd-filter-btn.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .gd-filter-btn:hover:not(.active) { border-color: #2563eb; color: #2563eb; }
+    .gd-plans-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .gd-plan-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px; transition: box-shadow 0.2s, transform 0.2s; }
+    .gd-plan-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
+    .gd-plan-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .gd-plan-dest { font-size: 12px; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 3px 10px; border-radius: 20px; }
+    .gd-plan-title { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: #1e293b; }
+    .gd-plan-desc { margin: 0 0 12px; font-size: 13px; color: #64748b; line-height: 1.5; }
+    .gd-plan-meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: #475569; margin-bottom: 10px; }
+    .gd-auto-reason { font-size: 11px; color: #64748b; background: #f8fafc; border-left: 3px solid #94a3b8; padding: 6px 10px; border-radius: 0 6px 6px 0; margin-bottom: 10px; }
+    .gd-plan-action { margin-top: 14px; }
+    .gd-btn { padding: 9px 18px; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .gd-btn-sm { padding: 7px 14px; font-size: 13px; }
+    .gd-btn-primary { background: #2563eb; color: #fff; }
+    .gd-btn-primary:hover { background: #1d4ed8; }
+    .gd-btn-secondary { background: #f1f5f9; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .gd-btn-success { background: #16a34a; color: #fff; }
+    .gd-btn-success:hover { background: #15803d; }
+    .gd-btn-danger { background: #dc2626; color: #fff; }
+    .gd-btn-danger:hover { background: #b91c1c; }
+    .gd-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .gd-chip { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; border: 1px solid; white-space: nowrap; }
+    .gd-table-wrap { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; overflow: hidden; }
+    .gd-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .gd-table thead { background: #f8fafc; }
+    .gd-table th { padding: 12px 16px; text-align: left; font-weight: 600; color: #374151; border-bottom: 1.5px solid #e2e8f0; }
+    .gd-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: top; }
+    .gd-table tr:last-child td { border-bottom: none; }
+    .gd-reason-cell { font-size: 12px; color: #64748b; max-width: 260px; }
+    .gd-empty-cell { text-align: center; color: #94a3b8; padding: 32px !important; }
+    .gd-empty { text-align: center; color: #94a3b8; padding: 40px; background: #fff; border-radius: 14px; border: 1.5px dashed #e2e8f0; }
+    .gd-assignment-card { background: #fff; border: 1.5px solid #e2e8f0; border-radius: 14px; padding: 20px 24px; margin-bottom: 12px; transition: box-shadow 0.2s; }
+    .gd-assignment-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.07); }
+    .gd-asgn-pending { border-left: 4px solid #7c3aed; background: #faf5ff; }
+    .gd-asgn-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .gd-asgn-top h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #1e293b; }
+    .gd-asgn-dest { margin: 0; font-size: 13px; color: #64748b; }
+    .gd-asgn-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #475569; margin-bottom: 14px; }
+    .gd-asgn-actions { display: flex; gap: 10px; }
+    .gd-label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; color: #374151; }
+    .gd-input { padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: 15px; outline: none; transition: border-color 0.2s; margin-top: 4px; }
+    .gd-input:focus { border-color: #2563eb; }
+    .gd-error { color: #dc2626; font-size: 13px; margin-top: 8px; min-height: 18px; }
+    .gd-modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.55); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .gd-modal { background: #fff; border-radius: 18px; padding: 32px; width: 420px; max-width: 95vw; box-shadow: 0 24px 60px rgba(0,0,0,0.2); display: flex; flex-direction: column; gap: 14px; }
+    .gd-modal h3 { margin: 0; font-size: 18px; font-weight: 700; color: #1e293b; }
+    .gd-modal-sub { margin: 0; font-size: 13px; color: #64748b; }
+    .gd-modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+    .gd-toast { position: fixed; bottom: 28px; right: 28px; padding: 14px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,0.16); z-index: 9999; opacity: 0; transform: translateY(16px); transition: all 0.28s ease; }
+    .gd-toast-show { opacity: 1; transform: translateY(0); }
+    .gd-toast-success { background: #16a34a; }
+    .gd-toast-error { background: #dc2626; }
+    .gd-toast-warning { background: #d97706; }
+    .gd-toast-info { background: #2563eb; }
+  
