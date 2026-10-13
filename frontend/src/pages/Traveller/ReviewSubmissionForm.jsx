@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import {
   validateReviewForm,
   REVIEW_TARGET_TYPES,
@@ -29,7 +29,14 @@ export default function ReviewSubmissionForm({
   currentUserId = null,
   defaultTargetType = REVIEW_TARGET_TYPES.GUIDE,
   defaultTargetId = '',
+  initialMode = 'live',
 }) {
+  const isAlphanumericUser = Boolean(currentUserId && isNaN(Number(currentUserId)));
+
+  const [submissionMode, setSubmissionMode] = useState(
+    initialMode === 'demo' || isAlphanumericUser ? 'demo' : 'live'
+  );
+
   const [formData, setFormData] = useState({
     userId: currentUserId || '',
     targetType: defaultTargetType,
@@ -47,8 +54,22 @@ export default function ReviewSubmissionForm({
     setFormData(updated);
 
     if (submitAttempted) {
-      const validation = validateReviewForm(updated);
-      setFieldErrors(validation.errors);
+      if (submissionMode === 'demo') {
+        const errors = {};
+        if (!updated.userId || String(updated.userId).trim() === '') {
+          errors.userId = 'Valid traveller/user ID is required';
+        }
+        if (!updated.targetId || String(updated.targetId).trim() === '') {
+          errors.targetId = 'Target ID is required';
+        }
+        if (!updated.comment || updated.comment.trim().length < 3) {
+          errors.comment = 'Comment must be at least 3 characters long';
+        }
+        setFieldErrors(errors);
+      } else {
+        const validation = validateReviewForm(updated);
+        setFieldErrors(validation.errors);
+      }
     }
   };
 
@@ -56,6 +77,38 @@ export default function ReviewSubmissionForm({
     e.preventDefault();
     setSubmitAttempted(true);
 
+    if (submissionMode === 'demo') {
+      const errors = {};
+      if (!formData.userId || String(formData.userId).trim() === '') {
+        errors.userId = 'Valid traveller/user ID is required';
+      }
+      if (!formData.targetId || String(formData.targetId).trim() === '') {
+        errors.targetId = 'Target ID is required';
+      }
+      if (!formData.rating || formData.rating < 1 || formData.rating > 5) {
+        errors.rating = 'Rating must be between 1 and 5';
+      }
+      if (!formData.comment || formData.comment.trim().length < 3) {
+        errors.comment = 'Comment must be at least 3 characters long';
+      }
+
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+
+      if (onSubmit && !isSubmitting) {
+        await onSubmit({
+          userId: String(formData.userId),
+          targetType: formData.targetType,
+          targetId: String(formData.targetId),
+          rating: Number(formData.rating),
+          comment: formData.comment.trim(),
+          isDemo: true,
+        });
+      }
+      return;
+    }
+
+    // Live mode validation
     const validation = validateReviewForm(formData);
     setFieldErrors(validation.errors);
 
@@ -70,6 +123,7 @@ export default function ReviewSubmissionForm({
         targetId: Number(formData.targetId),
         rating: Number(formData.rating),
         comment: formData.comment.trim(),
+        isDemo: false,
       });
     }
   };
@@ -83,6 +137,84 @@ export default function ReviewSubmissionForm({
       noValidate
       data-testid="review-submission-form"
     >
+      {/* Mode Selector & Blocker Documentation */}
+      <div
+        className="trav-review-mode-strip"
+        style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          padding: '0.75rem',
+          marginBottom: '1rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontSize: '0.88rem',
+        }}
+      >
+        <span>
+          <strong>Submission Mode:</strong>{' '}
+          {submissionMode === 'demo' ? (
+            <span style={{ color: '#d97706', fontWeight: 600 }}>Demo / Preview Mode</span>
+          ) : (
+            <span style={{ color: '#16a34a', fontWeight: 600 }}>Live Backend Mode</span>
+          )}
+        </span>
+        <button
+          type="button"
+          style={{
+            background: '#ffffff',
+            border: '1px solid #cbd5e1',
+            borderRadius: '6px',
+            padding: '0.3rem 0.6rem',
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            fontWeight: 500,
+          }}
+          onClick={() => {
+            setSubmissionMode(submissionMode === 'demo' ? 'live' : 'demo');
+            setFieldErrors({});
+          }}
+        >
+          Switch to {submissionMode === 'demo' ? 'Live Mode' : 'Demo Mode'}
+        </button>
+      </div>
+
+      {submissionMode === 'demo' ? (
+        <div
+          className="trav-form-alert"
+          style={{
+            background: 'rgba(217, 119, 6, 0.1)',
+            border: '1px solid rgba(217, 119, 6, 0.3)',
+            borderRadius: '8px',
+            padding: '0.65rem 0.9rem',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            color: '#92400e',
+          }}
+          data-testid="review-demo-notice"
+        >
+          <strong>ℹ️ Demo Review Notice:</strong> Backend <code>CreateReviewDto</code> strictly requires integer IDs (<code>@IsInt()</code>). In Demo Mode, string IDs (e.g. <code>T001</code>) are accepted without silent coercion and simulated locally.
+        </div>
+      ) : isAlphanumericUser ? (
+        <div
+          className="trav-form-alert"
+          style={{
+            background: 'rgba(220, 38, 38, 0.1)',
+            border: '1px solid rgba(220, 38, 38, 0.3)',
+            borderRadius: '8px',
+            padding: '0.65rem 0.9rem',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            color: '#b91c1c',
+          }}
+          data-testid="review-contract-blocker-notice"
+        >
+          <strong>⚠️ Backend Contract Blocker:</strong> Live backend requires positive integer IDs, but active user ID is &quot;{currentUserId}&quot;. Switch to Demo Mode above to submit without violating backend contracts.
+        </div>
+      ) : null}
+
       {apiError && (
         <div
           className="trav-form-alert trav-form-alert-error"
@@ -101,9 +233,9 @@ export default function ReviewSubmissionForm({
           </label>
           <input
             id="review-user-id"
-            type="number"
+            type={submissionMode === 'demo' ? 'text' : 'number'}
             className={`trav-form-input ${fieldErrors.userId ? 'has-error' : ''}`}
-            placeholder="e.g. 20001"
+            placeholder={submissionMode === 'demo' ? 'e.g. T001 or 20001' : 'e.g. 20001'}
             value={formData.userId}
             onChange={(e) => handleFieldChange('userId', e.target.value)}
             disabled={isSubmitting}
@@ -149,9 +281,9 @@ export default function ReviewSubmissionForm({
         </label>
         <input
           id="review-target-id"
-          type="number"
+          type={submissionMode === 'demo' ? 'text' : 'number'}
           className={`trav-form-input ${fieldErrors.targetId ? 'has-error' : ''}`}
-          placeholder="e.g. 10001"
+          placeholder={submissionMode === 'demo' ? 'e.g. exp-1, hotel-1, or 10001' : 'e.g. 10001'}
           value={formData.targetId}
           onChange={(e) => handleFieldChange('targetId', e.target.value)}
           disabled={isSubmitting}

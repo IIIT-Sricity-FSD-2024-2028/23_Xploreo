@@ -1,0 +1,224 @@
+/* travellerCheckout.css - Modern accessible styling for checkout flow */
+
+.trav-checkout-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  font-family: inherit;
+  color: #1e293b;
+}
+
+.trav-checkout-header {
+  margin-bottom: 2rem;
+}
+
+.trav-checkout-eyebrow {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #2563eb;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.trav-checkout-title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.trav-checkout-subtitle {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.trav-checkout-demo-banner {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.08));
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  border-radius: 10px;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.92rem;
+  color: #92400e;
+}
+
+.trav-checkout-demo-banner strong {
+  color: #78350f;
+}
+
+.trav-checkout-stepper-wrap {
+  margin-bottom: 2.5rem;
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.trav-checkout-content-card {
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  padding: 2rem;
+}
+
+.trav-checkout-section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 1.25rem 0;
+}
+
+.trav-checkout-actions {
+  display: flex;
+  justifyContent: space-between;
+  align-items: center;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.trav-btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trav-btn-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.trav-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trav-btn-primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.trav-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Simulation Outcome Selector */
+.trav-simulation-panel {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.trav-simulation-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.trav-simulation-options {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.trav-simulation-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #475569;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.trav-simulation-label.is-active {
+  border-color: #2563eb;
+  background: rgba(37, 99, 235, 0.05);
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+/* Confirmation / Result Screen */
+.trav-confirmation-view {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.trav-confirm-icon-success {
+  font-size: 3.5rem;
+  color: #16a34a;
+  margin-bottom: 1rem;
+}
+
+.trav-confirm-icon-error {
+  font-size: 3.5rem;
+  color: #dc2626;
+  margin-bottom: 1rem;
+}
+
+.trav-confirm-icon-cancel {
+  font-size: 3.5rem;
+  color: #d97706;
+  margin-bottom: 1rem;
+}
+
+.trav-receipt-card {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem auto;
+  max-width: 520px;
+  text-align: left;
+}
+
+.trav-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.92rem;
+}
+
+.trav-receipt-row:last-child {
+  border-bottom: none;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0f172a;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid #cbd5e1;
+}

@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import TravellerReviewsList from './TravellerReviewsList.jsx';
 import ReviewSubmissionForm from './ReviewSubmissionForm.jsx';
+import { apiRequest } from '../../services/api.js';
 import './travellerReviews.css';
 
 /**
@@ -10,22 +11,65 @@ import './travellerReviews.css';
  * - Review list with filtering and state handling
  * - Modal dialog for writing reviews
  * - Manages submission flow, duplicate prevention, and API error surfacing
- * - Fully decoupled: takes reviews, onFetchReviews, onSubmitReview via props
+ * - Connects to GET /api/reviews and POST /api/reviews in live mode
+ * - Preserves preview mode when useFixtures is true or when fixtures are injected
  */
 export default function TravellerReviewsPage({
-  reviews = [],
-  isLoading = false,
-  error = null,
+  reviews: initialReviews = [],
+  isLoading: initialLoading = false,
+  error: initialError = null,
   onRetry,
   onSubmitReview,
   currentTravellerId = null,
   defaultTargetType = 'guide',
   defaultTargetId = '',
+  useFixtures = false,
 }) {
+  const isPreviewMode = useFixtures || (initialReviews && initialReviews.length > 0);
+  const isControlled = initialLoading || !!initialError;
+  const shouldAutoFetch = !isPreviewMode && !isControlled;
+
+  const [liveReviews, setLiveReviews] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(shouldAutoFetch);
+  const [liveError, setLiveError] = useState(null);
+
+  const reviews = isPreviewMode || isControlled ? initialReviews : liveReviews;
+  const isLoading = isControlled ? initialLoading : (isPreviewMode ? false : liveLoading);
+  const error = isControlled ? initialError : (isPreviewMode ? null : liveError);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccessMsg, setSubmitSuccessMsg] = useState(null);
+
+  const fetchLiveReviews = useCallback(async () => {
+    setLiveLoading(true);
+    setLiveError(null);
+    try {
+      const data = await apiRequest('/reviews');
+      const list = Array.isArray(data) ? data : data?.data || [];
+      setLiveReviews(list);
+    } catch (err) {
+      setLiveError(err?.message || 'Failed to load reviews from server.');
+      setLiveReviews([]);
+    } finally {
+      setLiveLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+    const load = async () => {
+      await Promise.resolve();
+      if (!isCancelled && shouldAutoFetch) {
+        await fetchLiveReviews();
+      }
+    };
+    load();
+    return () => {
+      isCancelled = true;
+    };
+  }, [shouldAutoFetch, fetchLiveReviews]);
 
   const handleOpenModal = () => {
     setSubmitError(null);
@@ -47,8 +91,31 @@ export default function TravellerReviewsPage({
     try {
       if (onSubmitReview) {
         await onSubmitReview(formData);
+      } else if (formData.isDemo || isPreviewMode) {
+        // Explicit Demo Mode / Mock Review Submission
+        const newDemoReview = {
+          id: `demo-rev-${Date.now()}`,
+          userId: formData.userId,
+          targetType: formData.targetType,
+          targetId: formData.targetId,
+          rating: formData.rating,
+          comment: formData.comment,
+          createdAt: new Date().toISOString(),
+          isDemo: true,
+          source: 'mock',
+        };
+        setLiveReviews((prev) => [newDemoReview, ...prev]);
+        setSubmitSuccessMsg(
+          'Review submitted in Demo Mode! (Backend contract blocker: live POST requires integer IDs).'
+        );
+      } else {
+        await apiRequest('/reviews', {
+          method: 'POST',
+          body: formData,
+        });
+        await fetchLiveReviews();
+        setSubmitSuccessMsg('Thank you! Your review has been submitted successfully.');
       }
-      setSubmitSuccessMsg('Thank you! Your review has been submitted successfully.');
       setIsSubmitting(false);
       // Close modal shortly after success message
       setTimeout(() => {
@@ -60,6 +127,14 @@ export default function TravellerReviewsPage({
       setSubmitError(
         err?.message || 'Failed to submit your review. Please try again.'
       );
+    }
+  };
+
+  const handleRetry = () => {
+    if (onRetry) {
+      onRetry();
+    } else if (!isPreviewMode) {
+      fetchLiveReviews();
     }
   };
 
@@ -89,7 +164,7 @@ export default function TravellerReviewsPage({
         reviews={reviews}
         isLoading={isLoading}
         error={error}
-        onRetry={onRetry}
+        onRetry={handleRetry}
         currentTravellerId={currentTravellerId}
         onOpenCreateModal={handleOpenModal}
       />

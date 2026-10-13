@@ -29,32 +29,51 @@ export default function BookingDetailsView({
     );
   }
 
+  const isHotel = !!booking.hotel || booking.bookingType === 'hotel';
+  const isDemo = !!booking.isDemo || booking.source === 'mock';
+
   const {
     id,
     guestName,
     email,
     phone,
     date,
+    checkIn,
+    checkOut,
+    roomType,
+    guests,
     participants,
     totalAmount,
     status = 'CONFIRMED',
     createdAt,
     experience = {},
+    hotel = {},
   } = booking;
+
+  // Compute dates and counts for card formatting
+  const effectiveGuests = isHotel ? (guests || 1) : (participants || 1);
+  const effectiveDate = isHotel
+    ? (checkIn ? `${formatDate(checkIn)} - ${formatDate(checkOut)}` : 'Dates not specified')
+    : date;
 
   // Format booking for reuse with Day 1 BookingSummaryCard
   const cardBooking = {
-    title: experience.title || 'Experience Booking',
-    type: 'experience',
-    location: experience.destination || 'India',
-    date: date,
-    guestCount: participants || 1,
-    imageUrl: experience.image || null,
+    title: isHotel ? (hotel.name || 'Hotel Reservation') : (experience.title || 'Experience Booking'),
+    type: isHotel ? 'hotel' : 'experience',
+    location: isHotel
+      ? (hotel.city ? `${hotel.city}${hotel.address ? ` (${hotel.address})` : ''}` : 'India')
+      : (experience.destination || 'India'),
+    date: effectiveDate,
+    guestCount: effectiveGuests,
+    imageUrl: (isHotel ? hotel.image : experience.image) || null,
   };
 
   const cardPricing = {
-    basePrice: experience.price || (totalAmount ? totalAmount / (participants || 1) : 0),
-    guestCount: participants || 1,
+    basePrice: isHotel
+      ? (hotel.pricePerNight || (totalAmount ? totalAmount / effectiveGuests : 0))
+      : (experience.price || (totalAmount ? totalAmount / effectiveGuests : 0)),
+    guestCount: effectiveGuests,
+    taxesAndFees: isHotel ? (hotel.taxesAndFees || 0) : 0,
     subtotal: totalAmount || 0,
     total: totalAmount || 0,
   };
@@ -72,18 +91,52 @@ export default function BookingDetailsView({
         </div>
       )}
 
+      {isDemo && (
+        <div
+          className="trav-demo-banner"
+          style={{
+            background: 'rgba(217, 119, 6, 0.12)',
+            border: '1px solid rgba(217, 119, 6, 0.35)',
+            borderRadius: '8px',
+            padding: '0.75rem 1rem',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            fontSize: '0.9rem',
+            color: '#b45309',
+          }}
+          data-testid="booking-details-demo-banner"
+        >
+          <span aria-hidden="true">ℹ️</span>
+          <div>
+            <strong>Demo Record (Mock Adapter):</strong> This reservation is rendered via the Mock Hotel Adapter because backend hotel booking retrieval (<code>GET /api/bookings</code>) is not yet available.
+          </div>
+        </div>
+      )}
+
       <div className="trav-details-header">
         <div>
-          <span className="trav-page-eyebrow">Booking Reference</span>
+          <span className="trav-page-eyebrow">
+            {isHotel ? 'Hotel Booking Reference' : 'Booking Reference'}
+          </span>
           <h2 className="trav-card-title" style={{ fontSize: '1.5rem' }}>
             #{id}
           </h2>
           <span className="trav-card-meta">
-            Booked on {formatDate(createdAt || date)}
+            Booked on {formatDate(createdAt || checkIn || date)}
           </span>
         </div>
 
         <div className="trav-card-badge-row">
+          {isDemo && (
+            <span
+              className="trav-status-badge"
+              style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
+            >
+              Demo Data
+            </span>
+          )}
           <span
             className={`trav-status-badge ${
               isConfirmed ? 'is-confirmed' : isCancelled ? 'is-cancelled' : 'is-pending'
@@ -110,12 +163,33 @@ export default function BookingDetailsView({
           <span className="trav-info-val">{phone || 'Not specified'}</span>
         </div>
 
-        <div className="trav-info-block">
-          <span className="trav-info-label">Participants</span>
-          <span className="trav-info-val">
-            {participants} {participants === 1 ? 'Person' : 'People'}
-          </span>
-        </div>
+        {isHotel ? (
+          <>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Room Type</span>
+              <span className="trav-info-val">{roomType || 'Standard'}</span>
+            </div>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Check-in / Check-out</span>
+              <span className="trav-info-val">
+                {formatDate(checkIn)} → {formatDate(checkOut)}
+              </span>
+            </div>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Total Guests</span>
+              <span className="trav-info-val">
+                {effectiveGuests} {effectiveGuests === 1 ? 'Guest' : 'Guests'}
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="trav-info-block">
+            <span className="trav-info-label">Participants</span>
+            <span className="trav-info-val">
+              {participants} {participants === 1 ? 'Person' : 'People'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Reuse Day 1 BookingSummaryCard */}
