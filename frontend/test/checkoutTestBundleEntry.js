@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   BookingSummaryCard,
@@ -16,6 +16,12 @@ import TripLiveTrackerWidget from '../src/pages/Traveller/TripLiveTrackerWidget.
 import TravellerReviewsList from '../src/pages/Traveller/TravellerReviewsList.jsx';
 import ReviewSubmissionForm from '../src/pages/Traveller/ReviewSubmissionForm.jsx';
 import TravellerReviewsPage from '../src/pages/Traveller/TravellerReviewsPage.jsx';
+import BrowseHotelCard from '../src/pages/Traveller/BrowseHotelCard.jsx';
+import BrowseExperienceCard from '../src/pages/Traveller/BrowseExperienceCard.jsx';
+import BrowsePlanCard from '../src/pages/Traveller/BrowsePlanCard.jsx';
+import BrowseGuideCard from '../src/pages/Traveller/BrowseGuideCard.jsx';
+import BrowseItemDetailModal from '../src/pages/Traveller/BrowseItemDetailModal.jsx';
+import TravellerBrowsePage from '../src/pages/Traveller/TravellerBrowsePage.jsx';
 
 export function renderSummaryCard(props) {
   return renderToStaticMarkup(React.createElement(BookingSummaryCard, props));
@@ -65,4 +71,29 @@ export function renderReviewsPage(props) {
   return renderToStaticMarkup(React.createElement(TravellerReviewsPage, props));
 }
 
+export function renderHotelCard(props) {
+  return renderToStaticMarkup(React.createElement(BrowseHotelCard, props));
+}
+
+export function renderExperienceCard(props) {
+  return renderToStaticMarkup(React.createElement(BrowseExperienceCard, props));
+}
+
+export function renderPlanCard(props) {
+  return renderToStaticMarkup(React.createElement(BrowsePlanCard, props));
+}
+
+export function renderGuideCard(props) {
+  return renderToStaticMarkup(React.createElement(BrowseGuideCard, props));
+}
+
+export function renderBrowseModal(props) {
+  return renderToStaticMarkup(React.createElement(BrowseItemDetailModal, props));
+}
+
+export function renderBrowsePage(props) {
+  return renderToStaticMarkup(React.createElement(TravellerBrowsePage, props));
+}
+
 export { DEFAULT_CHECKOUT_STEPS, DEFAULT_PAYMENT_METHODS };
+
