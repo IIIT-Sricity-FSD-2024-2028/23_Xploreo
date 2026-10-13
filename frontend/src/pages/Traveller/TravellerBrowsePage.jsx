@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   BROWSE_CATEGORIES,
   SORT_OPTIONS,
@@ -11,7 +11,12 @@ import {
   DEFAULT_EXPERIENCE_FIXTURES,
   DEFAULT_PLAN_FIXTURES,
   DEFAULT_GUIDE_FIXTURES,
+  mapBackendHotel,
+  mapBackendExperience,
+  mapBackendPlan,
+  mapBackendGuide,
 } from '../../utils/browseUtils.js';
+import { apiRequest } from '../../services/api.js';
 import BrowseHotelCard from './BrowseHotelCard.jsx';
 import BrowseExperienceCard from './BrowseExperienceCard.jsx';
 import BrowsePlanCard from './BrowsePlanCard.jsx';
@@ -27,15 +32,16 @@ import './travellerBrowse.css';
  */
 export default function TravellerBrowsePage({
   initialCategory = BROWSE_CATEGORIES.HOTELS,
-  hotels = DEFAULT_HOTEL_FIXTURES,
-  experiences = DEFAULT_EXPERIENCE_FIXTURES,
-  plans = DEFAULT_PLAN_FIXTURES,
-  guides = DEFAULT_GUIDE_FIXTURES,
-  isLoading = false,
-  error = null,
-  onRetry,
+  hotels: propHotels,
+  experiences: propExperiences,
+  plans: propPlans,
+  guides: propGuides,
+  isLoading: propIsLoading,
+  error: propError,
+  onRetry: propOnRetry,
   onSelectItem,
   onBookItem,
+  useFixtures = false,
 }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +53,103 @@ export default function TravellerBrowsePage({
   const [maxPrice, setMaxPrice] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.DEFAULT);
   const [selectedDetailItem, setSelectedDetailItem] = useState(null);
+
+  // Live state per resource category
+  const [resourceData, setResourceData] = useState({
+    [BROWSE_CATEGORIES.HOTELS]: propHotels ?? [],
+    [BROWSE_CATEGORIES.EXPERIENCES]: propExperiences ?? [],
+    [BROWSE_CATEGORIES.PLANS]: propPlans ?? [],
+    [BROWSE_CATEGORIES.GUIDES]: propGuides ?? [],
+  });
+  const [resourceLoading, setResourceLoading] = useState({
+    [BROWSE_CATEGORIES.HOTELS]: false,
+    [BROWSE_CATEGORIES.EXPERIENCES]: false,
+    [BROWSE_CATEGORIES.PLANS]: false,
+    [BROWSE_CATEGORIES.GUIDES]: false,
+  });
+  const [resourceErrors, setResourceErrors] = useState({
+    [BROWSE_CATEGORIES.HOTELS]: null,
+    [BROWSE_CATEGORIES.EXPERIENCES]: null,
+    [BROWSE_CATEGORIES.PLANS]: null,
+    [BROWSE_CATEGORIES.GUIDES]: null,
+  });
+
+  const fetchCategory = useCallback(async (category) => {
+    setResourceLoading((prev) => ({ ...prev, [category]: true }));
+    setResourceErrors((prev) => ({ ...prev, [category]: null }));
+
+    try {
+      let mapped = [];
+      if (category === BROWSE_CATEGORIES.HOTELS) {
+        const raw = await apiRequest('/hotels');
+        mapped = Array.isArray(raw) ? raw.map(mapBackendHotel).filter(Boolean) : [];
+      } else if (category === BROWSE_CATEGORIES.EXPERIENCES) {
+        const raw = await apiRequest('/experiences');
+        mapped = Array.isArray(raw) ? raw.map(mapBackendExperience).filter(Boolean) : [];
+      } else if (category === BROWSE_CATEGORIES.PLANS) {
+        const res = await apiRequest('/plans');
+        const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
+        mapped = items.map(mapBackendPlan).filter(Boolean);
+      } else if (category === BROWSE_CATEGORIES.GUIDES) {
+        // Backend guide controller is mapped at singular /guide
+        const raw = await apiRequest('/guide');
+        mapped = Array.isArray(raw) ? raw.map(mapBackendGuide).filter(Boolean) : [];
+      }
+
+      setResourceData((prev) => ({ ...prev, [category]: mapped }));
+      setResourceErrors((prev) => ({ ...prev, [category]: null }));
+    } catch (err) {
+      setResourceErrors((prev) => ({
+        ...prev,
+        [category]: err.message || `Failed to load ${category}. Please try again.`,
+      }));
+      // Strict requirement: Never silently present fixture data after an API failure
+      setResourceData((prev) => ({ ...prev, [category]: [] }));
+    } finally {
+      setResourceLoading((prev) => ({ ...prev, [category]: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (useFixtures) return;
+
+    if (propHotels === undefined) fetchCategory(BROWSE_CATEGORIES.HOTELS);
+    if (propExperiences === undefined) fetchCategory(BROWSE_CATEGORIES.EXPERIENCES);
+    if (propPlans === undefined) fetchCategory(BROWSE_CATEGORIES.PLANS);
+    if (propGuides === undefined) fetchCategory(BROWSE_CATEGORIES.GUIDES);
+  }, [useFixtures, propHotels, propExperiences, propPlans, propGuides, fetchCategory]);
+
+  const hotels = useFixtures
+    ? (propHotels ?? DEFAULT_HOTEL_FIXTURES)
+    : (propHotels ?? resourceData[BROWSE_CATEGORIES.HOTELS]);
+
+  const experiences = useFixtures
+    ? (propExperiences ?? DEFAULT_EXPERIENCE_FIXTURES)
+    : (propExperiences ?? resourceData[BROWSE_CATEGORIES.EXPERIENCES]);
+
+  const plans = useFixtures
+    ? (propPlans ?? DEFAULT_PLAN_FIXTURES)
+    : (propPlans ?? resourceData[BROWSE_CATEGORIES.PLANS]);
+
+  const guides = useFixtures
+    ? (propGuides ?? DEFAULT_GUIDE_FIXTURES)
+    : (propGuides ?? resourceData[BROWSE_CATEGORIES.GUIDES]);
+
+  const activeLoading = propIsLoading !== undefined
+    ? propIsLoading
+    : (useFixtures ? false : Boolean(resourceLoading[activeCategory]));
+
+  const activeError = propError !== undefined
+    ? propError
+    : (useFixtures ? null : resourceErrors[activeCategory]);
+
+  const handleRetryActive = () => {
+    if (typeof propOnRetry === 'function') {
+      propOnRetry(activeCategory);
+    } else if (!useFixtures) {
+      fetchCategory(activeCategory);
+    }
+  };
 
   // Validate search input query on change
   const handleQueryChange = (e) => {
@@ -331,7 +434,7 @@ export default function TravellerBrowsePage({
       {/* Main Content States */}
       <main className="trav-browse-main-content">
         {/* Loading State */}
-        {isLoading && (
+        {activeLoading && (
           <div className="trav-browse-skeleton-grid" aria-busy="true" aria-label="Loading catalog results">
             {[1, 2, 3, 4].map((n) => (
               <div key={n} className="trav-browse-skeleton-card">
@@ -345,25 +448,23 @@ export default function TravellerBrowsePage({
         )}
 
         {/* Error State */}
-        {!isLoading && error && (
+        {!activeLoading && activeError && (
           <div className="trav-browse-error-state" role="alert">
             <span className="trav-browse-error-icon" aria-hidden="true">⚠️</span>
             <h3>Unable to load {activeCategory}</h3>
-            <p>{error}</p>
-            {onRetry && (
-              <button
-                type="button"
-                className="trav-browse-btn trav-browse-btn-primary"
-                onClick={onRetry}
-              >
-                Try Again
-              </button>
-            )}
+            <p>{activeError}</p>
+            <button
+              type="button"
+              className="trav-browse-btn trav-browse-btn-primary"
+              onClick={handleRetryActive}
+            >
+              Try Again
+            </button>
           </div>
         )}
 
         {/* Empty State */}
-        {!isLoading && !error && currentCount === 0 && (
+        {!activeLoading && !activeError && currentCount === 0 && (
           <div className="trav-browse-empty-state" data-testid="browse-empty-state">
             <span className="trav-browse-empty-icon" aria-hidden="true">🔍</span>
             <h3>No matching {activeCategory} found</h3>
@@ -381,7 +482,7 @@ export default function TravellerBrowsePage({
         )}
 
         {/* Populated Grid */}
-        {!isLoading && !error && currentCount > 0 && (
+        {!activeLoading && !activeError && currentCount > 0 && (
           <div className="trav-browse-grid" data-testid="browse-grid">
             {activeCategory === BROWSE_CATEGORIES.HOTELS &&
               filteredHotels.map((hotel) => (

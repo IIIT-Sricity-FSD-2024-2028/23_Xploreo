@@ -1,4 +1,4 @@
-﻿/**
+/**
  * browseUtils.js
  * Utility functions, filters, sorting algorithms, and standard fixtures
  * conforming to backend contracts (HotelRecord, ExperienceRecord, PlanRecord, Guide).
@@ -365,3 +365,108 @@ export const DEFAULT_GUIDE_FIXTURES = [
     certifications: ['Archaeological Heritage Expert', 'Official City Tour Guide'],
   },
 ];
+
+/**
+ * Maps raw backend Hotel entity/DTO to frontend BrowseHotelCard props.
+ * @param {object} raw
+ * @returns {object|null}
+ */
+export function mapBackendHotel(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || `hotel-${Math.random().toString(36).slice(2, 9)}`,
+    name: raw.name || 'Unnamed Hotel',
+    city: raw.city || '',
+    location: raw.location || raw.city || '',
+    description: raw.description || '',
+    stars: typeof raw.stars === 'number' ? raw.stars : (Number(raw.stars) || 3),
+    rating: typeof raw.rating === 'number' ? raw.rating : (Number(raw.rating) || 0),
+    reviewCount: typeof raw.reviewCount === 'number' ? raw.reviewCount : (Number(raw.reviewCount) || 0),
+    pricePerNight: typeof raw.pricePerNight === 'number' ? raw.pricePerNight : (Number(raw.pricePerNight) || 0),
+    taxesAndFees: typeof raw.taxesAndFees === 'number' ? raw.taxesAndFees : (Number(raw.taxesAndFees) || 0),
+    image: raw.image || '',
+    amenities: Array.isArray(raw.amenities) ? raw.amenities : [],
+    status: raw.status || 'active',
+  };
+}
+
+/**
+ * Maps raw backend Experience entity/DTO to frontend BrowseExperienceCard props.
+ * @param {object} raw
+ * @returns {object|null}
+ */
+export function mapBackendExperience(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  let nextSlot = raw.nextSlot;
+  if (!nextSlot && Array.isArray(raw.slots) && raw.slots[0]) {
+    nextSlot = `${raw.slots[0].date} ${raw.slots[0].time || ''}`.trim();
+  }
+  return {
+    id: raw.id || `exp-${Math.random().toString(36).slice(2, 9)}`,
+    partnerId: raw.partnerId || '',
+    title: raw.title || 'Unnamed Experience',
+    description: raw.description || '',
+    destination: raw.destination || '',
+    category: (raw.category || 'adventure').toLowerCase(),
+    availability: raw.availability || 'available',
+    price: typeof raw.price === 'number' ? raw.price : (Number(raw.price) || 0),
+    durationHours: typeof raw.durationHours === 'number' ? raw.durationHours : (Number(raw.durationHours) || 2),
+    capacity: typeof raw.capacity === 'number' ? raw.capacity : (Number(raw.capacity) || 10),
+    booked: typeof raw.booked === 'number' ? raw.booked : (Number(raw.booked) || 0),
+    image: raw.image || '',
+    nextSlot: nextSlot || 'Available daily',
+    slots: Array.isArray(raw.slots) ? raw.slots : [],
+  };
+}
+
+/**
+ * Maps raw backend Plan entity/DTO to frontend BrowsePlanCard props.
+ * Flights are strictly excluded per project requirements.
+ * @param {object} raw
+ * @returns {object|null}
+ */
+export function mapBackendPlan(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    id: raw.id || `plan-${Math.random().toString(36).slice(2, 9)}`,
+    title: raw.title || 'Curated Tour Package',
+    description: raw.description || '',
+    originCity: raw.originCity || raw.from || '',
+    destination: raw.destination || raw.to || '',
+    durationNights: typeof raw.durationNights === 'number'
+      ? raw.durationNights
+      : (Number(raw.duration || raw.durationNights) || 3),
+    pricePerPerson: typeof raw.pricePerPerson === 'number'
+      ? raw.pricePerPerson
+      : (Number(raw.price || raw.pricePerPerson) || 0),
+    hotelStars: typeof raw.hotelStars === 'number' ? raw.hotelStars : (Number(raw.hotelStars) || 3),
+    includesFlight: Boolean(raw.includesFlight),
+    status: raw.status || 'available',
+    image: raw.image || '',
+    tags: Array.isArray(raw.tags) ? raw.tags : [],
+    itinerary: raw.itinerary || null,
+  };
+}
+
+/**
+ * Maps raw backend Guide entity/DTO to frontend BrowseGuideCard props.
+ * @param {object} raw
+ * @returns {object|null}
+ */
+export function mapBackendGuide(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  return {
+    userId: raw.userId || raw.id || `guide-${Math.random().toString(36).slice(2, 9)}`,
+    fname: raw.fname || 'Local',
+    lname: raw.lname || '',
+    email: raw.email || '',
+    phone: raw.phone || '',
+    location: raw.location || 'Region',
+    prof_title: raw.prof_title || 'Certified Tour Guide',
+    years_exp: typeof raw.years_exp === 'number' ? raw.years_exp : (Number(raw.years_exp) || 1),
+    bio: raw.bio || '',
+    lang_spoken: Array.isArray(raw.lang_spoken) ? raw.lang_spoken : [],
+    certifications: Array.isArray(raw.certifications) ? raw.certifications : [],
+  };
+}
+
