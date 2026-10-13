@@ -1,0 +1,430 @@
+/* ============================================================
+   travellerSupportTicket.css — Dedicated Stylesheet
+   Scope: .trav-ticket-* namespace
+   Strict isolation: zero collisions with other M5 stylesheets
+   ============================================================ */
+
+.trav-ticket-container {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  font-family: inherit;
+  color: #1e293b;
+}
+
+/* Header & Breadcrumb */
+.trav-ticket-header {
+  margin-bottom: 1.5rem;
+}
+
+.trav-ticket-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #475569;
+  background-color: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-bottom: 1rem;
+}
+
+.trav-ticket-back-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
+.trav-ticket-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.375rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.trav-ticket-subtitle {
+  font-size: 0.9375rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Informational Banner */
+.trav-ticket-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 0.875rem 1.125rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  line-height: 1.45;
+}
+
+.trav-ticket-notice-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
+/* Main Form Card */
+.trav-ticket-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+.trav-ticket-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Form Group */
+.trav-ticket-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.trav-ticket-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.trav-ticket-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.trav-ticket-required {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.trav-ticket-counter {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
+}
+
+.trav-ticket-counter--limit {
+  color: #ea580c;
+}
+
+.trav-ticket-counter--exceeded {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Inputs, Selects, Textareas */
+.trav-ticket-input,
+.trav-ticket-select,
+.trav-ticket-textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  font-family: inherit;
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.trav-ticket-input:focus,
+.trav-ticket-select:focus,
+.trav-ticket-textarea:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.trav-ticket-input--error,
+.trav-ticket-select--error,
+.trav-ticket-textarea--error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.trav-ticket-input--error:focus,
+.trav-ticket-textarea--error:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+
+.trav-ticket-textarea {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* Two-column Row */
+.trav-ticket-grid-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 640px) {
+  .trav-ticket-grid-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Priority Pills */
+.trav-ticket-priority-options {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.trav-ticket-priority-btn {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.trav-ticket-priority-btn:hover {
+  background-color: #f8fafc;
+}
+
+.trav-ticket-priority-btn--low.trav-ticket-priority-btn--selected {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+}
+
+.trav-ticket-priority-btn--medium.trav-ticket-priority-btn--selected {
+  background-color: #fefce8;
+  border-color: #eab308;
+  color: #a16207;
+}
+
+.trav-ticket-priority-btn--high.trav-ticket-priority-btn--selected {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+  color: #b91c1c;
+}
+
+/* Validation Feedback */
+.trav-ticket-error-msg {
+  font-size: 0.75rem;
+  color: #dc2626;
+  margin-top: 0.25rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.trav-ticket-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+/* Error Banner */
+.trav-ticket-alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 0.875rem 1rem;
+  color: #991b1b;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+}
+
+.trav-ticket-alert-error-icon {
+  font-size: 1.125rem;
+  flex-shrink: 0;
+}
+
+/* Form Actions */
+.trav-ticket-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.trav-ticket-cancel-btn {
+  padding: 0.625rem 1.125rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trav-ticket-cancel-btn:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.trav-ticket-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffffff;
+  background-color: #2563eb;
+  border: 1px solid #1d4ed8;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.trav-ticket-submit-btn:hover:not(:disabled) {
+  background-color: #1d4ed8;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.25);
+}
+
+.trav-ticket-submit-btn:disabled,
+.trav-ticket-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.trav-ticket-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #ffffff;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: trav-ticket-spin 0.6s linear infinite;
+}
+
+@keyframes trav-ticket-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Success Card */
+.trav-ticket-success-card {
+  background: #ffffff;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.trav-ticket-success-icon {
+  width: 52px;
+  height: 52px;
+  background-color: #dcfce7;
+  color: #16a34a;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.trav-ticket-success-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.trav-ticket-success-desc {
+  font-size: 0.9375rem;
+  color: #64748b;
+  margin: 0 0 1.5rem 0;
+  line-height: 1.5;
+}
+
+.trav-ticket-details-box {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.75rem;
+  text-align: left;
+}
+
+.trav-ticket-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.trav-ticket-detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.trav-ticket-detail-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.trav-ticket-detail-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.trav-ticket-badge-open {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-radius: 4px;
+}
+
+.trav-ticket-success-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}

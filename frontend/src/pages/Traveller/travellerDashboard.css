@@ -1,0 +1,311 @@
+/* ============================================================
+   TravellerDashboard — Dedicated Stylesheet
+   Scope: .trav-dash-* namespace — safe, no collision with
+   travellerBrowse, travellerBookings, travellerTrips, or
+   travellerReviews stylesheets.
+   ============================================================ */
+
+/* ── Root Shell ──────────────────────────────────────────── */
+.trav-dash-root {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 1.5rem 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, sans-serif;
+  color: #0f172a;
+  box-sizing: border-box;
+}
+
+/* ── Dashboard Header ────────────────────────────────────── */
+.trav-dash-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f2744 100%);
+  border-radius: 1rem;
+  padding: 1.75rem 2rem;
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(14, 30, 54, 0.25);
+}
+
+.trav-dash-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.trav-dash-avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45);
+}
+
+.trav-dash-greeting {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.35rem 0;
+  color: #ffffff;
+}
+
+.trav-dash-meta {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.trav-dash-id {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  color: #bfdbfe;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.trav-dash-badge {
+  background: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+  border: 1px solid rgba(37, 99, 235, 0.4);
+  border-radius: 9999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Stats row */
+.trav-dash-stats-row {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.trav-dash-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.trav-dash-stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.trav-dash-stat-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 0.3rem;
+}
+
+/* ── Navigation Grid ─────────────────────────────────────── */
+.trav-dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+/* ── Nav Card ────────────────────────────────────────────── */
+.trav-dash-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.875rem;
+  padding: 1.5rem 1.25rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.trav-dash-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--accent, #2563eb);
+  border-radius: 0.875rem 0 0 0.875rem;
+  transition: width 0.2s ease;
+}
+
+.trav-dash-card:hover:not(.trav-dash-card--disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: var(--accent, #2563eb);
+}
+
+.trav-dash-card:hover:not(.trav-dash-card--disabled)::before {
+  width: 6px;
+}
+
+.trav-dash-card:focus-visible {
+  outline: 3px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Disabled (coming soon) card */
+.trav-dash-card--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f8fafc;
+}
+
+.trav-dash-card-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 0.1rem;
+}
+
+.trav-dash-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.trav-dash-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.35rem 0;
+  line-height: 1.3;
+}
+
+.trav-dash-card-desc {
+  font-size: 0.825rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.trav-dash-card-arrow {
+  font-size: 1.25rem;
+  color: var(--accent, #2563eb);
+  font-weight: 700;
+  align-self: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.trav-dash-card:hover:not(.trav-dash-card--disabled) .trav-dash-card-arrow {
+  transform: translateX(4px);
+}
+
+.trav-dash-card-soon {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  align-self: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Info Strip ──────────────────────────────────────────── */
+.trav-dash-info-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 0.5rem;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.85rem;
+  color: #0369a1;
+  line-height: 1.5;
+}
+
+/* ── Section Wrapper (non-home sections) ─────────────────── */
+.trav-dash-section-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ── Back Button ─────────────────────────────────────────── */
+.trav-dash-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.trav-dash-back-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.trav-dash-back-btn:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* ── Responsive Adjustments ──────────────────────────────── */
+@media (max-width: 640px) {
+  .trav-dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .trav-dash-stats-row {
+    gap: 1.25rem;
+  }
+
+  .trav-dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 400px) {
+  .trav-dash-header-inner {
+    gap: 0.75rem;
+  }
+
+  .trav-dash-greeting {
+    font-size: 1.25rem;
+  }
+}
