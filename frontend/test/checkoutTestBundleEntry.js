@@ -95,5 +95,53 @@ export function renderBrowsePage(props) {
   return renderToStaticMarkup(React.createElement(TravellerBrowsePage, props));
 }
 
-export { DEFAULT_CHECKOUT_STEPS, DEFAULT_PAYMENT_METHODS };
+import TravellerDashboard from '../src/pages/Traveller/TravellerDashboard.jsx';
+
+export function renderDashboard(props) {
+  return renderToStaticMarkup(React.createElement(TravellerDashboard, props));
+}
+
+import TravellerSupportTicketForm from '../src/pages/Traveller/TravellerSupportTicketForm.jsx';
+import {
+  validateTicketPayload,
+  TICKET_PRIORITIES,
+  COMMON_CATEGORIES,
+} from '../src/utils/ticketUtils.js';
+
+export function renderSupportTicketForm(props) {
+  return renderToStaticMarkup(React.createElement(TravellerSupportTicketForm, props));
+}
+
+import ProtectedRoute from '../src/routes/ProtectedRoutes.jsx';
+import { MemoryRouter } from 'react-router-dom';
+
+export function renderWithRouter(ui, initialEntries = ['/']) {
+  return renderToStaticMarkup(
+    React.createElement(MemoryRouter, { initialEntries }, ui)
+  );
+}
+
+import TravellerCheckoutPage from '../src/pages/Traveller/TravellerCheckoutPage.jsx';
+
+export function renderCheckoutPage(props, initialEntries = ['/Traveller/checkout']) {
+  return renderToStaticMarkup(
+    React.createElement(
+      MemoryRouter,
+      { initialEntries },
+      React.createElement(TravellerCheckoutPage, props)
+    )
+  );
+}
+
+export {
+  ProtectedRoute,
+  MemoryRouter,
+  DEFAULT_CHECKOUT_STEPS,
+  DEFAULT_PAYMENT_METHODS,
+  validateTicketPayload,
+  TICKET_PRIORITIES,
+  COMMON_CATEGORIES,
+  TravellerCheckoutPage,
+};
+
 

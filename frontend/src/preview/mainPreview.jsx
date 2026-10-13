@@ -28,6 +28,9 @@ import ReviewSubmissionForm from '../pages/Traveller/ReviewSubmissionForm.jsx';
 // Day 5 Traveller Browse & Search Components
 import TravellerBrowsePage from '../pages/Traveller/TravellerBrowsePage.jsx';
 
+// Day 6A Traveller Dashboard Shell
+import TravellerDashboard from '../pages/Traveller/TravellerDashboard.jsx';
+
 // Sample Mock Data
 import {
   sampleBooking,
@@ -74,7 +77,7 @@ function MainPreviewApp() {
           <div>
             <h1 className="m5-preview-title">Xploreo M5 — Traveller & Checkout Interactive Showcase</h1>
             <p className="m5-preview-subtitle">
-              Visual verification of Days 1–4 modules without modifying production routing or auth infrastructure.
+              Visual verification of Days 1–6 modules without modifying production routing or auth infrastructure.
             </p>
           </div>
         </div>
@@ -114,6 +117,13 @@ function MainPreviewApp() {
             onClick={() => setActiveTab('day5')}
           >
             <span>🔍</span> Day 5: Browse & Search
+          </button>
+          <button
+            type="button"
+            className={`m5-preview-nav-btn ${activeTab === 'dashboard' ? 'is-active' : ''}`}
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <span>🏠</span> Day 6A: Dashboard
           </button>
         </nav>
       </header>
@@ -474,11 +484,70 @@ function MainPreviewApp() {
               </div>
 
               <TravellerBrowsePage
+                useFixtures={true}
                 onSelectItem={(item, category) => {
                   logAction(`Selected ${category} item for details`, item.name || item.title || item.fname);
                 }}
                 onBookItem={(item, category) => {
                   logAction(`Action clicked: Book/Select ${category}`, item.name || item.title || item.fname);
+                }}
+              />
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* DAY 6A: TRAVELLER DASHBOARD SHELL                            */}
+          {/* ============================================================ */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <div className="m5-preview-section-header">
+                <h2 className="m5-preview-section-title">Day 6A: Traveller Dashboard Shell</h2>
+                <p className="m5-preview-section-desc">
+                  Unified navigation hub for Browse, Bookings, Trips, Reviews, and Support Tickets.
+                  Fixture data only — no production routing or live API calls.
+                </p>
+              </div>
+
+              <TravellerDashboard
+                bookings={sampleBookingsList}
+                trips={sampleTripsList}
+                reviews={reviewsState}
+                currentTravellerId="trav-usr-20001"
+                logAction={logAction}
+                onSubmitReview={async (newReview) => {
+                  logAction('Dashboard: review submitted', newReview);
+                  const created = {
+                    ...newReview,
+                    id: reviewsState.length + 1,
+                    createdAt: new Date().toISOString(),
+                  };
+                  setReviewsState([created, ...reviewsState]);
+                }}
+                onPollRefresh={async () => {
+                  logAction('Dashboard: trip poll refresh triggered');
+                }}
+                onSelectItem={(item, category) => {
+                  logAction(`Dashboard: browse selected ${category}`, item?.name || item?.title);
+                }}
+                onBookItem={(item, category) => {
+                  logAction(`Dashboard: browse book ${category}`, item?.name || item?.title);
+                }}
+                onSubmitTicket={async (ticketPayload) => {
+                  logAction('Dashboard: support ticket submitted', ticketPayload);
+                  // Preview mock confirmation conforming strictly to backend Ticket entity
+                  const createdTicket = {
+                    id: `tick-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+                    travellerId: 'trav-usr-20001',
+                    travellerName: 'trav-usr-20001',
+                    subject: ticketPayload.subject,
+                    message: ticketPayload.message,
+                    category: ticketPayload.category || 'General',
+                    priority: ticketPayload.priority || 'MEDIUM',
+                    status: 'OPEN',
+                    createdAt: new Date().toISOString(),
+                  };
+                  logAction('Dashboard: ticket confirmed by mock server', createdTicket.id);
+                  return createdTicket;
                 }}
               />
             </div>
