@@ -30,6 +30,7 @@
   align-items: center;
   position: absolute;
   left: 20px;
+  text-decoration: none;
 }
 
 .navbar-logo img {
@@ -72,4 +73,31 @@
 
 .navbar-links a:hover {
     color: #0a0a0a;
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    width: calc(100% - 24px);
+    margin: 8px 12px;
+    height: auto;
+    min-height: 52px;
+    padding: 10px 14px;
+    flex-direction: column;
+    gap: 8px;
+    border-radius: 16px;
+  }
+
+  .navbar-logo {
+    position: static;
+  }
+
+  .navbar-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .navbar-links a {
+    font-size: 13.5px;
+  }
 }
