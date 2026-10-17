@@ -91,7 +91,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const rawUsername = dto.username?.trim();
     const user =
-      this.authRepository.findByUsername(rawUsername) ??
+      this.authRepository.findByUsername(rawUsername) ||
       this.authRepository.findByEmail(rawUsername);
     if (!user || !(await this.matchesPassword(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid username or password');
