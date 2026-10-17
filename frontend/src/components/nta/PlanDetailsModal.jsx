@@ -56,7 +56,15 @@ export default function PlanDetailsModal({
 
   const stars = Number(plan.hotelStars || 4);
   const starsDisplay = '★'.repeat(Math.min(5, Math.max(1, stars))) + '☆'.repeat(Math.max(0, 5 - stars));
-  const isAvailable = (plan.status || 'available').toLowerCase() === 'available';
+  const planStatus = (plan.status || 'available').toLowerCase();
+  const statusLabel =
+    planStatus === 'sold_out'
+      ? 'Sold Out'
+      : planStatus === 'draft'
+      ? 'Draft'
+      : planStatus === 'unavailable'
+      ? 'Unavailable'
+      : 'Available';
 
   // Extract itinerary sections
   const day1Hotel = plan.itinerary?.day1?.hotel;
@@ -80,9 +88,9 @@ export default function PlanDetailsModal({
         <div className="nta-modal-header">
           <div className="nta-modal-header-text">
             <div className="nta-modal-header-badges">
-              <span className={`nta-plan-status-badge ${isAvailable ? 'available' : 'unavailable'}`}>
+              <span className={`nta-plan-status-badge ${planStatus}`}>
                 <span className="nta-plan-status-dot" />
-                {isAvailable ? 'Available' : 'Unavailable'}
+                {statusLabel}
               </span>
               <span className="nta-modal-region-badge">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

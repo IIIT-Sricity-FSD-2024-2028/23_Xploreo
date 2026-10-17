@@ -5,10 +5,6 @@
 import { request } from '@/foundation';
 import { ApiError } from './ApiError.js';
 
-/**
- * Backend base URL. Defaults to localhost:3000 if not specified in env.
- */
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000/api';
 const listOf = (response) => (Array.isArray(response) ? response : response?.items ?? response?.data ?? []);
 
 export { ApiError };

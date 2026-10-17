@@ -158,6 +158,10 @@ export function filterPlans(plans = [], filters = {}) {
 
   let result = plans.filter((p) => {
     if (!p) return false;
+    const pStatus = (p.status || 'available').toLowerCase();
+    if (pStatus === 'draft' || pStatus === 'unpublished' || pStatus === 'unavailable') {
+      return false;
+    }
     const textMatch =
       !q ||
       (p.title && p.title.toLowerCase().includes(q)) ||

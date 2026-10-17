@@ -6,7 +6,7 @@ export class Plan {
   description!: string;
   originCity!: string;
   destination!: string;
-  status!: 'available' | 'unavailable';
+  status!: 'available' | 'draft' | 'sold_out' | 'unavailable';
   durationNights!: number;
   pricePerPerson!: number;
   hotelStars!: number;
