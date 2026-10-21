@@ -10,9 +10,14 @@ import { HotelsRepository } from '../hotels/hotels.repository';
 import { HotelsService } from '../hotels/hotels.service';
 import { Role } from '../auth/entities/auth.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { BookingsRepository } from './bookings.repository';
 import { BookingStatus } from './entities/booking.entity';
 import { withTaxes } from '../common/utils/pricing';
+import { RefundService } from '../common/refund/refund.service';
+import { RefundStatus } from '../common/refund/refund.types';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -23,6 +28,8 @@ export class BookingsService {
     private readonly hotelsRepository: HotelsRepository,
     @Inject(forwardRef(() => HotelsService))
     private readonly hotelsService: HotelsService,
+    private readonly refundService: RefundService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   create(travellerId: string | undefined, dto: CreateBookingDto) {
@@ -154,12 +161,18 @@ export class BookingsService {
     return { ...booking, hotel };
   }
 
-  cancel(id: string, userId: string | undefined, role: string | undefined) {
+  cancel(
+    id: string,
+    userId: string | undefined,
+    role: string | undefined,
+    dto?: CancelBookingDto,
+  ) {
     const booking = this.bookingsRepository.findRawById(id);
     if (!booking) throw new NotFoundException(`Booking ${id} not found`);
 
+    const hotel = this.hotelsRepository.findById(booking.hotelId);
+
     if (role === Role.HOTEL) {
-      const hotel = this.hotelsRepository.findById(booking.hotelId);
       if (hotel?.partnerId !== userId) {
         throw new ForbiddenException('This booking belongs to another hotel partner.');
       }
@@ -175,7 +188,7 @@ export class BookingsService {
       if (booking.status === BookingStatus.CHECKED_IN || booking.status === BookingStatus.CHECKED_OUT) {
         throw new BadRequestException(`Cannot cancel a booking that is ${booking.status}.`);
       }
-    } else {
+    } else if (role !== Role.SUPERADMIN) {
       throw new ForbiddenException('Forbidden.');
     }
 
@@ -183,8 +196,143 @@ export class BookingsService {
       throw new BadRequestException('Booking is already cancelled.');
     }
 
-    const updated = this.bookingsRepository.setStatus(id, BookingStatus.CANCELLED);
+    // 1. Evaluate hotel cancellation policy
+    let policyText = 'Free cancellation up to 24 hours before check-in.';
+    if (hotel?.partnerId && this.hotelsService) {
+      try {
+        const partnerProfile = this.hotelsService.getPartnerProfile(hotel.partnerId);
+        if (partnerProfile?.cancellationPolicy) {
+          policyText = partnerProfile.cancellationPolicy;
+        }
+      } catch {
+        // Fallback to default policy
+      }
+    }
+
+    const isPartnerCancellation = role === Role.HOTEL;
+    const calc = this.refundService.calculateHotelRefund(
+      booking.totalAmount,
+      booking.checkIn,
+      policyText,
+      isPartnerCancellation,
+    );
+
+    // 2. Process honest simulated refund
+    const refundResult = this.refundService.processSimulatedRefund(
+      calc,
+      booking.refundStatus,
+      dto?.simulatedOutcome,
+    );
+
+    // 3. Persist cancellation and refund details
+    const reason =
+      dto?.reason?.trim() ||
+      (isPartnerCancellation ? 'Reservation cancelled by hotel partner' : 'Cancelled by guest');
+
+    const updated = this.bookingsRepository.updateCancellation(id, {
+      status: BookingStatus.CANCELLED,
+      cancelledAt: new Date().toISOString(),
+      cancellationReason: reason,
+      refundEligibility: refundResult.refundEligibility,
+      refundAmount: refundResult.refundAmount,
+      refundStatus: refundResult.refundStatus,
+      refundReference: refundResult.refundReference,
+      refundedAt: refundResult.refundedAt,
+      cancellationPolicyNote: refundResult.policyNote,
+    });
+
     this.refreshAvailability(booking.hotelId, booking.roomType);
+
+    // 4. Send traveller in-app notifications
+    if (booking.travellerId) {
+      // Notification 1: Cancellation confirmation with actual refund status
+      this.notificationsService.create({
+        userId: booking.travellerId,
+        title: 'Booking Cancelled',
+        message: `Your booking #${booking.id} has been cancelled successfully. Refund status: ${refundResult.refundStatus}.`,
+        type: NotificationType.BOOKING_CANCELLED,
+        bookingId: booking.id,
+        bookingType: 'hotel',
+        refundStatus: refundResult.refundStatus,
+        refundAmount: refundResult.refundAmount,
+      });
+
+      // Notification 2: Refund outcome confirmation
+      if (refundResult.refundStatus === RefundStatus.SUCCESS) {
+        this.notificationsService.create({
+          userId: booking.travellerId,
+          title: 'Refund Processed',
+          message: `Your refund of ₹${refundResult.refundAmount} for booking #${booking.id} has been processed successfully.`,
+          type: NotificationType.REFUND_PROCESSED,
+          bookingId: booking.id,
+          bookingType: 'hotel',
+          refundStatus: RefundStatus.SUCCESS,
+          refundAmount: refundResult.refundAmount,
+        });
+      } else if (refundResult.refundStatus === RefundStatus.FAILED) {
+        this.notificationsService.create({
+          userId: booking.travellerId,
+          title: 'Refund Processing Failed',
+          message: `Your refund of ₹${refundResult.refundAmount} for booking #${booking.id} could not be processed automatically. Please submit a support ticket for assistance.`,
+          type: NotificationType.REFUND_FAILED,
+          bookingId: booking.id,
+          bookingType: 'hotel',
+          refundStatus: RefundStatus.FAILED,
+          refundAmount: refundResult.refundAmount,
+        });
+      }
+    }
+
+    return updated;
+  }
+
+  retryRefund(id: string, userId: string | undefined, role: string | undefined) {
+    const booking = this.bookingsRepository.findRawById(id);
+    if (!booking) throw new NotFoundException(`Booking ${id} not found`);
+
+    if (role === Role.TRAVELLER && booking.travellerId !== userId) {
+      throw new ForbiddenException('You can only retry refunds for your own bookings.');
+    }
+
+    if (booking.status !== BookingStatus.CANCELLED) {
+      throw new BadRequestException('Only cancelled bookings can have refunds processed.');
+    }
+
+    if (booking.refundStatus === RefundStatus.SUCCESS) {
+      throw new BadRequestException('Refund has already been processed successfully.');
+    }
+
+    if (booking.refundEligibility !== 'ELIGIBLE' || !booking.refundAmount) {
+      throw new BadRequestException('This booking is not eligible for a refund under the cancellation policy.');
+    }
+
+    const calc = {
+      isEligible: true,
+      refundAmount: booking.refundAmount,
+      policyNote: booking.cancellationPolicyNote || 'Eligible refund retry',
+    };
+
+    const refundResult = this.refundService.processSimulatedRefund(calc, booking.refundStatus, 'SUCCESS');
+
+    const updated = this.bookingsRepository.updateCancellation(id, {
+      refundStatus: refundResult.refundStatus,
+      refundReference: refundResult.refundReference,
+      refundedAt: refundResult.refundedAt,
+    });
+
+    if (booking.travellerId && refundResult.refundStatus === RefundStatus.SUCCESS) {
+      this.notificationsService.create({
+        userId: booking.travellerId,
+        title: 'Refund Processed',
+        message: `Your refund of ₹${refundResult.refundAmount} for booking #${booking.id} has been processed successfully.`,
+        type: NotificationType.REFUND_PROCESSED,
+        bookingId: booking.id,
+        bookingType: 'hotel',
+        refundStatus: RefundStatus.SUCCESS,
+        refundAmount: refundResult.refundAmount,
+      });
+    }
+
     return updated;
   }
 

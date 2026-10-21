@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
 import { getBooking, cancelBooking, getHotel } from '@/services/hotels.api.js';
+import CancellationModal from '@/components/checkout/CancellationModal.jsx';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
+import '@/pages/Traveller/travellerBookings.css';
 
 export default function BookingConfirmationPage() {
   const { id } = useParams();
@@ -13,8 +15,9 @@ export default function BookingConfirmationPage() {
   const [loading, setLoading] = useState(!location.state?.booking);
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+
 
   const loadBookingData = async () => {
     if (!id || id.trim() === '') {
@@ -66,22 +69,26 @@ export default function BookingConfirmationPage() {
     }
   };
 
-  const handleCancelBooking = async () => {
-    if (!window.confirm('Are you sure you want to cancel this booking reservation?')) {
-      return;
-    }
-
-    setCancelling(true);
-    try {
-      await cancelBooking(booking.id || id);
-      setBooking((prev) => ({ ...prev, status: 'CANCELLED' }));
-      setCancelSuccess(true);
-    } catch (err) {
-      alert(err?.message || 'Failed to cancel booking.');
-    } finally {
-      setCancelling(false);
-    }
+  const handleCancelBooking = () => {
+    setShowCancelModal(true);
   };
+
+  const handleCancelSuccess = (result) => {
+    if (result?.booking) {
+      setBooking(result.booking);
+    } else {
+      setBooking((prev) => ({
+        ...prev,
+        status: 'CANCELLED',
+        refundStatus: result?.refundStatus,
+        refundAmount: result?.refundAmount,
+        refundReference: result?.refundReference,
+        cancellationPolicyNote: result?.cancellationPolicyNote,
+      }));
+    }
+    setCancelSuccess(true);
+  };
+
 
   const handlePrint = () => {
     window.print();
@@ -258,6 +265,52 @@ export default function BookingConfirmationPage() {
               </div>
             )}
 
+            {isCancelled && (
+              <div className="trav-cancellation-card" style={{ marginBottom: '24px' }}>
+                <div className="trav-cancellation-header">
+                  <h3 className="trav-cancellation-title">
+                    <span>✕</span> Booking Cancelled
+                  </h3>
+                  {booking.refundStatus && (
+                    <span className={`trav-refund-pill is-${booking.refundStatus.toLowerCase()}`}>
+                      Refund: {booking.refundStatus} {booking.refundAmount ? `(₹${booking.refundAmount})` : ''}
+                    </span>
+                  )}
+                </div>
+
+                <div className="trav-cancellation-grid">
+                  <div className="trav-info-block">
+                    <span className="trav-info-label">Cancellation Status</span>
+                    <strong style={{ color: '#dc2626' }}>Cancelled</strong>
+                  </div>
+                  <div className="trav-info-block">
+                    <span className="trav-info-label">Refund Reference</span>
+                    <code style={{ fontSize: '0.9rem', color: '#0f172a' }}>{booking.refundReference || 'RF-SIM-PENDING'}</code>
+                  </div>
+                  <div className="trav-info-block">
+                    <span className="trav-info-label">Refund Amount</span>
+                    <strong style={{ color: '#16a34a', fontSize: '1.1rem' }}>
+                      {booking.refundAmount ? `₹${booking.refundAmount}` : (booking.refundStatus === 'NOT_ELIGIBLE' ? '₹0 (Ineligible)' : '₹0')}
+                    </strong>
+                  </div>
+                </div>
+
+                {booking.cancellationPolicyNote && (
+                  <div className="trav-receipt-note" style={{ marginTop: '0.5rem' }}>
+                    <strong>Policy Applied:</strong> {booking.cancellationPolicyNote}
+                  </div>
+                )}
+
+                <div className="trav-simulation-banner">
+                  <span>ℹ️</span>
+                  <div>
+                    <strong>Honest Simulation:</strong> Refund processing is simulated in this development environment. No actual banking transaction has been executed.
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             {/* Hotel & Room Summary */}
             <div style={{ background: '#f8fafc', border: '1px solid var(--trav-border)', borderRadius: 'var(--trav-radius-md)', padding: '20px', marginBottom: '24px' }}>
               <h2 style={{ margin: '0 0 6px', fontSize: '1.35rem', fontWeight: 800 }}>
@@ -365,12 +418,11 @@ export default function BookingConfirmationPage() {
               {!isCancelled && !isCompleted && (
                 <button
                   type="button"
-                  disabled={cancelling}
                   onClick={handleCancelBooking}
                   className="trav-btn trav-btn-outline"
                   style={{ color: 'var(--trav-error)', borderColor: 'var(--trav-error)' }}
                 >
-                  {cancelling ? 'Cancelling...' : 'Cancel Booking'}
+                  Cancel Booking
                 </button>
               )}
 
@@ -381,6 +433,18 @@ export default function BookingConfirmationPage() {
           </div>
         </div>
       </main>
+
+      {/* Reusable Cancellation Modal */}
+      {showCancelModal && (
+        <CancellationModal
+          isOpen={showCancelModal}
+          booking={booking}
+          bookingType="hotel"
+          onClose={() => setShowCancelModal(false)}
+          onSuccess={handleCancelSuccess}
+        />
+      )}
     </div>
   );
 }
+

@@ -13,6 +13,7 @@ import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripTrackingDto } from './dto/update-trip-tracking.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
+import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from '../auth/entities/auth.entity';
 import { NonEmptyStringPipe } from '../common/pipes/non-empty-string.pipe';
@@ -120,6 +121,24 @@ export class TripsController {
     @Req() req: any,
   ) {
     return this.tripsService.update(id, dto, req.user);
+  }
+
+  @Patch(':id/cancel')
+  @Roles(Role.TRAVELLER, Role.SUPERADMIN, Role.NONTECHADMIN)
+  @ApiOperation({ summary: 'Cancel a trip booking with policy evaluation and refund' })
+  cancel(
+    @Param('id', NonEmptyStringPipe) id: string,
+    @Req() req: any,
+    @Body() dto?: CancelBookingDto,
+  ) {
+    return this.tripsService.cancel(id, req.user, dto);
+  }
+
+  @Patch(':id/refund/retry')
+  @Roles(Role.TRAVELLER, Role.SUPERADMIN)
+  @ApiOperation({ summary: 'Retry a failed or pending refund for a trip' })
+  retryRefund(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.tripsService.retryRefund(id, req.user);
   }
 
   @Roles(Role.SUPERADMIN)

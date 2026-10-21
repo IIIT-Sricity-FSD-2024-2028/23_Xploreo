@@ -99,9 +99,7 @@ export default function Login({ user, onAuthenticated }) {
               <label className="remember">
                 <input type="checkbox" /> Keep me signed in
               </label>
-              <button type="button" className="text-button">
-                Forgot password?
-              </button>
+              <Link className="text-button" to="/Auth/forgot-password">Forgot password?</Link>
             </div>
             {error && <p className="form-message error" role="alert">{error}</p>}
             <button className="auth-submit" type="submit" disabled={loading}>

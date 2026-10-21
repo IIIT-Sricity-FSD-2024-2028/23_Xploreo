@@ -1,4 +1,5 @@
 import { Experience } from '../../experiences/entities/experience.entity';
+import { RefundStatus } from '../../common/refund/refund.types';
 
 export enum ExperienceBookingStatus {
   CONFIRMED = 'CONFIRMED',
@@ -32,4 +33,15 @@ export class ExperienceBooking {
   status!: ExperienceBookingStatus;
   createdAt!: Date;
   experience?: Experience;
+
+  // Cancellation & Refund tracking
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundEligibility?: 'ELIGIBLE' | 'NOT_ELIGIBLE';
+  refundAmount?: number;
+  refundStatus?: RefundStatus;
+  refundReference?: string;
+  refundedAt?: string;
+  cancellationPolicyNote?: string;
 }
+

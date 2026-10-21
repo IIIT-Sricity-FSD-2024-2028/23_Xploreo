@@ -13,6 +13,11 @@ import { UpdateTripTrackingDto } from './dto/update-trip-tracking.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { Trip, TripStatus, TripTrackingStatus } from './entities/trip.entity';
 import { TripsRepository } from './trips.repository';
+import { RefundService } from '../common/refund/refund.service';
+import { RefundStatus } from '../common/refund/refund.types';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
+import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
 import {
   findGuideConflicts,
   rangesOverlap,
@@ -28,6 +33,8 @@ export class TripsService {
     private readonly tripsRepository: TripsRepository,
     private readonly plansRepository: PlansRepository,
     private readonly guideRepository: GuideRepository,
+    private readonly refundService: RefundService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // Once a guideId is attached to a trip (the traveller legitimately picked that guide), expose
@@ -437,6 +444,141 @@ export class TripsService {
     return Math.max(basePrice, flightAmount + hotelAmount + experienceAmount);
   }
 
+  cancel(
+    id: string,
+    actor?: { userId?: string; role?: string; region?: string },
+    dto?: CancelBookingDto,
+  ) {
+    const trip = this.findOne(id, actor);
+    if (!trip) throw new NotFoundException(`Trip ${id} not found`);
+
+    const isOwner = actor?.role === 'traveller' && trip.travellerId === actor.userId;
+    const isAdmin = actor?.role === 'superadmin' || actor?.role === 'nontechadmin';
+
+    if (!isOwner && !isAdmin) {
+      throw new ForbiddenException('Not authorized to cancel this trip.');
+    }
+
+    if (trip.status === TripStatus.CANCELLED) {
+      throw new BadRequestException('Trip is already cancelled.');
+    }
+
+    if (trip.status === TripStatus.STARTED || trip.status === TripStatus.COMPLETED) {
+      throw new BadRequestException(`Cannot cancel a trip that is already ${trip.status}.`);
+    }
+
+    const startDate = trip.itinerary?.day1?.hotel?.checkInDate || trip.itinerary?.day1?.transport?.pickupAt;
+    const calc = this.refundService.calculateTripRefund(trip.totalAmount, startDate, isAdmin);
+    const refundResult = this.refundService.processSimulatedRefund(
+      calc,
+      trip.refundStatus,
+      dto?.simulatedOutcome,
+    );
+
+    const reason = dto?.reason?.trim() || (isAdmin ? 'Cancelled by administration' : 'Cancelled by traveller');
+
+    const updated = this.tripsRepository.update(id, {
+      status: TripStatus.CANCELLED,
+      cancelledAt: new Date().toISOString(),
+      cancellationReason: reason,
+      refundEligibility: refundResult.refundEligibility,
+      refundAmount: refundResult.refundAmount,
+      refundStatus: refundResult.refundStatus,
+      refundReference: refundResult.refundReference,
+      refundedAt: refundResult.refundedAt,
+      cancellationPolicyNote: refundResult.policyNote,
+    });
+
+    if (trip.travellerId) {
+      this.notificationsService.create({
+        userId: trip.travellerId,
+        title: 'Trip Cancelled',
+        message: `Your booking #${trip.id} has been cancelled successfully. Refund status: ${refundResult.refundStatus}.`,
+        type: NotificationType.BOOKING_CANCELLED,
+        bookingId: trip.id,
+        bookingType: 'trip',
+        refundStatus: refundResult.refundStatus,
+        refundAmount: refundResult.refundAmount,
+      });
+
+      if (refundResult.refundStatus === RefundStatus.SUCCESS) {
+        this.notificationsService.create({
+          userId: trip.travellerId,
+          title: 'Refund Processed',
+          message: `Your refund of ₹${refundResult.refundAmount} for booking #${trip.id} has been processed successfully.`,
+          type: NotificationType.REFUND_PROCESSED,
+          bookingId: trip.id,
+          bookingType: 'trip',
+          refundStatus: RefundStatus.SUCCESS,
+          refundAmount: refundResult.refundAmount,
+        });
+      } else if (refundResult.refundStatus === RefundStatus.FAILED) {
+        this.notificationsService.create({
+          userId: trip.travellerId,
+          title: 'Refund Processing Failed',
+          message: `Your refund of ₹${refundResult.refundAmount} for booking #${trip.id} could not be processed automatically. Please submit a support ticket for assistance.`,
+          type: NotificationType.REFUND_FAILED,
+          bookingId: trip.id,
+          bookingType: 'trip',
+          refundStatus: RefundStatus.FAILED,
+          refundAmount: refundResult.refundAmount,
+        });
+      }
+    }
+
+    return this.withGuide(updated!);
+  }
+
+  retryRefund(id: string, actor?: { userId?: string; role?: string }) {
+    const trip = this.tripsRepository.findById(id);
+    if (!trip) throw new NotFoundException(`Trip ${id} not found`);
+
+    if (actor?.role === 'traveller' && trip.travellerId !== actor.userId) {
+      throw new ForbiddenException('You can only retry refunds for your own trips.');
+    }
+
+    if (trip.status !== TripStatus.CANCELLED) {
+      throw new BadRequestException('Only cancelled trips can have refunds processed.');
+    }
+
+    if (trip.refundStatus === RefundStatus.SUCCESS) {
+      throw new BadRequestException('Refund has already been processed successfully.');
+    }
+
+    if (trip.refundEligibility !== 'ELIGIBLE' || !trip.refundAmount) {
+      throw new BadRequestException('This trip is not eligible for a refund under the cancellation policy.');
+    }
+
+    const calc = {
+      isEligible: true,
+      refundAmount: trip.refundAmount,
+      policyNote: trip.cancellationPolicyNote || 'Eligible refund retry',
+    };
+
+    const refundResult = this.refundService.processSimulatedRefund(calc, trip.refundStatus, 'SUCCESS');
+
+    const updated = this.tripsRepository.update(id, {
+      refundStatus: refundResult.refundStatus,
+      refundReference: refundResult.refundReference,
+      refundedAt: refundResult.refundedAt,
+    });
+
+    if (trip.travellerId && refundResult.refundStatus === RefundStatus.SUCCESS) {
+      this.notificationsService.create({
+        userId: trip.travellerId,
+        title: 'Refund Processed',
+        message: `Your refund of ₹${refundResult.refundAmount} for booking #${trip.id} has been processed successfully.`,
+        type: NotificationType.REFUND_PROCESSED,
+        bookingId: trip.id,
+        bookingType: 'trip',
+        refundStatus: RefundStatus.SUCCESS,
+        refundAmount: refundResult.refundAmount,
+      });
+    }
+
+    return this.withGuide(updated!);
+  }
+
   private assertStatusTransition(
     trip: Trip,
     status: TripStatus,
@@ -445,12 +587,13 @@ export class TripsService {
     if (status === trip.status) return;
 
     const allowedTransitions: Record<TripStatus, TripStatus[]> = {
-      [TripStatus.DRAFT]: [TripStatus.CONFIRMED],
-      [TripStatus.PENDING_GUIDE_CONFIRM]: [],
-      [TripStatus.CONFIRMED]: [TripStatus.STARTED],
+      [TripStatus.DRAFT]: [TripStatus.CONFIRMED, TripStatus.CANCELLED],
+      [TripStatus.PENDING_GUIDE_CONFIRM]: [TripStatus.CANCELLED],
+      [TripStatus.CONFIRMED]: [TripStatus.STARTED, TripStatus.CANCELLED],
       [TripStatus.STARTED]: [TripStatus.COMPLETED],
       [TripStatus.COMPLETED]: [],
-      [TripStatus.REJECTED_BY_GUIDE]: [],
+      [TripStatus.REJECTED_BY_GUIDE]: [TripStatus.CANCELLED],
+      [TripStatus.CANCELLED]: [],
     };
 
     if (!allowedTransitions[trip.status].includes(status)) {

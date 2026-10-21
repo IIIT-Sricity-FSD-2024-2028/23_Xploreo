@@ -1,4 +1,5 @@
 import { StructuredItinerary } from '../../common/entities/itinerary.entity';
+import { RefundStatus } from '../../common/refund/refund.types';
 
 export enum TripStatus {
   DRAFT = 'draft',
@@ -7,6 +8,7 @@ export enum TripStatus {
   STARTED = 'started',
   COMPLETED = 'completed',
   REJECTED_BY_GUIDE = 'rejected_by_guide',
+  CANCELLED = 'cancelled',
 }
 
 export enum TripTrackingStatus {
@@ -39,4 +41,14 @@ export class Trip {
   guideNote?: string;
   // Guides who already declined this trip; never offered again for it.
   declinedGuideIds?: string[];
+
+  // Cancellation & Refund tracking
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundEligibility?: 'ELIGIBLE' | 'NOT_ELIGIBLE';
+  refundStatus?: RefundStatus;
+  refundReference?: string;
+  refundedAt?: string;
+  cancellationPolicyNote?: string;
 }
+

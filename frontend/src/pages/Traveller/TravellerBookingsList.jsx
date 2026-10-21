@@ -5,7 +5,9 @@ import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import { apiRequest } from '../../services/api.js';
 import BookingDetailsView from './BookingDetailsView.jsx';
 import ExperienceGuidePanel from './ExperienceGuidePanel.jsx';
+import CancellationModal from '../../components/checkout/CancellationModal.jsx';
 import './travellerBookings.css';
+
 
 const DESTINATION_FALLBACK_IMAGES = {
   jaipur: 'https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&q=80&w=800',
@@ -75,6 +77,7 @@ export default function TravellerBookingsList({
   const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL' | 'EXPERIENCE' | 'HOTEL'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [cancellingBooking, setCancellingBooking] = useState(null);
 
   const fetchLiveBookings = useCallback(async () => {
     setLiveLoading(true);
@@ -149,11 +152,25 @@ export default function TravellerBookingsList({
           <BookingDetailsView
             booking={selectedBooking}
             onBack={() => setSelectedBookingId(null)}
+            onCancelClick={(b) => setCancellingBooking(b)}
+            onBookingUpdated={fetchLiveBookings}
           />
+          {cancellingBooking && (
+            <CancellationModal
+              isOpen={!!cancellingBooking}
+              booking={cancellingBooking}
+              bookingType={cancellingBooking.bookingType || (cancellingBooking.hotel ? 'hotel' : 'experience')}
+              onClose={() => setCancellingBooking(null)}
+              onSuccess={() => {
+                fetchLiveBookings();
+              }}
+            />
+          )}
         </div>
       </div>
     );
   }
+
 
   // Filter by category, status tab & search term
   const filteredBookings = authorizedBookings.filter((booking) => {
@@ -456,6 +473,18 @@ export default function TravellerBookingsList({
                         {booking.status}
                       </span>
                       <span className="trav-booking-id">#{booking.id}</span>
+                      {isCancelled && booking.refundStatus && (
+                        <span
+                          className={`trav-refund-pill is-${booking.refundStatus.toLowerCase()}`}
+                          title={`Refund Reference: ${booking.refundReference || 'N/A'}`}
+                        >
+                          {booking.refundStatus === 'SUCCESS' && '✓ Refunded '}
+                          {booking.refundStatus === 'FAILED' && '✕ Refund Failed '}
+                          {booking.refundStatus === 'NOT_ELIGIBLE' && '• Ineligible '}
+                          {booking.refundStatus === 'PENDING' && '⏳ Processing '}
+                          {booking.refundAmount ? `₹${booking.refundAmount}` : ''}
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="trav-card-title">{title}</h3>
@@ -508,6 +537,17 @@ export default function TravellerBookingsList({
                     >
                       View Details →
                     </button>
+                    {isConfirmed && (
+                      <button
+                        type="button"
+                        className="trav-btn-cancel-trigger"
+                        onClick={() => setCancellingBooking(booking)}
+                        aria-label={`Cancel booking for ${title || booking.id}`}
+                        style={{ marginTop: '0.4rem', width: '100%' }}
+                      >
+                        Cancel Booking
+                      </button>
+                    )}
                   </div>
 
                   {booking.bookingType === 'experience' ? (
@@ -524,7 +564,21 @@ export default function TravellerBookingsList({
             })}
           </div>
         )}
+
+        {/* Reusable Cancellation Modal */}
+        {cancellingBooking && (
+          <CancellationModal
+            isOpen={!!cancellingBooking}
+            booking={cancellingBooking}
+            bookingType={cancellingBooking.bookingType || (cancellingBooking.hotel ? 'hotel' : 'experience')}
+            onClose={() => setCancellingBooking(null)}
+            onSuccess={() => {
+              fetchLiveBookings();
+            }}
+          />
+        )}
       </div>
     </div>
+
   );
 }

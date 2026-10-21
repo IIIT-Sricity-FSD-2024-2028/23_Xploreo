@@ -1,19 +1,25 @@
+import { useState } from 'react';
 import { BookingSummaryCard } from '../../components/checkout/index.js';
 import { formatDate } from '../../utils/checkoutUtils.js';
+import { retryHotelRefund } from '../../services/hotels.api.js';
+import { retryExperienceRefund } from '../../services/partners.api.js';
 import './travellerBookings.css';
 
 /**
  * BookingDetailsView
  * Renders full booking breakdown for an authorized traveller.
  * Reuses BookingSummaryCard from Day 1 for consistent presentation.
- *
- * NOTE: Operates as a pure presentation view accepting the booking object
- * and navigation callback. No direct network or auth hacks used.
+ * Displays cancellation and honest refund tracking data when cancelled.
  */
 export default function BookingDetailsView({
   booking,
   onBack,
+  onCancelClick,
+  onBookingUpdated,
 }) {
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState(null);
+
   if (!booking) {
     return (
       <div className="trav-state-empty">
@@ -28,6 +34,7 @@ export default function BookingDetailsView({
       </div>
     );
   }
+
 
   const isHotel = !!booking.hotel || booking.bookingType === 'hotel';
   const isDemo = !!booking.isDemo || booking.source === 'mock';
@@ -81,6 +88,27 @@ export default function BookingDetailsView({
   const isConfirmed = status.toUpperCase() === 'CONFIRMED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
 
+  const handleRetryRefund = async () => {
+    setRetrying(true);
+    setRetryMessage(null);
+    try {
+      let res;
+      if (isHotel) {
+        res = await retryHotelRefund(id);
+      } else {
+        res = await retryExperienceRefund(id);
+      }
+      setRetryMessage({ type: 'success', text: `Refund retried: ${res.refund?.status || res.refundStatus || 'Success'}` });
+      if (onBookingUpdated) {
+        onBookingUpdated();
+      }
+    } catch (err) {
+      setRetryMessage({ type: 'error', text: err?.message || 'Failed to retry refund.' });
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   return (
     <div className="trav-details-view" data-testid="traveller-booking-details-view">
       {onBack && (
@@ -90,8 +118,6 @@ export default function BookingDetailsView({
           </button>
         </div>
       )}
-
-
 
       <div className="trav-details-header">
         <div>
@@ -106,7 +132,7 @@ export default function BookingDetailsView({
           </span>
         </div>
 
-        <div className="trav-card-badge-row">
+        <div className="trav-card-badge-row" style={{ alignItems: 'center' }}>
           {isDemo && (
             <span
               className="trav-status-badge"
@@ -122,8 +148,90 @@ export default function BookingDetailsView({
           >
             {status}
           </span>
+          {isConfirmed && onCancelClick && (
+            <button
+              type="button"
+              className="trav-btn-cancel-trigger"
+              onClick={() => onCancelClick(booking)}
+              style={{ marginLeft: '8px' }}
+            >
+              Cancel Reservation
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Cancellation & Honest Refund Breakdown */}
+      {isCancelled && (
+        <div className={`trav-cancellation-card ${booking.refundStatus === 'NOT_ELIGIBLE' ? 'is-ineligible' : ''}`}>
+          <div className="trav-cancellation-header">
+            <h3 className="trav-cancellation-title">
+              <span>✕</span> Reservation Cancelled
+            </h3>
+            {booking.refundStatus && (
+              <span className={`trav-refund-pill is-${booking.refundStatus.toLowerCase()}`}>
+                Refund: {booking.refundStatus} {booking.refundAmount ? `(₹${booking.refundAmount})` : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="trav-cancellation-grid">
+            <div className="trav-info-block">
+              <span className="trav-info-label">Cancelled At</span>
+              <span className="trav-info-val">{booking.cancelledAt ? formatDate(booking.cancelledAt) : 'Recently'}</span>
+            </div>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Cancellation Reason</span>
+              <span className="trav-info-val">{booking.cancellationReason || 'Traveller requested'}</span>
+            </div>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Refund Reference</span>
+              <span className="trav-info-val" style={{ fontFamily: 'monospace' }}>
+                {booking.refundReference || 'N/A'}
+              </span>
+            </div>
+            <div className="trav-info-block">
+              <span className="trav-info-label">Refund Amount</span>
+              <span className="trav-info-val" style={{ color: '#16a34a', fontWeight: 700 }}>
+                {booking.refundAmount ? `₹${booking.refundAmount}` : (booking.refundStatus === 'NOT_ELIGIBLE' ? '₹0 (Ineligible)' : '₹0')}
+              </span>
+            </div>
+          </div>
+
+          {booking.cancellationPolicyNote && (
+            <div className="trav-receipt-note" style={{ marginTop: '0.5rem' }}>
+              <strong>Policy Applied:</strong> {booking.cancellationPolicyNote}
+            </div>
+          )}
+
+          {booking.refundStatus === 'FAILED' && (
+            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <button
+                type="button"
+                className="trav-btn-cancel-trigger"
+                onClick={handleRetryRefund}
+                disabled={retrying}
+                style={{ borderColor: '#ef4444', color: '#ef4444' }}
+              >
+                {retrying ? 'Retrying Refund...' : '🔄 Retry Simulated Refund'}
+              </button>
+              {retryMessage && (
+                <span style={{ fontSize: '0.85rem', color: retryMessage.type === 'success' ? '#16a34a' : '#ef4444' }}>
+                  {retryMessage.text}
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="trav-simulation-banner">
+            <span>ℹ️</span>
+            <div>
+              <strong>Simulation Notice:</strong> All refund processing and monetary disbursements in this development prototype are honestly simulated. No actual payment gateway transactions or bank credits are executed.
+            </div>
+          </div>
+        </div>
+      )}
+
 
       <div className="trav-details-info-grid">
         <div className="trav-info-block">

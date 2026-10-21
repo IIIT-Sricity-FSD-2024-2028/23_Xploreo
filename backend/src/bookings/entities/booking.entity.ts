@@ -1,4 +1,5 @@
 import { Hotel } from '../../hotels/entities/hotel.entity';
+import { RefundStatus } from '../../common/refund/refund.types';
 
 export enum BookingStatus {
   CONFIRMED = 'CONFIRMED',
@@ -28,4 +29,15 @@ export class Booking {
   createdAt!: Date;
   updatedAt!: Date;
   hotel?: Hotel;
+
+  // Cancellation & Refund tracking
+  cancelledAt?: string;
+  cancellationReason?: string;
+  refundEligibility?: 'ELIGIBLE' | 'NOT_ELIGIBLE';
+  refundAmount?: number;
+  refundStatus?: RefundStatus;
+  refundReference?: string;
+  refundedAt?: string;
+  cancellationPolicyNote?: string;
 }
+

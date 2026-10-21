@@ -66,6 +66,13 @@ export class BookingsRepository {
     return { ...booking };
   }
 
+  updateCancellation(id: string, data: Partial<Booking>): Booking | undefined {
+    const booking = this.bookings.find((item) => item.id === id);
+    if (!booking) return undefined;
+    Object.assign(booking, data, { updatedAt: new Date() });
+    return { ...booking };
+  }
+
   setCheckOutDate(id: string, checkOut: string): void {
     const booking = this.bookings.find((item) => item.id === id);
     if (booking) booking.checkOut = checkOut;

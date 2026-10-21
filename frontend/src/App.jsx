@@ -4,6 +4,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Login from "./pages/Auth/login";
 import Register from "./pages/Auth/register";
+import ForgotPassword from "./pages/Auth/forgotPassword";
+import ResetPassword from "./pages/Auth/resetPassword";
 import UnauthorizedPage from "./pages/Unauthorized";
 import Landing from "./pages/Home/landing";
 import Partners from "./pages/Home/partners";
@@ -44,6 +46,8 @@ function AppRoutes() {
       {/* Authentication Routes */}
       <Route path="/Auth/login" element={<Login user={user} onAuthenticated={authenticate} />} />
       <Route path="/Auth/register" element={<Register user={user} onAuthenticated={authenticate} />} />
+      <Route path="/Auth/forgot-password" element={<ForgotPassword user={user} />} />
+      <Route path="/Auth/reset-password" element={<ResetPassword user={user} />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       {/* Partner and Admin Portals */}

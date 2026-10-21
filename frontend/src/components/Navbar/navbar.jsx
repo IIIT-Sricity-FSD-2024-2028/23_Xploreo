@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, NavLink, useNavigate, useLocation, useInRouterContext } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext.jsx";
+import NotificationBell from "../notifications/NotificationBell.jsx";
 import "./navbar.css";
 
 const publicLinks = [
@@ -186,7 +187,8 @@ function TravellerStyleNavbar({ displayName, initial, user, dropdownOpen, setDro
             </NavLink>
           ))}
         </div>
-        <div className="navbar-user-section">
+        <div className="navbar-user-section" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <NotificationBell userId={user?.userId || user?.id} />
           <span className="navbar-user-greeting">Hello, {displayName} 👋</span>
           <button
             type="button"

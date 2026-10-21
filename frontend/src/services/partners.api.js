@@ -48,6 +48,19 @@ export function updateExperienceBookingStatus(id, status) {
   return request(`/experience-bookings/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: { status } });
 }
 
+export function cancelExperienceBooking(id, data = {}) {
+  return request(`/experience-bookings/${encodeURIComponent(id)}/cancel`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+export function retryExperienceRefund(id) {
+  return request(`/experience-bookings/${encodeURIComponent(id)}/refund/retry`, {
+    method: 'PATCH',
+  });
+}
+
 // GET /auth/users/:id is admin-only on the real API, so profile data comes from the session
 // (useAuth().user); this only saves edits.
 export function updatePartnerProfile(userId, values) {

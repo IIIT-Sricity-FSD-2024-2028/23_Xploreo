@@ -25,6 +25,8 @@ import { PartnersModule } from './partners/partners.module';
 import { ExperienceBookingsModule } from './experience-bookings/experience-bookings.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { UploadModule } from './upload/upload.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RefundModule } from './common/refund/refund.module';
 
 @Module({
   imports: [
@@ -52,6 +54,8 @@ import { UploadModule } from './upload/upload.module';
     LocationModule,
     CitiesModule,
     UploadModule,
+    NotificationsModule,
+    RefundModule,
   ],
   controllers: [AppController],
   providers: [AppService],

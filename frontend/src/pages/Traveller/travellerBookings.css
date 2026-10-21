@@ -829,3 +829,359 @@
   padding-top: 0.25rem;
 }
 .trav-booking-card-guide .trav-guide-panel { padding: 0.5rem 0 0; }
+
+/* ── 9. Cancellation Modal & Refund Details ────────────────── */
+.trav-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1.25rem;
+}
+
+.trav-cancel-modal {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  max-width: 520px;
+  width: 100%;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  animation: modalScaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.trav-cancel-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 1.75rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.trav-cancel-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0d9488;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.trav-cancel-title {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0.25rem 0 0 0;
+}
+
+.trav-cancel-modal-close {
+  background: #f1f5f9;
+  border: none;
+  font-size: 1rem;
+  font-weight: 700;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  transition: all 0.15s ease;
+}
+
+.trav-cancel-modal-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.trav-cancel-modal-body {
+  padding: 1.5rem 1.75rem 1.75rem;
+}
+
+.trav-cancel-alert {
+  padding: 0.85rem 1rem;
+  border-radius: 0.65rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin-bottom: 1.25rem;
+}
+
+.trav-cancel-alert.is-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.trav-cancel-alert.is-success {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.trav-cancel-item-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.trav-cancel-item-name {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.trav-cancel-item-dates {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.trav-cancel-policy-card {
+  background: #f0fdfa;
+  border: 1px solid #ccfbf1;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.trav-policy-heading {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.trav-policy-text {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.825rem;
+  color: #134e4a;
+  line-height: 1.45;
+}
+
+.trav-policy-note {
+  font-size: 0.75rem;
+  color: #5eead4;
+  color: #0d9488;
+}
+
+.trav-cancel-form-group {
+  margin-bottom: 1.25rem;
+}
+
+.trav-cancel-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.4rem;
+}
+
+.trav-cancel-select,
+.trav-cancel-textarea {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.55rem;
+  border: 1px solid #cbd5e1;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.trav-cancel-select:focus,
+.trav-cancel-textarea:focus {
+  border-color: #0d9488;
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.15);
+}
+
+.trav-cancel-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.trav-btn-cancel-keep {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  padding: 0.65rem 1.25rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.trav-btn-cancel-keep:hover {
+  background: #e2e8f0;
+}
+
+.trav-btn-cancel-confirm {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 0.65rem 1.4rem;
+  border-radius: 0.55rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trav-btn-cancel-confirm:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.trav-btn-cancel-confirm:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* Success State in Modal */
+.trav-cancel-success-hero {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.trav-cancel-success-icon {
+  width: 52px;
+  height: 52px;
+  background: #dcfce7;
+  color: #16a34a;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin: 0 auto 0.75rem;
+}
+
+.trav-cancel-success-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.35rem;
+}
+
+.trav-cancel-success-msg {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.trav-cancel-refund-receipt {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.85rem;
+  padding: 1.15rem;
+  margin-bottom: 1.25rem;
+}
+
+.trav-receipt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px dashed #e2e8f0;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.trav-receipt-row:last-child {
+  border-bottom: none;
+}
+
+.trav-receipt-row strong {
+  color: #0f172a;
+}
+
+.trav-receipt-note {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 0.65rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+  font-style: italic;
+}
+
+/* Action button for card triggers */
+.trav-btn-cancel-trigger {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #fca5a5;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.trav-btn-cancel-trigger:hover {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+/* Refund summary badge on card */
+.trav-refund-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+.trav-refund-pill.is-success {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.trav-refund-pill.is-ineligible {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.trav-refund-pill.is-pending {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.trav-refund-pill.is-failed {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+

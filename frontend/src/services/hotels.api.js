@@ -90,9 +90,17 @@ export function checkOutBooking(id) {
   return request(`/bookings/${enc(id)}/check-out`, { method: 'PATCH' });
 }
 
-// PATCH /bookings/:id/cancel  — traveller (or partner on behalf) cancels a booking
-export function cancelBooking(id) {
-  return request(`/bookings/${enc(id)}/cancel`, { method: 'PATCH' });
+// PATCH /bookings/:id/cancel  — traveller (or partner on behalf) cancels a booking with reason & refund evaluation
+export function cancelBooking(id, data = {}) {
+  return request(`/bookings/${enc(id)}/cancel`, {
+    method: 'PATCH',
+    body: data,
+  });
+}
+
+// PATCH /bookings/:id/refund/retry — retry a failed or pending refund
+export function retryHotelRefund(id) {
+  return request(`/bookings/${enc(id)}/refund/retry`, { method: 'PATCH' });
 }
 
 // ── Bookings (traveller side) ─────────────────────────────────────────────────

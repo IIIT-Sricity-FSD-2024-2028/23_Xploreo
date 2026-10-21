@@ -41,3 +41,15 @@ export function requestExperienceGuide(bookingId, guideId) {
 export function cancelExperienceGuide(bookingId) {
   return apiRequest(`/experience-guides/${enc(bookingId)}/request`, { method: 'DELETE' });
 }
+
+// ── Trip cancellation & refund retry ──
+export function cancelTrip(tripId, data = {}) {
+  return apiRequest(`/trips/${enc(tripId)}/cancel`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export function retryTripRefund(tripId) {
+  return apiRequest(`/trips/${enc(tripId)}/refund/retry`, { method: 'PATCH' });
+}

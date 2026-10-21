@@ -14,6 +14,10 @@ import { RegisterDto } from './dto/create-auth.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
+import {
+  ConfirmPasswordResetDto,
+  RequestPasswordResetDto,
+} from './dto/password-reset.dto';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Role } from './entities/auth.entity';
@@ -45,6 +49,22 @@ export class AuthController {
   @ApiCreateEndpoint(LoginDto)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Public()
+  @Post('password-reset/request')
+  @ApiOperation({ summary: 'Email a five-minute password-reset link' })
+  @ApiCreateEndpoint(RequestPasswordResetDto)
+  requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @Public()
+  @Post('password-reset/confirm')
+  @ApiOperation({ summary: 'Set a new password with a valid reset token' })
+  @ApiCreateEndpoint(ConfirmPasswordResetDto)
+  confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
+    return this.authService.confirmPasswordReset(dto.token, dto.password, dto.confirmPassword);
   }
 
   @Roles(Role.SUPERADMIN, Role.TECHADMIN)

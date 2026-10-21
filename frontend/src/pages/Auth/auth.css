@@ -20,6 +20,8 @@
 .auth-submit:disabled { opacity: .65; cursor: wait; }
 .form-message { margin: -4px 0 0; font-size: .82rem; }
 .form-message.error { color: #bb3e45; }
+.form-message.success { color: #087b5f; }
+.form-message.success a { color: #0f8278; font-weight: 800; }
 .auth-switch { margin: 23px 0 0; color: #72888a; font-size: .85rem; }
 .auth-switch a { color: #0f8278; font-weight: 800; text-decoration: none; }
 

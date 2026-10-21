@@ -10,6 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { NonEmptyStringPipe } from '../common/pipes/non-empty-string.pipe';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { CancelBookingDto } from './dto/cancel-booking.dto';
 
 @ApiTags('Phase 1 - Hotel Bookings')
 @ApiProtectedResource()
@@ -61,10 +62,21 @@ export class BookingsController {
   }
 
   @Patch(':id/cancel')
-  @Roles(Role.TRAVELLER, Role.HOTEL)
+  @Roles(Role.TRAVELLER, Role.HOTEL, Role.SUPERADMIN)
   @ApiOperation({ summary: 'Traveller or hotel partner cancels a booking' })
-  cancel(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
-    return this.bookingsService.cancel(id, req.user?.userId, req.user?.role);
+  cancel(
+    @Param('id', NonEmptyStringPipe) id: string,
+    @Req() req: any,
+    @Body() dto?: CancelBookingDto,
+  ) {
+    return this.bookingsService.cancel(id, req.user?.userId, req.user?.role, dto);
+  }
+
+  @Patch(':id/refund/retry')
+  @Roles(Role.TRAVELLER, Role.SUPERADMIN)
+  @ApiOperation({ summary: 'Retry a failed or pending refund for a cancelled booking' })
+  retryRefund(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.bookingsService.retryRefund(id, req.user?.userId, req.user?.role);
   }
 
   @Patch(':id/check-in')

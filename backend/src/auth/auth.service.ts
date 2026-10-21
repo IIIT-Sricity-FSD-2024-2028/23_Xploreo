@@ -7,18 +7,33 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 import { AuthRepository } from './auth.repository';
 import { RegisterDto } from './dto/create-auth.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { LoginDto } from './dto/login.dto';
 import { UpdateAuthDto } from './dto/update-auth.dto';
 import { OPERATIONAL_ROLES, Role, STAFF_ROLES } from './entities/auth.entity';
+import { PasswordResetMailService } from './password-reset-mail.service';
 
 export const JWT_SECRET = process.env.JWT_SECRET || 'xploreo-dev-secret-key-2026';
+const RESET_TOKEN_TTL_MS = 5 * 60 * 1000;
+const scrypt = promisify(scryptCallback);
+
+type PasswordResetRecord = {
+  userId: string;
+  expiresAt: number;
+};
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly authRepository: AuthRepository) {}
+  private readonly passwordResetTokens = new Map<string, PasswordResetRecord>();
+
+  constructor(
+    private readonly authRepository: AuthRepository,
+    private readonly passwordResetMailService: PasswordResetMailService,
+  ) {}
 
   async register(dto: RegisterDto) {
     const existing = await this.authRepository.findByUsername(dto.username);
@@ -30,7 +45,7 @@ export class AuthService {
     const user = await this.authRepository.create({
       userId: dto.username,
       username: dto.username,
-      password: dto.password,
+      password: await this.hashPassword(dto.password),
       role: dto.role,
       name: dto.name,
       email: dto.email,
@@ -78,7 +93,7 @@ export class AuthService {
     const user =
       this.authRepository.findByUsername(rawUsername) ??
       this.authRepository.findByEmail(rawUsername);
-    if (!user || user.password !== dto.password) {
+    if (!user || !(await this.matchesPassword(dto.password, user.password))) {
       throw new UnauthorizedException('Invalid username or password');
     }
 
@@ -99,6 +114,63 @@ export class AuthService {
         Authorization: `Bearer ${token}`,
       },
     };
+  }
+
+  async requestPasswordReset(email: string) {
+    this.passwordResetMailService.assertConfigured();
+    // Do not reveal whether an address belongs to an account.
+    const user = this.authRepository.findByEmail(email.trim());
+    if (user) {
+      const token = randomBytes(32).toString('hex');
+      const tokenHash = this.hashResetToken(token);
+      for (const [hash, record] of this.passwordResetTokens) {
+        if (record.userId === user.userId) this.passwordResetTokens.delete(hash);
+      }
+      this.passwordResetTokens.set(tokenHash, {
+        userId: user.userId,
+        expiresAt: Date.now() + RESET_TOKEN_TTL_MS,
+      });
+
+      const appUrl = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
+      const resetUrl = `${appUrl}/Auth/reset-password?token=${encodeURIComponent(token)}`;
+      try {
+        await this.passwordResetMailService.sendPasswordReset(user.email, resetUrl);
+      } catch (error) {
+        this.passwordResetTokens.delete(tokenHash);
+        throw error;
+      }
+    }
+
+    return {
+      message: 'If an Xploreo account uses that email address, a password-reset link has been sent.',
+    };
+  }
+
+  async confirmPasswordReset(token: string, password: string, confirmPassword: string) {
+    if (password !== confirmPassword) {
+      throw new BadRequestException('Password confirmation does not match password.');
+    }
+    const tokenHash = this.hashResetToken(token);
+    const reset = this.passwordResetTokens.get(tokenHash);
+    if (!reset || reset.expiresAt <= Date.now()) {
+      this.passwordResetTokens.delete(tokenHash);
+      throw new BadRequestException('This password-reset link is invalid or has expired.');
+    }
+
+    const user = this.authRepository.findById(reset.userId);
+    if (!user) {
+      this.passwordResetTokens.delete(tokenHash);
+      throw new BadRequestException('This password-reset link is invalid or has expired.');
+    }
+
+    await this.authRepository.update(user.userId, {
+      password: await this.hashPassword(password),
+    });
+    // A reset link is single-use. Remove any outstanding links for this account.
+    for (const [hash, record] of this.passwordResetTokens) {
+      if (record.userId === user.userId) this.passwordResetTokens.delete(hash);
+    }
+    return { message: 'Your password has been changed. You can now sign in.' };
   }
 
   generateToken(user: { userId: string; username: string; role: string; region?: string }): string {
@@ -199,6 +271,25 @@ export class AuthService {
     const deleted = await this.authRepository.delete(id);
     if (!deleted) throw new NotFoundException(`User ${id} not found`);
     return { message: `User ${id} deleted` };
+  }
+
+  private hashResetToken(token: string) {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  private async hashPassword(password: string) {
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
+    return `scrypt$${salt}$${derivedKey.toString('hex')}`;
+  }
+
+  private async matchesPassword(password: string, storedPassword: string) {
+    const [scheme, salt, expectedHash] = storedPassword.split('$');
+    // Existing seeded/demo users are migrated only when their password changes.
+    if (scheme !== 'scrypt' || !salt || !expectedHash) return storedPassword === password;
+    const actualHash = (await scrypt(password, salt, 64)) as Buffer;
+    const expected = Buffer.from(expectedHash, 'hex');
+    return expected.length === actualHash.length && timingSafeEqual(expected, actualHash);
   }
 }
 

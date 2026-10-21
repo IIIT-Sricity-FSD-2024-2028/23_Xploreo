@@ -153,6 +153,12 @@ Open two separate terminal windows:
   npm run build
   ```
   *Executes `nest build` and compiles TypeScript to `dist/`.*
+
+### Password-reset email setup
+
+The login page includes a **Forgot password?** flow. It sends a single-use password-reset link from `xploreo2324@gmail.com`; each link expires after **5 minutes**. To enable delivery, copy `backend/.env.example` to `backend/.env` and set `SMTP_PASS` to a [Google App Password](https://myaccount.google.com/apppasswords) for that mailbox (not its normal Google password). Set `FRONTEND_URL` to the deployed React URL before production deployment.
+
+The backend exposes `POST /api/auth/password-reset/request` and `POST /api/auth/password-reset/confirm`. Reset passwords are stored with Node's `scrypt`; existing seeded demo passwords continue to work until changed.
 - **Security & Authorization Test Suite:**
   ```bash
   npm test

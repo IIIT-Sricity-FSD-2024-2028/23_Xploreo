@@ -9,7 +9,9 @@ const sampleTripsList = [];
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 import TravellerTripDetailsView from './TravellerTripDetailsView.jsx';
 import TripGuidePanel from './TripGuidePanel.jsx';
+import CancellationModal from '../../components/checkout/CancellationModal.jsx';
 import './travellerTrips.css';
+
 
 const DESTINATION_TRIP_IMAGES = {
   kerala: 'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&q=80&w=800',
@@ -65,9 +67,11 @@ export default function TravellerTripsList({
   const [liveLoading, setLiveLoading] = useState(false);
   const [liveError, setLiveError] = useState(null);
   const [selectedTripId, setSelectedTripId] = useState(null);
+  const [cancellingTrip, setCancellingTrip] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [reviewedTripIds, setReviewedTripIds] = useState(new Set());
+
 
   // Load reviews to track which completed trips already have a review
   useEffect(() => {
@@ -363,11 +367,25 @@ export default function TravellerTripsList({
             onBack={() => setSelectedTripId(null)}
             onManualRefresh={handleManualRefresh}
             isRefreshing={isRefreshing || detailsLoading}
+            onCancelClick={(t) => setCancellingTrip(t)}
+            onTripUpdated={refreshLiveTrips}
           />
+          {cancellingTrip && (
+            <CancellationModal
+              isOpen={!!cancellingTrip}
+              booking={cancellingTrip}
+              bookingType="trip"
+              onClose={() => setCancellingTrip(null)}
+              onSuccess={() => {
+                refreshLiveTrips();
+              }}
+            />
+          )}
         </div>
       </div>
     );
   }
+
 
   return (
     <div className="trav-trips-page-wrapper">
@@ -591,13 +609,25 @@ export default function TravellerTripsList({
                     <div className="trav-trip-card-body">
                       <div className="trav-trip-badge-group">
                         <span className="trav-booking-id">#{trip.id}</span>
-                        <span className={`trav-status-badge ${trip.status === 'rejected_by_guide' ? 'is-warning' : trip.status === 'pending_guide_confirm' ? 'is-pending' : 'is-confirmed'}`}>
+                        <span className={`trav-status-badge ${trip.status === 'rejected_by_guide' ? 'is-warning' : trip.status === 'pending_guide_confirm' ? 'is-pending' : trip.status === 'cancelled' ? 'is-cancelled' : 'is-confirmed'}`}>
                           {trip.status === 'rejected_by_guide'
                             ? 'GUIDE NEEDED'
                             : trip.status === 'pending_guide_confirm'
                               ? 'AWAITING GUIDE'
                               : (trip.status || 'draft').toUpperCase()}
                         </span>
+                        {trip.status === 'cancelled' && trip.refundStatus && (
+                          <span
+                            className={`trav-refund-pill is-${trip.refundStatus.toLowerCase()}`}
+                            title={`Refund Reference: ${trip.refundReference || 'N/A'}`}
+                          >
+                            {trip.refundStatus === 'SUCCESS' && '✓ Refunded '}
+                            {trip.refundStatus === 'FAILED' && '✕ Refund Failed '}
+                            {trip.refundStatus === 'NOT_ELIGIBLE' && '• Ineligible '}
+                            {trip.refundStatus === 'PENDING' && '⏳ Processing '}
+                            {trip.refundAmount ? `₹${trip.refundAmount}` : ''}
+                          </span>
+                        )}
                         {isOngoing && (
                           <span className="trav-live-indicator">
                             <span className="trav-live-pulse-dot" aria-hidden="true" />
@@ -636,6 +666,17 @@ export default function TravellerTripsList({
                       >
                         View Details & Itinerary
                       </button>
+                      {trip.status === 'confirmed' && (
+                        <button
+                          type="button"
+                          className="trav-btn-cancel-trigger"
+                          onClick={() => setCancellingTrip(trip)}
+                          aria-label={`Cancel trip ${trip.id}`}
+                          style={{ marginTop: '0.4rem', width: '100%' }}
+                        >
+                          Cancel Trip
+                        </button>
+                      )}
                       {isCompleted && (
                         hasReviewed ? (
                           <button
@@ -660,6 +701,7 @@ export default function TravellerTripsList({
                     </div>
                   </div>
 
+
                   <TripGuidePanel trip={trip} onChanged={refreshLiveTrips} />
 
                   {/* Visual Timeline & Live Progress Bar Component */}
@@ -679,7 +721,22 @@ export default function TravellerTripsList({
             })}
           </div>
         )}
+
+        {/* Cancellation Modal for Trips */}
+        {cancellingTrip && (
+          <CancellationModal
+            isOpen={!!cancellingTrip}
+            booking={cancellingTrip}
+            bookingType="trip"
+            onClose={() => setCancellingTrip(null)}
+            onSuccess={() => {
+              refreshLiveTrips();
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
+
+

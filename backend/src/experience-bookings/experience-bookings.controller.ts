@@ -10,6 +10,7 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { NonEmptyStringPipe } from '../common/pipes/non-empty-string.pipe';
 import { CreateExperienceBookingDto } from './dto/create-experience-booking.dto';
 import { UpdateExperienceBookingStatusDto } from './dto/update-experience-booking-status.dto';
+import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
 import { ExperienceBookingsService } from './experience-bookings.service';
 
 @ApiTags('Phase 2 - Experience Bookings')
@@ -54,7 +55,7 @@ export class ExperienceBookingsController {
   }
 
   @Patch(':id/status')
-  @Roles(Role.TRAVELLER, Role.EXPERIENCE)
+  @Roles(Role.TRAVELLER, Role.EXPERIENCE, Role.SUPERADMIN)
   @ApiOperation({ summary: 'Update an experience booking status' })
   updateStatus(
     @Param('id', NonEmptyStringPipe) id: string,
@@ -62,5 +63,23 @@ export class ExperienceBookingsController {
     @Req() req: any,
   ) {
     return this.experienceBookingsService.updateStatus(id, dto.status, req.user);
+  }
+
+  @Patch(':id/cancel')
+  @Roles(Role.TRAVELLER, Role.EXPERIENCE, Role.SUPERADMIN)
+  @ApiOperation({ summary: 'Cancel an experience booking with policy evaluation and refund processing' })
+  cancel(
+    @Param('id', NonEmptyStringPipe) id: string,
+    @Req() req: any,
+    @Body() dto?: CancelBookingDto,
+  ) {
+    return this.experienceBookingsService.cancel(id, req.user, dto);
+  }
+
+  @Patch(':id/refund/retry')
+  @Roles(Role.TRAVELLER, Role.SUPERADMIN)
+  @ApiOperation({ summary: 'Retry a failed or pending refund for an experience booking' })
+  retryRefund(@Param('id', NonEmptyStringPipe) id: string, @Req() req: any) {
+    return this.experienceBookingsService.retryRefund(id, req.user);
   }
 }
