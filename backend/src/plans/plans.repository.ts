@@ -95,10 +95,16 @@ export class PlansRepository {
     from?: string;
     to?: string;
     destination?: string;
+    statuses?: string[];
   }): { data: Plan[]; total: number; page: number; limit: number } {
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 50;
     let filtered = [...this.plans];
+
+    if (options?.statuses && options.statuses.length > 0) {
+      const allowed = options.statuses.map((s) => s.toLowerCase());
+      filtered = filtered.filter((p) => allowed.includes((p.status || 'available').toLowerCase()));
+    }
 
     if (options?.from) {
       const q = options.from.toLowerCase();

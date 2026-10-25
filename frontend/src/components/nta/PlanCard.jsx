@@ -55,7 +55,16 @@ export default function PlanCard({
   const starsDisplay = '★'.repeat(Math.min(5, Math.max(1, stars))) + '☆'.repeat(Math.max(0, 5 - stars));
 
   // Status
-  const isAvailable = (plan.status || 'available').toLowerCase() === 'available';
+  const planStatus = (plan.status || 'available').toLowerCase();
+  const statusLabel =
+    planStatus === 'sold_out'
+      ? 'Sold Out'
+      : planStatus === 'draft'
+      ? 'Draft'
+      : planStatus === 'unavailable'
+      ? 'Unavailable'
+      : 'Available';
+  const isAvailable = planStatus === 'available';
 
   return (
     <article className={`nta-plan-card ${className}`} data-testid={`plan-card-${plan.id}`}>
@@ -89,9 +98,9 @@ export default function PlanCard({
 
         {/* Status Badge */}
         <div className="nta-plan-card-badge-container">
-          <span className={`nta-plan-status-badge ${isAvailable ? 'available' : 'unavailable'}`}>
+          <span className={`nta-plan-status-badge ${planStatus}`}>
             <span className="nta-plan-status-dot" />
-            {isAvailable ? 'Available' : 'Unavailable'}
+            {statusLabel}
           </span>
           {assignedRegion && isRegionMatch && isNTA && (
             <span className="nta-plan-region-match-badge" title="Assigned to your regional territory">

@@ -26,6 +26,9 @@ export async function apiRequest(path, options = {}) {
     return mocked.data;
   }
 
+
+  
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers,

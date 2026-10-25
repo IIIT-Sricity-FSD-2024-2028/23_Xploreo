@@ -1,6 +1,6 @@
 import { fetchData } from './api.js';
+import { identityHeaders, getToken, getUser } from './session.js';
 import {
-  DEMO_NTA_DASHBOARD_METRICS,
   DEMO_NTA_REGIONAL_SUMMARY,
   DEMO_NTA_RECENT_ACTIVITY,
   DEMO_NTA_RECENT_BOOKINGS,
@@ -68,14 +68,22 @@ export function resetNtaMockStore() {
 
 /**
  * Builds standard NonTechAdmin authorization headers for live backend calls.
+ * Ensures the Authorization Bearer token is attached so NestJS AuthGuard does not reject with 401.
  */
 function buildNtaHeaders(session = {}) {
-  const userId = session.userId || session.userid || 'NTA-JAI-001';
-  const role = session.role || 'nontechadmin';
-  return {
+  const activeUser = getUser();
+  const userId = session.userId || session.userid || activeUser?.userId || activeUser?.id || activeUser?.username || 'NTA-JAI-001';
+  const role = session.role || activeUser?.role || 'nontechadmin';
+  const headers = {
+    ...identityHeaders(),
     'x-user-role': role,
     'x-user-id': String(userId),
   };
+  const token = session.token || session.user?.token || getToken();
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 // ============================================================================

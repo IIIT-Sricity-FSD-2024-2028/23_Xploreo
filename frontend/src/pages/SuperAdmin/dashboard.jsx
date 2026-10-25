@@ -10,6 +10,7 @@ import {
   getBookingVelocity,
   getRecentBookings,
 } from '../../services/superadmin.api.js';
+import { getUser } from '../../services/session.js';
 import '../../components/superadmin/superadmin.css';
 
 /**
@@ -22,7 +23,8 @@ import '../../components/superadmin/superadmin.css';
  */
 export default function SuperAdminDashboardPage({ user = null }) {
   const session = useMemo(() => {
-    return user || { userId: 'SA001', role: 'superadmin' };
+    const active = user || getUser();
+    return active && active.role !== 'default' ? active : { userId: 'SA001', role: 'superadmin' };
   }, [user]);
 
   // Dashboard Data State

@@ -240,10 +240,15 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   // Stays and experiences carry 12% taxes & fees (same rate as the server); packages keep their own figure.
   const taxes = effectiveType === 'package' ? Number(item?.taxesAndFees ?? 1200) : Math.round(subtotal * 0.12);
   const totalAmount = subtotal + taxes;
+  const isSoldOut = effectiveType === 'package' && (item?.status || '').toLowerCase() === 'sold_out';
 
   // Handle "Book Slot" navigation into existing /Traveller/checkout flow
   const handleBookSlot = () => {
     if (!item) return;
+    if (isSoldOut) {
+      setBookError('This travel package is sold out and cannot be booked.');
+      return;
+    }
 
     const selectedSlotObj = Array.isArray(item.slots)
       ? item.slots.find((s) => s.id === selectedSlotId)
@@ -415,9 +420,27 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
         <div className="trav-detail-header">
           <div className="trav-detail-topline">
             <div>
-              <span className="trav-badge trav-badge-category" style={{ marginBottom: '8px' }}>
-                {categoryLabel.toUpperCase()}
-              </span>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                <span className="trav-badge trav-badge-category">
+                  {categoryLabel.toUpperCase()}
+                </span>
+                {isSoldOut && (
+                  <span
+                    style={{
+                      background: '#ef4444',
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Sold Out
+                  </span>
+                )}
+              </div>
               <h1 className="trav-detail-title">{title}</h1>
               <div className="trav-detail-location">
                 <span>📍</span>
@@ -803,6 +826,238 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 </div>
               </section>
             )}
+
+            {/* Package Day-by-Day Itinerary Section */}
+            {effectiveType === 'package' && (
+              <section className="trav-card" data-testid="package-itinerary-section">
+                {(() => {
+                  const rawItin = item.itinerary;
+                  const isObjectItin = rawItin && typeof rawItin === 'object' && !Array.isArray(rawItin);
+                  const isArrayItin = Array.isArray(rawItin) && rawItin.length > 0;
+                  const day1Hotel = isObjectItin ? rawItin.day1?.hotel : null;
+                  const experienceDays = isObjectItin && Array.isArray(rawItin.days) ? rawItin.days : [];
+                  const hasItineraryData = Boolean(
+                    isArrayItin ||
+                    day1Hotel?.name ||
+                    experienceDays.some((d) => Array.isArray(d.experiences) && d.experiences.length > 0)
+                  );
+
+                  const totalDaysCount = isArrayItin
+                    ? rawItin.length
+                    : (experienceDays.length > 0
+                        ? Math.max(
+                            day1Hotel ? 1 : 0,
+                            ...experienceDays.map((d, i) => Number(d.dayNumber || i + 2))
+                          )
+                        : (day1Hotel ? 1 : (item.durationNights ? item.durationNights + 1 : 0)));
+
+                  return (
+                    <>
+                      <div className="trav-itinerary-header-row">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <h2 className="trav-card-title" style={{ margin: 0 }}>
+                            Day-by-Day Itinerary
+                          </h2>
+                          {totalDaysCount > 0 && (
+                            <span className="trav-itinerary-count-badge">
+                              {totalDaysCount} {totalDaysCount === 1 ? 'Day' : 'Days'} Plan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {!hasItineraryData ? (
+                        <div className="trav-itinerary-empty-box">
+                          <p style={{ margin: 0 }}>Itinerary details will be available soon.</p>
+                        </div>
+                      ) : (
+                        <div className="trav-itinerary-timeline">
+                          {/* Case A: Object Itinerary (NTA Standard Itinerary Builder Format) */}
+                          {isObjectItin && (
+                            <>
+                              {/* Day 1: Partner Hotel Check-In & Arrival */}
+                              {day1Hotel ? (
+                                <div className="trav-itinerary-day-card">
+                                  <div className="trav-itinerary-day-header">
+                                    <div className="trav-itinerary-day-title-group">
+                                      <span className="trav-itinerary-day-badge">Day 1</span>
+                                      <h3 className="trav-itinerary-day-heading">
+                                        Arrival & Check-in at {day1Hotel.name || `${item.destination} Partner Stay`}
+                                      </h3>
+                                    </div>
+                                    <span className="trav-itinerary-type-pill arrival">Stay & Check-In</span>
+                                  </div>
+
+                                  <div className="trav-itinerary-day-body">
+                                    <div className="trav-itinerary-hotel-banner">
+                                      <div className="trav-itinerary-hotel-top">
+                                        <h4 className="trav-itinerary-hotel-name">
+                                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="2">
+                                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                                            <polyline points="9 22 9 12 15 12 15 22" />
+                                          </svg>
+                                          {day1Hotel.name || `${item.destination} Partner Hotel`}
+                                        </h4>
+                                        <span className="trav-itinerary-hotel-stars">
+                                          {day1Hotel.stars || item.hotelStars || 4}★ Partner Stay
+                                        </span>
+                                      </div>
+
+                                      <div className="trav-itinerary-meta-grid">
+                                        <div className="trav-itinerary-meta-item">
+                                          <span className="trav-itinerary-meta-label">Room Type</span>
+                                          <span className="trav-itinerary-meta-val">
+                                            {day1Hotel.roomType || 'Standard Room'}
+                                          </span>
+                                        </div>
+                                        <div className="trav-itinerary-meta-item">
+                                          <span className="trav-itinerary-meta-label">Check-In</span>
+                                          <span className="trav-itinerary-meta-val">
+                                            {day1Hotel.checkInDate || 'Scheduled Day 1'}
+                                          </span>
+                                        </div>
+                                        <div className="trav-itinerary-meta-item">
+                                          <span className="trav-itinerary-meta-label">Check-Out</span>
+                                          <span className="trav-itinerary-meta-val">
+                                            {day1Hotel.checkOutDate || `Day ${item.durationNights ? item.durationNights + 1 : 2}`}
+                                          </span>
+                                        </div>
+                                        <div className="trav-itinerary-meta-item">
+                                          <span className="trav-itinerary-meta-label">Destination</span>
+                                          <span className="trav-itinerary-meta-val">
+                                            {item.destination}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+
+                              {/* Days 2+: Curated Local Experiences & Activities */}
+                              {experienceDays.map((dayGroup, dayIdx) => {
+                                const dayNumber = dayGroup.dayNumber || dayIdx + 2;
+                                const experiences = Array.isArray(dayGroup.experiences)
+                                  ? dayGroup.experiences
+                                  : [];
+
+                                return (
+                                  <div key={dayIdx} className="trav-itinerary-day-card">
+                                    <div className="trav-itinerary-day-header">
+                                      <div className="trav-itinerary-day-title-group">
+                                        <span className="trav-itinerary-day-badge">Day {dayNumber}</span>
+                                        <h3 className="trav-itinerary-day-heading">
+                                          {experiences.length > 0 && experiences[0].title
+                                            ? experiences[0].title
+                                            : `Day ${dayNumber} Curated Exploration`}
+                                        </h3>
+                                      </div>
+                                      <span className="trav-itinerary-type-pill">Guided Activity</span>
+                                    </div>
+
+                                    <div className="trav-itinerary-day-body">
+                                      {experiences.length > 0 ? (
+                                        <div className="trav-itinerary-exp-list">
+                                          {experiences.map((exp, expIdx) => {
+                                            const starts = exp.startsAt
+                                              ? (exp.startsAt.includes('T') ? exp.startsAt.split('T')[1].slice(0, 5) : exp.startsAt)
+                                              : '';
+                                            const ends = exp.endsAt
+                                              ? (exp.endsAt.includes('T') ? exp.endsAt.split('T')[1].slice(0, 5) : exp.endsAt)
+                                              : '';
+                                            const timeRange = starts ? (ends ? `${starts} – ${ends}` : starts) : null;
+
+                                            return (
+                                              <div key={expIdx} className="trav-itinerary-exp-card">
+                                                <div className="trav-itinerary-exp-title-row">
+                                                  <h4 className="trav-itinerary-exp-title">
+                                                    {exp.title || 'Curated Guided Activity'}
+                                                  </h4>
+                                                  {exp.status && (
+                                                    <span style={{
+                                                      fontSize: '0.75rem',
+                                                      fontWeight: 700,
+                                                      textTransform: 'capitalize',
+                                                      color: '#0d9488',
+                                                      background: '#f0fdfa',
+                                                      padding: '2px 8px',
+                                                      borderRadius: '4px',
+                                                      border: '1px solid #ccfbf1',
+                                                    }}>
+                                                      {exp.status}
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                <div className="trav-itinerary-exp-meta">
+                                                  <span className="trav-itinerary-exp-tag">
+                                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                                      <circle cx="12" cy="10" r="3" />
+                                                    </svg>
+                                                    {exp.location || item.destination}
+                                                  </span>
+
+                                                  {timeRange && (
+                                                    <span className="trav-itinerary-exp-tag">
+                                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <circle cx="12" cy="12" r="10" />
+                                                        <polyline points="12 6 12 12 16 14" />
+                                                      </svg>
+                                                      {timeRange}
+                                                    </span>
+                                                  )}
+                                                </div>
+
+                                                {exp.description && (
+                                                  <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#475569', lineHeight: 1.5 }}>
+                                                    {exp.description}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      ) : (
+                                        <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748b', fontStyle: 'italic' }}>
+                                          Free day for leisure and independent destination exploration.
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </>
+                          )}
+
+                          {/* Case B: Array Itinerary Fallback */}
+                          {isArrayItin &&
+                            rawItin.map((step, idx) => (
+                              <div key={idx} className="trav-itinerary-day-card">
+                                <div className="trav-itinerary-day-header">
+                                  <div className="trav-itinerary-day-title-group">
+                                    <span className="trav-itinerary-day-badge">
+                                      {step.day || `Day ${idx + 1}`}
+                                    </span>
+                                    <h3 className="trav-itinerary-day-heading">
+                                      {step.title || `Day ${idx + 1} Program`}
+                                    </h3>
+                                  </div>
+                                </div>
+                                <div className="trav-itinerary-day-body">
+                                  <p style={{ margin: 0, fontSize: '0.9rem', color: '#334155', lineHeight: 1.6 }}>
+                                    {step.detail || step.description || 'Guided activities scheduled for this day.'}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </section>
+            )}
           </div>
 
           {/* Right Column: Sticky Booking Widget Sidebar */}
@@ -960,6 +1215,25 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
               </div>
             </div>
 
+            {isSoldOut && (
+              <div
+                role="alert"
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#991b1b',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  marginBottom: '14px',
+                  textAlign: 'center',
+                }}
+              >
+                This travel package is Sold Out. Bookings are currently unavailable.
+              </div>
+            )}
+
             {bookError ? (
               <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '12px' }}>
                 {bookError}
@@ -969,9 +1243,10 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
             {/* Clear "Book Slot" Primary CTA Button */}
             <button
               type="button"
-              className="trav-btn trav-btn-primary"
+              className={`trav-btn ${isSoldOut ? 'trav-btn-disabled' : 'trav-btn-primary'}`}
               id="btn-book-slot"
               data-testid="btn-book-slot"
+              disabled={isSoldOut}
               onClick={handleBookSlot}
               style={{
                 width: '100%',
@@ -980,10 +1255,14 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 fontWeight: 800,
                 boxSizing: 'border-box',
                 textAlign: 'center',
-                boxShadow: '0 4px 14px rgba(13, 148, 136, 0.35)',
+                boxShadow: isSoldOut ? 'none' : '0 4px 14px rgba(13, 148, 136, 0.35)',
+                opacity: isSoldOut ? 0.6 : 1,
+                cursor: isSoldOut ? 'not-allowed' : 'pointer',
+                backgroundColor: isSoldOut ? '#94a3b8' : undefined,
+                borderColor: isSoldOut ? '#94a3b8' : undefined,
               }}
             >
-              Book Slot
+              {isSoldOut ? 'Sold Out — Bookings Unavailable' : 'Book Slot'}
             </button>
 
             <div style={{ marginTop: '16px', textAlign: 'center' }}>

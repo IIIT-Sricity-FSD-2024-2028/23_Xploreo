@@ -1,10 +1,31 @@
 import { fetchData } from './api.js';
+import { identityHeaders, getToken, getUser } from './session.js';
 import { MOCK_PLANS } from '../mocks/plans/plans.fixture.js';
 
 /**
  * Backend base URL. Defaults to localhost:3000 if not specified in env.
  */
 const BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000/api';
+
+/**
+ * Builds standard authorization headers for live backend calls.
+ * Ensures the Authorization Bearer token is attached so NestJS AuthGuard does not reject with 401.
+ */
+function buildPlansHeaders(session = {}) {
+  const activeUser = getUser();
+  const userId = session.userId || session.userid || activeUser?.userId || activeUser?.id || activeUser?.username || 'NTA001';
+  const role = session.role || activeUser?.role || 'nontechadmin';
+  const headers = {
+    ...identityHeaders(),
+    'x-user-role': role,
+    'x-user-id': String(userId),
+  };
+  const token = session.token || session.user?.token || getToken();
+  if (token && !headers['Authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 /**
  * In-memory fallback copy of mock plans for development / offline mode.
@@ -129,6 +150,14 @@ export async function getPlans(params = {}, session = {}) {
 
   if (isPlansMockMode()) {
     let filtered = [...localMockStore];
+    const isStaff = isNTA || (session.role || '').toLowerCase() === 'superadmin';
+    if (!isStaff) {
+      filtered = filtered.filter((p) => {
+        const s = (p.status || 'available').toLowerCase();
+        return s === 'available' || s === 'sold_out';
+      });
+    }
+
     if (effectiveDestination) {
       const q = effectiveDestination.toLowerCase().trim();
       filtered = filtered.filter((p) => p.destination?.toLowerCase() === q || p.destination?.toLowerCase().includes(q));
@@ -150,17 +179,11 @@ export async function getPlans(params = {}, session = {}) {
   if (from) queryParams.set('from', from);
   if (to) queryParams.set('to', to);
 
-  const userId = session.userId || session.userid || 'NTA001';
-  const role = session.role || 'nontechadmin';
-
   try {
     const url = `${BASE_URL}/plans${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const result = await fetchData(url, {
       method: 'GET',
-      headers: {
-        'x-user-role': role,
-        'x-user-id': String(userId),
-      },
+      headers: buildPlansHeaders(session),
     });
     return result;
   } catch (err) {
@@ -183,6 +206,14 @@ export async function getPlanById(id, session = {}) {
   if (isPlansMockMode()) {
     const plan = localMockStore.find((p) => p.id === id);
     if (!plan) throw new ApiError(`Plan #${id} not found.`, 404);
+
+    const isStaff = isNTA || (session.role || '').toLowerCase() === 'superadmin';
+    if (!isStaff) {
+      const s = (plan.status || 'available').toLowerCase();
+      if (s === 'draft' || s === 'unavailable') {
+        throw new ApiError(`Plan #${id} not found.`, 404);
+      }
+    }
     // Regional scoping check for NTA
     const isNTA = (session.role || '').toLowerCase().includes('nontech') || (session.role || '').toLowerCase() === 'nta';
     if (isNTA && session.region && plan.destination?.toLowerCase() !== session.region.toLowerCase()) {
@@ -191,16 +222,10 @@ export async function getPlanById(id, session = {}) {
     return { ...plan };
   }
 
-  const userId = session.userId || session.userid || 'NTA001';
-  const role = session.role || 'nontechadmin';
-
   try {
     const plan = await fetchData(`${BASE_URL}/plans/${encodeURIComponent(id)}`, {
       method: 'GET',
-      headers: {
-        'x-user-role': role,
-        'x-user-id': String(userId),
-      },
+      headers: buildPlansHeaders(session),
     });
     return plan;
   } catch (err) {
@@ -252,6 +277,7 @@ export async function createPlan(data, session = {}) {
     includesFlight: false, // Product requirement: No flights
     image: data.image || '',
     tags: Array.isArray(data.tags) ? data.tags : [],
+    status: data.status || 'available',
     itinerary: backendItinerary,
   };
 
@@ -265,16 +291,10 @@ export async function createPlan(data, session = {}) {
     return newPlan;
   }
 
-  const userId = session.userId || session.userid || 'NTA001';
-  const role = session.role || 'nontechadmin';
-
   try {
     const created = await fetchData(`${BASE_URL}/plans`, {
       method: 'POST',
-      headers: {
-        'x-user-role': role,
-        'x-user-id': String(userId),
-      },
+      headers: buildPlansHeaders(session),
       body: JSON.stringify(payload),
     });
     return created;
@@ -373,16 +393,10 @@ export async function updatePlan(id, data, session = {}) {
     payload.itinerary = buildBackendItinerary(data.itinerary, payload.destination || 'Destination');
   }
 
-  const userId = session.userId || session.userid || 'NTA001';
-  const role = session.role || 'nontechadmin';
-
   try {
     const updated = await fetchData(`${BASE_URL}/plans/${encodeURIComponent(id)}`, {
       method: 'PATCH',
-      headers: {
-        'x-user-role': role,
-        'x-user-id': String(userId),
-      },
+      headers: buildPlansHeaders(session),
       body: JSON.stringify(payload),
     });
     return updated;
@@ -429,16 +443,10 @@ export async function deletePlan(id, session = {}) {
     return { message: `Plan ${id} deleted` };
   }
 
-  const userId = session.userId || session.userid || 'SA001';
-  const role = session.role || 'superadmin';
-
   try {
     const result = await fetchData(`${BASE_URL}/plans/${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: {
-        'x-user-role': role,
-        'x-user-id': String(userId),
-      },
+      headers: buildPlansHeaders(session),
     });
     return result;
   } catch (err) {

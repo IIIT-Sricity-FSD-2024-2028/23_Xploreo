@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useInRouterContext, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import { reconcileTripTracking, mapBackendTrip } from '../../utils/tripTrackingUtils.js';
@@ -54,8 +53,6 @@ export default function TravellerTripsList({
   currentTravellerId,
   useFixtures = false,
 }) {
-  const inRouter = useInRouterContext();
-  const navigate = inRouter ? useNavigate() : null;
   const effectiveUser = user || {
     name: 'Anjali Sharma',
     username: 'Anjali Sharma',
@@ -96,8 +93,8 @@ export default function TravellerTripsList({
   }, [useFixtures]);
 
   const handleWriteReview = (trip) => {
-    if (navigate) {
-      navigate(`/Traveller/reviews?tripId=${encodeURIComponent(trip.id)}`);
+    if (typeof window !== 'undefined') {
+      window.location.href = `/Traveller/reviews?tripId=${encodeURIComponent(trip.id)}`;
     }
   };
 
@@ -358,7 +355,7 @@ export default function TravellerTripsList({
   if (selectedTrip) {
     return (
       <div className="trav-trips-page-wrapper">
-        {showNavbar && inRouter && (
+        {showNavbar && (
           <Navbar user={effectiveUser} />
         )}
         <div className="trav-trips-page" data-testid="traveller-trip-details-page">
@@ -389,7 +386,7 @@ export default function TravellerTripsList({
 
   return (
     <div className="trav-trips-page-wrapper">
-      {showNavbar && inRouter && (
+      {showNavbar && (
         <Navbar user={effectiveUser} />
       )}
 

@@ -40,6 +40,7 @@ export class PlansService {
       durationNights,
       pricePerPerson,
       hotelStars: dto.hotelStars ?? 3,
+      status: dto.status ?? 'available',
       includesFlight: dto.includesFlight ?? true,
       image: dto.image ?? '',
       tags: dto.tags ?? [],
@@ -62,18 +63,34 @@ export class PlansService {
       effectiveDestination = actor.region || 'NONE';
     }
 
+    let statuses: string[] | undefined = undefined;
+    const isStaff = actor?.role === 'nontechadmin' || actor?.role === 'superadmin';
+    if (!isStaff) {
+      // Public / Traveller discovery: only 'available' and 'sold_out' packages are visible
+      statuses = ['available', 'sold_out'];
+    }
+
     return this.plansRepository.findAll({
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,
       from: query.from,
       to: query.to,
       destination: effectiveDestination,
+      statuses,
     });
   }
 
   async findOne(id: string, actor?: { userId?: string; role?: string; region?: string }) {
     const plan = await this.plansRepository.findById(id);
     if (!plan) throw new NotFoundException(`Plan ${id} not found`);
+
+    const isStaff = actor?.role === 'nontechadmin' || actor?.role === 'superadmin';
+    if (!isStaff) {
+      const pStatus = (plan.status || 'available').toLowerCase();
+      if (pStatus === 'draft' || pStatus === 'unavailable') {
+        throw new NotFoundException(`Plan ${id} not found`);
+      }
+    }
 
     if (actor?.role === 'nontechadmin') {
       const ntaRegion = (actor.region || '').trim().toLowerCase();
