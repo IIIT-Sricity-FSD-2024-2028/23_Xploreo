@@ -33,6 +33,7 @@ export default function BrowseItemDetailModal({
   const title = item.name || item.title || `${item.fname || ''} ${item.lname || ''}`.trim() || 'Item Details';
   const heroImage = item.image || item.images?.[0] || FALLBACK_MODAL_IMAGES[category] || FALLBACK_MODAL_IMAGES.hotels;
   const startingRate = item.pricePerNight ?? item.price ?? item.pricePerPerson ?? 0;
+  const isSoldOut = (item.status || '').toLowerCase() === 'sold_out';
 
   return (
     <div
@@ -164,6 +165,25 @@ export default function BrowseItemDetailModal({
               </span>
             </div>
           )}
+
+          {isSoldOut && (
+            <div
+              role="alert"
+              style={{
+                marginTop: '1rem',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+                fontWeight: 600,
+                fontSize: '0.9rem',
+                textAlign: 'center',
+              }}
+            >
+              This travel package is currently Sold Out. Bookings are unavailable.
+            </div>
+          )}
         </div>
 
         <footer className="trav-browse-modal-footer">
@@ -177,13 +197,16 @@ export default function BrowseItemDetailModal({
           {onBook && (
             <button
               type="button"
-              className="trav-browse-btn trav-browse-btn-primary"
+              className={`trav-browse-btn ${isSoldOut ? 'trav-browse-btn-disabled' : 'trav-browse-btn-primary'}`}
+              disabled={isSoldOut}
+              style={isSoldOut ? { opacity: 0.6, cursor: 'not-allowed', background: '#94a3b8', borderColor: '#94a3b8' } : {}}
               onClick={() => {
+                if (isSoldOut) return;
                 onBook(item);
                 if (onClose) onClose();
               }}
             >
-              Proceed with Selection
+              {isSoldOut ? 'Sold Out' : 'Proceed with Selection'}
             </button>
           )}
         </footer>

@@ -2,6 +2,7 @@ import {
   IsArray,
   IsBoolean,
   IsDefined,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
@@ -93,6 +94,15 @@ export class CreatePlanDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @ApiPropertyOptional({
+    example: 'available',
+    enum: ['available', 'draft', 'sold_out', 'unavailable'],
+    description: 'Publication and availability status of the package.',
+  })
+  @IsOptional()
+  @IsIn(['available', 'draft', 'sold_out', 'unavailable'])
+  status?: 'available' | 'draft' | 'sold_out' | 'unavailable';
 
   @ApiProperty({
     oneOf: [

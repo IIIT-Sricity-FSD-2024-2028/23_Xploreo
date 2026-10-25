@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPlan, updatePlan } from '../../services/plans.api.js';
+import { uploadSingle } from '../../services/upload.api.js';
 import { getHotelsByDestination } from '../../mocks/plans/hotels.fixture.js';
 import ItineraryBuilder from './ItineraryBuilder.jsx';
 import './nta.css';
@@ -8,6 +9,7 @@ const DEFAULT_STATUS_OPTIONS = [
   { value: 'available', label: 'Available (Active)' },
   { value: 'draft', label: 'Draft (Unpublished)' },
   { value: 'sold_out', label: 'Sold Out' },
+  { value: 'unavailable', label: 'Unavailable' },
 ];
 
 const SUPPORTED_DESTINATIONS = ['Jaipur', 'Goa', 'Delhi', 'Mumbai', 'Kerala'];
@@ -170,6 +172,7 @@ export default function PlanForm({
   });
   const [imageFileSize, setImageFileSize] = useState('');
   const [fileError, setFileError] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
   const objectUrlRef = useRef(null);
 
@@ -219,6 +222,7 @@ export default function PlanForm({
       ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
       : `${Math.round(file.size / 1024)} KB`;
 
+    setSelectedFile(file);
     setImageFileName(file.name);
     setImageFileSize(sizeStr);
 
@@ -248,6 +252,7 @@ export default function PlanForm({
       URL.revokeObjectURL(objectUrlRef.current);
       objectUrlRef.current = null;
     }
+    setSelectedFile(null);
     setImage('');
     setImageFileName('');
     setImageFileSize('');
@@ -452,36 +457,50 @@ export default function PlanForm({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
-    const payload = {
-      title: trimmedTitle,
-      description: trimmedDesc,
-      destination: trimmedDest,
-      // Origin city removed from UI, defaulted to destination for backend compatibility
-      originCity: trimmedDest,
-      durationNights: nights,
-      pricePerPerson: price,
-      hotelStars: Number(hotelObj.stars || 4),
-      image: image.trim(),
-      tags: parsedTags,
-      status,
-      itinerary: {
-        ...itinerary,
-        day1: {
-          ...itinerary.day1,
-          hotel: {
-            ...itinerary.day1?.hotel,
-            name: hotelObj.name,
-            hotelId: hotelObj.hotelId || hotelObj.id || 'HP-PARTNER',
-            roomType: hotelObj.roomType || 'Standard Room',
-            stars: Number(hotelObj.stars || 4),
-            pricePerNight: Number(hotelObj.pricePerNight || 0),
-          },
-        },
-      },
-    };
-
     setIsSubmitting(true);
     try {
+      let finalImageUrl = image.trim();
+      if (selectedFile) {
+        try {
+          const uploadRes = await uploadSingle(selectedFile);
+          if (uploadRes?.url) {
+            finalImageUrl = uploadRes.url;
+            setImage(uploadRes.url);
+          }
+        } catch (uploadErr) {
+          setFileError(uploadErr.message || 'Image upload failed. Please try again.');
+          throw new Error(`Failed to upload package cover image: ${uploadErr.message || 'Unknown error'}`);
+        }
+      }
+
+      const payload = {
+        title: trimmedTitle,
+        description: trimmedDesc,
+        destination: trimmedDest,
+        // Origin city removed from UI, defaulted to destination for backend compatibility
+        originCity: trimmedDest,
+        durationNights: nights,
+        pricePerPerson: price,
+        hotelStars: Number(hotelObj.stars || 4),
+        image: finalImageUrl,
+        tags: parsedTags,
+        status,
+        itinerary: {
+          ...itinerary,
+          day1: {
+            ...itinerary.day1,
+            hotel: {
+              ...itinerary.day1?.hotel,
+              name: hotelObj.name,
+              hotelId: hotelObj.hotelId || hotelObj.id || 'HP-PARTNER',
+              roomType: hotelObj.roomType || 'Standard Room',
+              stars: Number(hotelObj.stars || 4),
+              pricePerNight: Number(hotelObj.pricePerNight || 0),
+            },
+          },
+        },
+      };
+
       let savedPlan;
       if (isEditMode) {
         savedPlan = await updatePlan(initialPlan.id, payload, currentUser);

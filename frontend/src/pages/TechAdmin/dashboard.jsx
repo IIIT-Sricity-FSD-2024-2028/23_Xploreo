@@ -3,6 +3,7 @@ import {
   getTickets,
   resolveTicket,
 } from '../../services/tickets.api.js';
+import { getUser } from '../../services/session.js';
 import { SAMetricCard } from '../../components/superadmin';
 import TicketStatusBadge from '../../components/tickets/TicketStatusBadge.jsx';
 import TicketDetailsModal from '../../components/tickets/TicketDetailsModal.jsx';
@@ -37,7 +38,8 @@ const EXPECTED_CATEGORIES = ['Booking', 'Payment', 'Hotel', 'Guide Inquiry', 'Ge
  */
 export default function TechAdminDashboard({ user = null, onNavigateToTickets = null }) {
   const session = useMemo(() => {
-    return user || { userId: 'TA001', role: 'techadmin' };
+    const active = user || getUser();
+    return active && active.role !== 'default' ? active : { userId: 'TA001', role: 'techadmin' };
   }, [user]);
 
   // Tickets Data State

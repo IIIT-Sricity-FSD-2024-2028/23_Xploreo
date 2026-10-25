@@ -33,8 +33,10 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
     hotelStars = 4,
     tags = [],
     image = '',
+    status = 'available',
   } = plan;
 
+  const isSoldOut = (status || '').toLowerCase() === 'sold_out';
   const displayImage = getPlanImage(id, image);
 
   return (
@@ -47,9 +49,28 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
           loading="lazy"
         />
         <div className="trav-browse-card-badge-top">
-          <span className="trav-browse-duration-badge">
-            {durationNights} Nights / {durationNights + 1} Days
-          </span>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <span className="trav-browse-duration-badge">
+              {durationNights} Nights / {durationNights + 1} Days
+            </span>
+            {isSoldOut && (
+              <span
+                className="trav-browse-soldout-badge"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.72rem',
+                  padding: '0.25rem 0.6rem',
+                  borderRadius: '0.35rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                }}
+              >
+                Sold Out
+              </span>
+            )}
+          </div>
           {hotelStars > 0 && (
             <span className="trav-browse-star-badge" aria-label={`${hotelStars} star stay`}>
               {hotelStars}★ Stays

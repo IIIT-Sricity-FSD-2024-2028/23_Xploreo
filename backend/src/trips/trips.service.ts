@@ -73,6 +73,20 @@ export class TripsService {
     }
     if (!plan) throw new NotFoundException(`Plan ${dto.planId} not found`);
 
+    const planStatus = (plan.status || 'available').toLowerCase();
+    if (planStatus === 'sold_out') {
+      throw new BadRequestException(`Cannot book package '${plan.title}': package is sold out.`);
+    }
+    if (planStatus === 'draft' || planStatus === 'unpublished') {
+      throw new BadRequestException(`Cannot book package '${plan.title}': package is not published.`);
+    }
+    if (planStatus === 'unavailable') {
+      throw new BadRequestException(`Cannot book package '${plan.title}': package is currently unavailable.`);
+    }
+    if (planStatus !== 'available') {
+      throw new BadRequestException(`Cannot book package '${plan.title}': booking is not permitted.`);
+    }
+
     if (actor?.role === 'nontechadmin') {
       const ntaRegion = (actor.region || '').trim().toLowerCase();
       if (ntaRegion && plan.destination.trim().toLowerCase() !== ntaRegion) {

@@ -9,6 +9,8 @@ const SUPPORTED_DESTINATIONS = ['All', 'Jaipur', 'Goa', 'Delhi', 'Mumbai', 'Kera
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Statuses' },
   { value: 'available', label: 'Available' },
+  { value: 'sold_out', label: 'Sold Out' },
+  { value: 'draft', label: 'Draft' },
   { value: 'unavailable', label: 'Unavailable' },
 ];
 
@@ -274,7 +276,7 @@ export default function PlanList({
             <line x1="12" y1="8" x2="12.01" y2="8" />
           </svg>
           <span>
-            You are managing packages as a Non-Tech Admin for <strong>{assignedRegion}</strong>. Editing is restricted to your assigned territory.
+            You are managing packages as a Non-Tech Admin for <strong>{assignedRegion}</strong>. You have edit access for packages in your assigned territory.
           </span>
         </div>
       )}

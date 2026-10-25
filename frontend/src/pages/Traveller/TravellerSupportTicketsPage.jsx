@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useInRouterContext, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { TicketCreateForm, TicketList } from '../../components/tickets/index.js';
 import { getTickets } from '../../services/tickets.api.js';
@@ -23,8 +23,7 @@ export default function TravellerSupportTicketsPage({
   onSubmitTicket,
   initialTab = 'list',
 }) {
-  const inRouter = useInRouterContext();
-  const location = inRouter ? useLocation() : null;
+  const location = useLocation();
 
   // Resolve authenticated traveller session
   const effectiveUser = useMemo(() => {
@@ -100,7 +99,7 @@ export default function TravellerSupportTicketsPage({
       className="trav-tickets-page-wrapper"
       data-testid="traveller-support-tickets-page"
     >
-      {showNavbar && inRouter && <Navbar user={effectiveUser} />}
+      {showNavbar && <Navbar user={effectiveUser} />}
 
       <main className="trav-tickets-page">
         {/* Page Header */}
