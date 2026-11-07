@@ -13,7 +13,7 @@ export function useAsyncData(loader) {
     setState((s) => ({ ...s, loading: true, error: null }));
     loader().then(
       (data) => {
-        if (!cancelled) setState({ data, error: null, loading: false });
+        if     (!cancelled) setState({ data, error: null, loading: false });
       },
       (error) => {
         if (!cancelled) setState((s) => ({ ...s, error, loading: false }));

@@ -431,6 +431,7 @@ registerMock('PATCH', '/bookings/:id/check-in', (ctx) => {
   assertRegion(ctx, hotel?.city ?? '');
   if (hotel?.partnerId !== user.id) throw new ApiError(403, 'This booking belongs to another hotel partner.');
   if (booking.status !== 'CONFIRMED') throw new ApiError(400, `Only CONFIRMED bookings can be checked in (current: ${booking.status}).`);
+  if (String(booking.checkOut ?? '').slice(0, 10) < dayOffset(0)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked in.');
   booking.status = 'CHECKED_IN';
   booking.updatedAt = nowIso();
   return structuredClone(booking);
@@ -445,6 +446,7 @@ registerMock('PATCH', '/bookings/:id/check-out', (ctx) => {
   assertRegion(ctx, hotel?.city ?? '');
   if (hotel?.partnerId !== user.id) throw new ApiError(403, 'This booking belongs to another hotel partner.');
   if (booking.status !== 'CHECKED_IN') throw new ApiError(400, `Only CHECKED_IN bookings can be checked out (current: ${booking.status}).`);
+  if (String(booking.checkOut ?? '').slice(0, 10) < dayOffset(0)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked out.');
   booking.status = 'CHECKED_OUT';
   booking.updatedAt = nowIso();
   booking.checkOut = dayOffset(0);
