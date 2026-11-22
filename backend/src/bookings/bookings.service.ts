@@ -348,6 +348,7 @@ export class BookingsService {
         `Only CONFIRMED bookings can be checked in (current: ${booking.status}).`,
       );
     }
+    this.assertStayNotPast(booking.checkOut, 'checked in');
     return this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_IN);
   }
 
@@ -363,10 +364,18 @@ export class BookingsService {
         `Only CHECKED_IN bookings can be checked out (current: ${booking.status}).`,
       );
     }
+    this.assertStayNotPast(booking.checkOut, 'checked out');
     this.bookingsRepository.setCheckOutDate(id, new Date().toISOString().slice(0, 10));
     const updated = this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_OUT);
     this.refreshAvailability(booking.hotelId, booking.roomType);
     return updated;
+  }
+
+  /** Check-in / check-out only apply to stays that end today or later. */
+  private assertStayNotPast(checkOut: string, action: string) {
+    if (String(checkOut).slice(0, 10) < new Date().toISOString().slice(0, 10)) {
+      throw new BadRequestException(`Bookings whose dates have already passed cannot be ${action}.`);
+    }
   }
 
   private refreshAvailability(hotelId: string, roomTypeName: string) {
