@@ -1,5 +1,63 @@
 import Navbar from "../../components/Navbar/navbar";
 import { TemplateFooter } from "./landing";
 import "./home.css";
-const questions = [["How do I cancel or modify my itinerary booking?", "You can modify or cancel your booking directly from your Traveler Dashboard under the My Trips tab. Please note that cancellations made within 48 hours of the tour's start time may be subject to a nominal cancellation fee as per our provider policy."], ["I'm a Local Guide. How do payouts work?", "Payouts are processed securely upon the completion of a scheduled tour. They are credited to your designated bank account attached to your Guide profile within 2–3 business days. You can track all historic and pending revenue via your Earnings Dashboard."], ["I forgot my password. How do I reset it?", "Simply click Login at the top right of the application, and choose Forgot Password. The system will ask for your registered email address and guide you through creating a new, secure password."]];
-export default function Support({ user }) { return <div className="home-page"><Navbar user={user} isPublic={true} /><section className="template-hero small"><div className="media-template-slot photo-hero" style={{ backgroundImage: "linear-gradient(rgba(4, 38, 86, .62), rgba(4, 38, 86, .62)), url('https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1500&q=80')" }} /><div className="template-hero-content"><h1>Help & Support</h1><p>We're here to help you navigate your journey.</p></div></section><main className="template-page-content narrow"><h2>Frequently Asked Questions</h2><p>Find quick answers to our most common inquiries regarding bookings, accounts, and partnership policies.</p>{questions.map(([title, text]) => <article className="template-faq" key={title}><h3>{title}</h3><p>{text}</p></article>)}<section className="template-contact"><h3>Still need assistance?</h3><p>Our dedicated support team is available 24/7 to help resolve your issues.</p><a href="mailto:support@xploreo.com">support@xploreo.com</a></section></main><TemplateFooter /></div>; }
+
+const questions = [
+  [
+    "How do I cancel or modify my itinerary booking?",
+    "You can modify or cancel your booking directly from your Traveler Dashboard under the My Trips tab. Please note that cancellations made within 48 hours of the tour's start time may be subject to a nominal cancellation fee as per our provider policy.",
+  ],
+  [
+    "I'm a Local Guide. How do payouts work?",
+    "Payouts are processed securely upon the completion of a scheduled tour. They are credited to your designated bank account attached to your Guide profile within 2–3 business days. You can track all historic and pending revenue via your Earnings Dashboard.",
+  ],
+  [
+    "I forgot my password. How do I reset it?",
+    "Simply click Login at the top right of the application, and choose Forgot Password. The system will ask for your registered email address and guide you through creating a new, secure password.",
+  ],
+];
+
+export default function Support({ user }) {
+  return (
+    <div className="home-page">
+      <Navbar user={user} isPublic={true} />
+      <section className="template-hero small">
+        <div
+          className="media-template-slot photo-hero"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(4, 38, 86, .62), rgba(4, 38, 86, .62)), url('https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1500&q=80')",
+          }}
+        />
+        <div className="template-hero-content">
+          <h1>Help & Support</h1>
+          <p>We're here to help you navigate your journey.</p>
+        </div>
+      </section>
+
+      <main className="template-page-content narrow">
+        <h2>Frequently Asked Questions</h2>
+        <p>
+          Find quick answers to our most common inquiries regarding bookings,
+          accounts, and partnership policies.
+        </p>
+        {questions.map(([title, text]) => (
+          <article className="template-faq" key={title}>
+            <h3>{title}</h3>
+            <p>{text}</p>
+          </article>
+        ))}
+        <section className="template-contact">
+          <h3>Still need assistance?</h3>
+          <p>
+            Our dedicated support team is available 24/7 to help resolve your
+            issues.
+          </p>
+          <a href="mailto:support@xploreo.com">support@xploreo.com</a>
+        </section>
+      </main>
+
+      <TemplateFooter />
+    </div>
+  );
+}

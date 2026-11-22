@@ -2,5 +2,66 @@ import { Link } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
 import { TemplateFooter } from "./landing";
 import "./home.css";
-const benefits = [["↗", "Global Audience", "Put your services directly in front of thousands of international travelers actively planning and booking itineraries every day."], ["▦", "Unified Dashboard", "Easily manage inventory, room availability, dynamic pricing, and tour scheduling from one integrated platform."], ["⌑", "Secure Payments", "Rest easy with guaranteed payouts, transparent reporting, and dedicated backend analytics for all your earnings."]];
-export default function Partners({ user }) { return <div className="home-page"><Navbar user={user} isPublic={true} /><section className="template-hero small"><div className="media-template-slot photo-hero" style={{ backgroundImage: "linear-gradient(rgba(4, 38, 86, .56), rgba(4, 38, 86, .56)), url('https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1500&q=80')" }} /><div className="template-hero-content"><h1>Become a Partner</h1><p>Grow your hospitality or guiding business globally.</p></div></section><main className="template-page-content"><h2>Partner With Us</h2><p>Xploreo bridges the gap between global travelers and trusted local service partners. Whether you manage a boutique hotel, a fleet of transport vehicles, or operate certified local tours, we give you the centralized tools to manage your bookings and elevate your reach.</p><div className="template-benefits">{benefits.map(([symbol, title, description]) => <article className="template-benefit" key={title}><span className="benefit-symbol">{symbol}</span><h3>{title}</h3><p>{description}</p></article>)}</div><Link className="partner-cta" to="/Auth/register">Join as a Partner</Link></main><TemplateFooter /></div>; }
+
+const benefits = [
+  [
+    "↗",
+    "Global Audience",
+    "Put your services directly in front of thousands of international travelers actively planning and booking itineraries every day.",
+  ],
+  [
+    "▦",
+    "Unified Dashboard",
+    "Easily manage inventory, room availability, dynamic pricing, and tour scheduling from one integrated platform.",
+  ],
+  [
+    "⌑",
+    "Secure Payments",
+    "Rest easy with guaranteed payouts, transparent reporting, and dedicated backend analytics for all your earnings.",
+  ],
+];
+
+export default function Partners({ user }) {
+  return (
+    <div className="home-page">
+      <Navbar user={user} isPublic={true} />
+      <section className="template-hero small">
+        <div
+          className="media-template-slot photo-hero"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(4, 38, 86, .56), rgba(4, 38, 86, .56)), url('https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1500&q=80')",
+          }}
+        />
+        <div className="template-hero-content">
+          <h1>Become a Partner</h1>
+          <p>Grow your hospitality or guiding business globally.</p>
+        </div>
+      </section>
+
+      <main className="template-page-content">
+        <h2>Partner With Us</h2>
+        <p>
+          Xploreo bridges the gap between global travelers and trusted local
+          service partners. Whether you manage a boutique hotel, a fleet of
+          transport vehicles, or operate certified local tours, we give you the
+          centralized tools to manage your bookings and elevate your reach.
+        </p>
+        <div className="template-benefits">
+          {benefits.map(([symbol, title, description]) => (
+            <article className="template-benefit" key={title}>
+              <span className="benefit-symbol">{symbol}</span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+        </div>
+        <Link className="partner-cta" to="/Auth/register">
+          Join as a Partner
+        </Link>
+      </main>
+
+      <TemplateFooter />
+    </div>
+  );
+}

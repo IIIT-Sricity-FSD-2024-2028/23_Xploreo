@@ -2,6 +2,67 @@ import Navbar from "../../components/Navbar/navbar";
 import { TemplateFooter } from "./landing";
 import "./home.css";
 import beachVideo from "../../../../front_end/components/ui/landing/beach.mp4";
-const tours = [["Magical Bali Escape", "From $899", "Discover the vibrant culture, temples, and beaches of Indonesia."], ["Best of Europe", "From $2,499", "A multi-city adventure through Paris, Rome, and the Swiss Alps."], ["Japan Discovery", "From $1,750", "Trace the legendary Golden Route via Shinkansen bullet train."]];
-const tourImages = ["https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80", "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=600&q=80", "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80"];
-export default function Tours({ user }) { return <div className="home-page"><Navbar user={user} isPublic={true} /><section className="template-hero small"><video className="template-media" autoPlay muted loop playsInline><source src={beachVideo} type="video/mp4" /></video><div className="template-hero-content"><h1>Discover Our Tours</h1><p>Epic adventures, crafted exclusively for you.</p></div></section><main className="template-page-content"><h2>Explore The World</h2><p>From local coastal escapes to deep cultural immersions across Europe and Asia, our curated platform of expert guides handles it all. Browse a sample of our popular upcoming tours below.</p><div className="template-tour-grid">{tours.map(([title, price, text], index) => <article className="template-tour-card" key={title}><img className="tour-image" src={tourImages[index]} alt={title} /><div className="tour-info-template"><h3>{title}</h3><strong>{price}</strong><p>{text}</p></div></article>)}</div></main><TemplateFooter /></div>; }
+
+const tours = [
+  [
+    "Magical Bali Escape",
+    "From $899",
+    "Discover the vibrant culture, temples, and beaches of Indonesia.",
+  ],
+  [
+    "Best of Europe",
+    "From $2,499",
+    "A multi-city adventure through Paris, Rome, and the Swiss Alps.",
+  ],
+  [
+    "Japan Discovery",
+    "From $1,750",
+    "Trace the legendary Golden Route via Shinkansen bullet train.",
+  ],
+];
+
+const tourImages = [
+  "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=600&q=80",
+  "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80",
+];
+
+export default function Tours({ user }) {
+  return (
+    <div className="home-page">
+      <Navbar user={user} isPublic={true} />
+      <section className="template-hero small">
+        <video className="template-media" autoPlay muted loop playsInline>
+          <source src={beachVideo} type="video/mp4" />
+        </video>
+        <div className="template-hero-content">
+          <h1>Discover Our Tours</h1>
+          <p>Epic adventures, crafted exclusively for you.</p>
+        </div>
+      </section>
+
+      <main className="template-page-content">
+        <h2>Explore The World</h2>
+        <p>
+          From local coastal escapes to deep cultural immersions across Europe
+          and Asia, our curated platform of expert guides handles it all. Browse
+          a sample of our popular upcoming tours below.
+        </p>
+        <div className="template-tour-grid">
+          {tours.map(([title, price, text], index) => (
+            <article className="template-tour-card" key={title}>
+              <img className="tour-image" src={tourImages[index]} alt={title} />
+              <div className="tour-info-template">
+                <h3>{title}</h3>
+                <strong>{price}</strong>
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </main>
+
+      <TemplateFooter />
+    </div>
+  );
+}

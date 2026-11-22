@@ -345,7 +345,7 @@ export default function TravellerDashboard({
     return () => {
       isCancelled = true;
     };
-  }, [useFixtures, userIdentifiers, isUserMatch, user?.userId, currentTravellerId]);
+  }, []);
 
   // Hotel search form state
   const [hotelDestination, setHotelDestination] = useState('');
