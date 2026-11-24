@@ -2,7 +2,8 @@
 // edit with the original validation rules, now persisted through /hotels/partner/profile.
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getPartnerProfile, listHotels, updatePartnerProfile } from '@/services/hotels.api.js';
+import { getPartnerProfile, updatePartnerProfile } from '@/services/hotels.api.js';
+import { usePartnerHotels } from '@/store/hotel/hooks.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { useHotelData, useToast } from '@/components/hotel/hotelKit.jsx';
 
@@ -50,13 +51,13 @@ const BLOCKS = [
 
 export default function HotelProfile() {
   const [toast, notify] = useToast();
-  const load = useCallback(async () => {
-    const [profile, hotels] = await Promise.all([getPartnerProfile(), listHotels().catch(() => [])]);
-    return { ...profile, hotels };
-  }, []);
+  const hotels = usePartnerHotels();
+  const load = useCallback(() => getPartnerProfile(), []);
   const { data, loading, error, reload } = useHotelData(load);
   const [saved, setSaved] = useState(null); // latest server copy after a save
-  const profile = saved ?? data;
+  const profile = (saved ?? data) && { ...(saved ?? data), hotels: hotels.data ?? [] };
+  const pageLoading = loading || hotels.loading;
+  const retry = () => { reload(); hotels.reload(); };
 
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState({});
@@ -94,7 +95,7 @@ export default function HotelProfile() {
     try {
       const body = Object.fromEntries(block.fields.filter((f) => !f.readOnly).map((f) => [f.name, String(draft[f.name] ?? '').trim()]));
       const updated = await updatePartnerProfile(body);
-      setSaved({ ...updated, hotels: profile.hotels });
+      setSaved(updated);
       setEditing(null);
       notify('Profile saved');
     } catch (err) {
@@ -107,7 +108,7 @@ export default function HotelProfile() {
   return (
     <HotelPage title="Profile">
       <PageHeader title="Profile" subtitle="Manage your hotel and account details" />
-      <LoadState loading={loading} error={error} onRetry={reload}>
+      <LoadState loading={pageLoading} error={error} onRetry={retry}>
         {profile ? (
           <form id="profileForm" className="profile-layout" onSubmit={(e) => e.preventDefault()} noValidate>
             <div className="hotel-content-card profile-card-top fade-in">

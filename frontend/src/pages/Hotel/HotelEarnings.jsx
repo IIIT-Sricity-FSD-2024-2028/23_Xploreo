@@ -2,7 +2,8 @@
 // room type, refund breakdown, recent transactions and payout. All figures come from the
 // server's /bookings/earnings statement.
 import { useCallback, useState } from 'react';
-import { getPartnerEarnings, listHotels } from '@/services/hotels.api.js';
+import { getPartnerEarnings } from '@/services/hotels.api.js';
+import { usePartnerHotels } from '@/store/hotel/hooks.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { fmtDate, inr, useHotelData } from '@/components/hotel/hotelKit.jsx';
@@ -15,8 +16,7 @@ const change = (current, previous) => {
 
 export default function HotelEarnings() {
   const [hotelId, setHotelId] = useState('');
-  const hotelsLoader = useCallback(() => listHotels(), []);
-  const hotels = useHotelData(hotelsLoader);
+  const hotels = usePartnerHotels();
   const load = useCallback(() => getPartnerEarnings(hotelId || undefined), [hotelId]);
   const { data: e, loading, error, reload } = useHotelData(load);
 

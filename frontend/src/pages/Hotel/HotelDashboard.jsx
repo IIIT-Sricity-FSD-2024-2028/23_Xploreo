@@ -2,7 +2,8 @@
 // js/modules/hotelDashboard.js, with every block fed from the backend instead of localStorage.
 import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { listHotelBookings, listHotels, listPartnerReviews } from '@/services/hotels.api.js';
+import { listHotelBookings, listPartnerReviews } from '@/services/hotels.api.js';
+import { usePartnerHotels } from '@/store/hotel/hooks.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState } from '@/components/hotel/HotelPage.jsx';
 import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useHotelData } from '@/components/hotel/hotelKit.jsx';
@@ -22,11 +23,16 @@ const timeAgo = (value) => {
 };
 
 export default function HotelDashboard() {
+  const hotels = usePartnerHotels();
   const load = useCallback(async () => {
-    const [hotels, bookings, reviews] = await Promise.all([listHotels(), listHotelBookings(), listPartnerReviews()]);
-    return { hotels, bookings, reviews };
+    const [bookings, reviews] = await Promise.all([listHotelBookings(), listPartnerReviews()]);
+    return { bookings, reviews };
   }, []);
-  const { data, loading, error, reload } = useHotelData(load);
+  const { data: otherData, loading: otherLoading, error: otherError, reload: reloadOther } = useHotelData(load);
+  const data = useMemo(() => hotels.data && otherData ? { hotels: hotels.data, ...otherData } : null, [hotels.data, otherData]);
+  const loading = hotels.loading || otherLoading;
+  const error = hotels.error || otherError;
+  const reload = () => { hotels.reload(); reloadOther(); };
 
   const view = useMemo(() => {
     if (!data) return null;

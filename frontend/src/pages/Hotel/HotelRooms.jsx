@@ -1,11 +1,12 @@
 // Port of front_end/pages/hotels/hotelRooms.html ("Services"): room types with availability,
 // add / edit / delete. All data comes from /hotels/:id/rooms on the backend.
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { createRoomType, deleteRoomType, listHotels, listRooms, updateRoomType } from '@/services/hotels.api.js';
+import { useAddRoomMutation, useChangeRoomMutation, useRemoveRoomMutation } from '@/store/hotel/hotelApi.js';
+import { usePartnerCatalog } from '@/store/hotel/hooks.js';
 import ImageUploader from '@/components/common/ImageUploader.jsx';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { inr, useHotelData, useToast } from '@/components/hotel/hotelKit.jsx';
+import { inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
 const EMPTY_FORM = { hotelId: '', type: '', pricePerNight: '', maxOccupancy: '', totalRooms: '', status: 'active', image: '' };
 
@@ -19,13 +20,11 @@ export default function HotelRooms() {
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    const hotels = await listHotels();
-    const groups = await Promise.all(hotels.map((h) => listRooms(h.id)));
-    const rooms = groups.flatMap((list, i) => list.map((r) => ({ ...r, hotelName: hotels[i].name })));
-    return { hotels, rooms };
-  }, []);
-  const { data, loading, error, reload } = useHotelData(load);
+  const { accountId, hotels, rooms: allRooms, loading, error, reload } = usePartnerCatalog();
+  const data = useMemo(() => hotels && allRooms ? { hotels, rooms: allRooms } : null, [hotels, allRooms]);
+  const [addRoom] = useAddRoomMutation();
+  const [changeRoom] = useChangeRoomMutation();
+  const [removeRoom] = useRemoveRoomMutation();
 
   const rooms = useMemo(
     () => (data?.rooms ?? []).filter((r) => filter === 'all' || r.hotelId === filter),
@@ -50,7 +49,6 @@ export default function HotelRooms() {
     try {
       await action();
       notify(success);
-      reload();
       return true;
     } catch (err) {
       notify(err.message || 'Something went wrong', true);
@@ -75,7 +73,9 @@ export default function HotelRooms() {
       status: form.status, images: form.image.trim() ? [form.image.trim()] : [],
     };
     const ok = await run(
-      () => (form.id ? updateRoomType(form.hotelId, form.id, values) : createRoomType(form.hotelId, values)),
+      () => (form.id
+        ? changeRoom({ accountId, hotelId: form.hotelId, roomId: form.id, values }).unwrap()
+        : addRoom({ accountId, hotelId: form.hotelId, values }).unwrap()),
       form.id ? 'Service updated' : 'Service added',
     );
     if (ok) setForm(null);
@@ -87,19 +87,19 @@ export default function HotelRooms() {
     if (!Number.isInteger(value) || value < 0 || value > room.totalRooms) {
       return notify(`Available rooms must be between 0 and ${room.totalRooms}`, true);
     }
-    const ok = await run(() => updateRoomType(room.hotelId, room.id, { availableRooms: value }), 'Availability updated');
+    const ok = await run(() => changeRoom({ accountId, hotelId: room.hotelId, roomId: room.id, values: { availableRooms: value } }).unwrap(), 'Availability updated');
     if (ok) setAvailability(null);
   };
 
   const confirmDelete = async () => {
     const room = removing;
-    const ok = await run(() => deleteRoomType(room.hotelId, room.id), 'Service deleted');
+    const ok = await run(() => removeRoom({ accountId, hotelId: room.hotelId, roomId: room.id }).unwrap(), 'Service deleted');
     if (ok) setRemoving(null);
   };
 
   const toggleStatus = (room) =>
     run(
-      () => updateRoomType(room.hotelId, room.id, { status: room.status === 'inactive' ? 'active' : 'inactive' }),
+      () => changeRoom({ accountId, hotelId: room.hotelId, roomId: room.id, values: { status: room.status === 'inactive' ? 'active' : 'inactive' } }).unwrap(),
       room.status === 'inactive' ? 'Service activated' : 'Service deactivated',
     );
 

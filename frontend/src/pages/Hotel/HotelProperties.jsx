@@ -1,12 +1,13 @@
 // Properties: the hotel partner's own hotels. Add / delete a property and see, add to and
 // remove the room types (services) inside each one. Everything saved here is what travellers browse.
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext.jsx';
-import { createHotel, deleteHotel, deleteRoomType, listHotels, listRooms } from '@/services/hotels.api.js';
+import { useAddPropertyMutation, useRemovePropertyMutation, useRemoveRoomMutation } from '@/store/hotel/hotelApi.js';
+import { usePartnerCatalog } from '@/store/hotel/hooks.js';
 import ImageUploader from '@/components/common/ImageUploader.jsx';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { inr, useHotelData, useToast } from '@/components/hotel/hotelKit.jsx';
+import { inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
 const EMPTY_FORM = { name: '', location: '', description: '', stars: '3', pricePerNight: '', image: '' };
 
@@ -19,12 +20,10 @@ export default function HotelProperties() {
   const [removingRoom, setRemovingRoom] = useState(null);
   const [busy, setBusy] = useState(false);
 
-  const load = useCallback(async () => {
-    const hotels = await listHotels();
-    const groups = await Promise.all(hotels.map((h) => listRooms(h.id)));
-    return hotels.map((h, i) => ({ ...h, rooms: groups[i] }));
-  }, []);
-  const { data, loading, error, reload } = useHotelData(load);
+  const { accountId, properties: data, loading, error, reload } = usePartnerCatalog();
+  const [addProperty] = useAddPropertyMutation();
+  const [removeProperty] = useRemovePropertyMutation();
+  const [removeRoom] = useRemoveRoomMutation();
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -33,7 +32,6 @@ export default function HotelProperties() {
     try {
       await action();
       notify(success);
-      reload();
       return true;
     } catch (err) {
       notify(err.message || 'Something went wrong', true);
@@ -61,18 +59,18 @@ export default function HotelProperties() {
       status: 'active',
     };
     if (user?.region) values.city = user.region;
-    const ok = await run(() => createHotel(values), 'Property added');
+    const ok = await run(() => addProperty({ accountId, values }).unwrap(), 'Property added');
     if (ok) setForm(null);
   };
 
   const confirmDeleteHotel = async () => {
-    const ok = await run(() => deleteHotel(removingHotel.id), 'Property deleted');
+    const ok = await run(() => removeProperty({ accountId, hotelId: removingHotel.id }).unwrap(), 'Property deleted');
     if (ok) setRemovingHotel(null);
   };
 
   const confirmDeleteRoom = async () => {
     const { hotel, room } = removingRoom;
-    const ok = await run(() => deleteRoomType(hotel.id, room.id), 'Service deleted');
+    const ok = await run(() => removeRoom({ accountId, hotelId: hotel.id, roomId: room.id }).unwrap(), 'Service deleted');
     if (ok) setRemovingRoom(null);
   };
 
