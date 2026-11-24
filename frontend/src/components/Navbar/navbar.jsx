@@ -246,10 +246,6 @@ export default function Navbar({ user: propUser, isPublic = false } = {}) {
   const initial = (user?.name || user?.username || "T").charAt(0).toUpperCase();
 
   const handleLogout = () => {
-    if (typeof localStorage !== "undefined") {
-      localStorage.removeItem("xploreoUser");
-      localStorage.removeItem("currentUser");
-    }
     auth?.logout();
     setDropdownOpen(false);
     navigate("/Auth/login");

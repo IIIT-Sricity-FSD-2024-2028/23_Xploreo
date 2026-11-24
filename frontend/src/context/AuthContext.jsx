@@ -1,6 +1,5 @@
 // The real session: who is signed in, and the role/region guards and portal pages read.
-// Backed by the same localStorage key App.jsx has always used, so existing pages that still
-// take `user` as a prop and pages that call useAuth() see the same signed-in account.
+// Pages and API requests read the account from the same tab session.
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { GUEST, clearUser, getUser, storeUser } from '@/services/session.js';
 

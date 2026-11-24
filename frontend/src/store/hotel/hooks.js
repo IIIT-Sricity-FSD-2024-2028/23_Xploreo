@@ -4,14 +4,19 @@ import { useAuth } from '@/context/AuthContext.jsx';
 import { usePartnerHotelsQuery, usePartnerRoomsQuery } from './hotelApi.js';
 import { selectProperties, selectRooms } from './selectors.js';
 
+const EMPTY_ROOMS = [];
+const refreshOnOpen = { refetchOnMountOrArgChange: true };
+
 export function usePartnerHotels() {
   const { user } = useAuth();
-  const accountId = user?.role === 'hotel' ? String(user.id ?? user.userId ?? user.username) : null;
-  const query = usePartnerHotelsQuery(accountId ?? skipToken);
+  const userId = user?.userId || user?.id || user?.username;
+  const accountId = user?.role === 'hotel' && userId ? String(userId) : null;
+  const query = usePartnerHotelsQuery(accountId ?? skipToken, refreshOnOpen);
+  const data = query.currentData ?? null;
   return {
     accountId,
-    data: query.data ?? null,
-    loading: query.isLoading || (!query.data && query.isFetching),
+    data,
+    loading: query.isFetching && !data?.length,
     error: query.error ?? null,
     reload: query.refetch,
   };
@@ -20,22 +25,27 @@ export function usePartnerHotels() {
 export function usePartnerCatalog() {
   const hotels = usePartnerHotels();
   const hotelIds = useMemo(() => hotels.data?.map((hotel) => hotel.id) ?? null, [hotels.data]);
-  const rooms = usePartnerRoomsQuery(hotelIds ? { accountId: hotels.accountId, hotelIds } : skipToken);
+  const hasHotels = Boolean(hotelIds?.length);
+  const rooms = usePartnerRoomsQuery(
+    hasHotels ? { accountId: hotels.accountId, hotelIds } : skipToken,
+    refreshOnOpen,
+  );
+  const roomData = hotelIds?.length === 0 ? EMPTY_ROOMS : rooms.currentData;
   const properties = useMemo(
-    () => hotels.data && rooms.data ? selectProperties(hotels.data, rooms.data) : null,
-    [hotels.data, rooms.data],
+    () => hotels.data && roomData ? selectProperties(hotels.data, roomData) : null,
+    [hotels.data, roomData],
   );
   const services = useMemo(
-    () => hotels.data && rooms.data ? selectRooms(hotels.data, rooms.data) : null,
-    [hotels.data, rooms.data],
+    () => hotels.data && roomData ? selectRooms(hotels.data, roomData) : null,
+    [hotels.data, roomData],
   );
   return {
     accountId: hotels.accountId,
     hotels: hotels.data,
     properties,
     rooms: services,
-    loading: hotels.loading || (!rooms.data && (rooms.isLoading || rooms.isFetching)),
+    loading: hotels.loading || (rooms.isFetching && !roomData),
     error: hotels.error || rooms.error || null,
-    reload: () => { hotels.reload(); if (hotelIds) rooms.refetch(); },
+    reload: () => { hotels.reload(); if (hasHotels) rooms.refetch(); },
   };
 }

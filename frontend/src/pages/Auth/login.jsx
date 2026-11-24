@@ -36,12 +36,6 @@ export default function Login({ user, onAuthenticated }) {
       if (result?.token && !authenticatedUser.token) {
         authenticatedUser.token = result.token;
       }
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("xploreoUser", JSON.stringify(authenticatedUser));
-        if (result?.token) {
-          localStorage.setItem("xploreoToken", result.token);
-        }
-      }
       onAuthenticated?.(authenticatedUser);
       navigate(destinationForRole[authenticatedUser.role] || "/");
     } catch (requestError) {

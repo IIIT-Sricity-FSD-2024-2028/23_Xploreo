@@ -1,4 +1,4 @@
-import { identityHeaders } from "./session.js";
+import { GUEST, getUser, identityHeaders } from "./session.js";
 import { dispatchMock } from "@/lib/mockKit/registry.js";
 
 const API_BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:3000/api";
@@ -75,14 +75,8 @@ export async function fetchData(url, options = {}) {
 }
 
 export function getSavedUser() {
-  try {
-    const raw = localStorage.getItem("xploreoUser") || localStorage.getItem("currentUser");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.user || parsed;
-  } catch {
-    return null;
-  }
+  const user = getUser();
+  return user.role === GUEST.role ? null : user;
 }
 
 export { API_BASE_URL, identityHeaders };

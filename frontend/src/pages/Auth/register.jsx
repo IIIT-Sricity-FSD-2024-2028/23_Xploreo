@@ -65,8 +65,8 @@ export default function Register({ user, onAuthenticated }) {
       if (!isPartnerRole || !details.location) delete details.location;
       const result = await authApi.register(details);
       const authenticatedUser = result?.user || result;
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("xploreoUser", JSON.stringify(authenticatedUser));
+      if (result?.token && !authenticatedUser.token) {
+        authenticatedUser.token = result.token;
       }
       onAuthenticated?.(authenticatedUser);
       navigate(destinationForRole[authenticatedUser.role] || "/");
