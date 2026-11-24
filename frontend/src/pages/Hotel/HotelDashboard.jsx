@@ -1,9 +1,9 @@
 // Port of the hotel home from front_end/pages/guide/dashboard.html (#hotel-dashboard) +
 // js/modules/hotelDashboard.js, with every block fed from the backend instead of localStorage.
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { listHotelBookings, listPartnerReviews } from '@/services/hotels.api.js';
-import { usePartnerHotels } from '@/store/hotel/hooks.js';
+import { listPartnerReviews } from '@/services/hotels.api.js';
+import { usePartnerBookings, usePartnerHotels } from '@/store/hotel/hooks.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState } from '@/components/hotel/HotelPage.jsx';
 import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useHotelData } from '@/components/hotel/hotelKit.jsx';
@@ -23,20 +23,15 @@ const timeAgo = (value) => {
 };
 
 export default function HotelDashboard() {
-  const hotels = usePartnerHotels();
-  const load = useCallback(async () => {
-    const [bookings, reviews] = await Promise.all([listHotelBookings(), listPartnerReviews()]);
-    return { bookings, reviews };
-  }, []);
-  const { data: otherData, loading: otherLoading, error: otherError, reload: reloadOther } = useHotelData(load);
-  const data = useMemo(() => hotels.data && otherData ? { hotels: hotels.data, ...otherData } : null, [hotels.data, otherData]);
-  const loading = hotels.loading || otherLoading;
-  const error = hotels.error || otherError;
-  const reload = () => { hotels.reload(); reloadOther(); };
+  const { data: hotels, loading: hotelsLoading, error: hotelsError, reload: reloadHotels } = usePartnerHotels();
+  const { data: bookings, loading: bookingsLoading, error: bookingsError, reload: reloadBookings } = usePartnerBookings();
+  const { data: reviews, loading: reviewsLoading, error: reviewsError, reload: reloadReviews } = useHotelData(listPartnerReviews);
+  const loading = hotelsLoading || bookingsLoading || reviewsLoading;
+  const error = hotelsError || bookingsError || reviewsError;
+  const reload = () => { reloadHotels(); reloadBookings(); reloadReviews(); };
 
   const view = useMemo(() => {
-    if (!data) return null;
-    const { hotels, bookings, reviews } = data;
+    if (!hotels || !bookings || !reviews) return null;
     const today = new Date().toISOString().slice(0, 10);
     const monthKey = today.slice(0, 7);
     const totalRooms = hotels.reduce((s, h) => s + (h.totalRooms || 0), 0);
@@ -52,7 +47,7 @@ export default function HotelDashboard() {
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 5);
     return { totalRooms, available, occupied: totalRooms - available, monthRevenue, upcoming, rated, activity, bookings, reviews };
-  }, [data]);
+  }, [hotels, bookings, reviews]);
 
   const stats = view && [
     { label: 'Total Bookings', value: view.bookings.length, icon: 'todaytours.svg', color: 'blue' },
@@ -69,7 +64,7 @@ export default function HotelDashboard() {
       </div>
 
       <LoadState loading={loading} error={error} onRetry={reload}>
-        {view && data.hotels.length === 0 ? (
+        {view && hotels.length === 0 ? (
           <div className="hotel-content-card" style={{ textAlign: 'center', padding: '48px 20px' }}>
             <h2>No hotels yet</h2>
             <p className="hotel-sub-text">Add your first property under Services so travellers can find and book it.</p>

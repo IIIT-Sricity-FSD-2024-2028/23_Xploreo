@@ -1,9 +1,12 @@
 // Port of front_end/pages/hotels/hotelBookings.html: summary strip, status tabs, search and
 // booking cards with check-in / check-out / cancel, all against /bookings on the backend.
-import { useCallback, useMemo, useState } from 'react';
-import { cancelBooking, checkInBooking, checkOutBooking, listHotelBookings } from '@/services/hotels.api.js';
+import { useMemo, useState } from 'react';
+import {
+  useCancelPartnerBookingMutation, useCheckInPartnerBookingMutation, useCheckOutPartnerBookingMutation,
+} from '@/store/hotel/hotelApi.js';
+import { usePartnerBookings } from '@/store/hotel/hooks.js';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useHotelData, useToast } from '@/components/hotel/hotelKit.jsx';
+import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
 const TABS = [
   { key: 'ALL', label: 'All' },
@@ -27,10 +30,12 @@ export default function HotelBookings() {
   const [query, setQuery] = useState('');
   const [detail, setDetail] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(null);
-  const [busyId, setBusyId] = useState(null);
+  const [busyIds, setBusyIds] = useState(() => new Set());
 
-  const load = useCallback(() => listHotelBookings(), []);
-  const { data: bookings, loading, error, reload } = useHotelData(load);
+  const { accountId, data: bookings, loading, error, reload } = usePartnerBookings();
+  const [checkInBooking] = useCheckInPartnerBookingMutation();
+  const [checkOutBooking] = useCheckOutPartnerBookingMutation();
+  const [cancelBooking] = useCancelPartnerBookingMutation();
 
   const counts = useMemo(() => {
     const list = bookings ?? [];
@@ -50,23 +55,26 @@ export default function HotelBookings() {
     });
   }, [bookings, tab, query]);
 
-  const act = async (booking, fn, success) => {
-    setBusyId(booking.id);
+  const act = async (booking, mutate, success) => {
+    setBusyIds((ids) => new Set(ids).add(booking.id));
     try {
-      await fn(booking.id);
+      await mutate({ accountId, bookingId: booking.id }).unwrap();
       notify(success);
       setDetail(null);
       setConfirmCancel(null);
-      reload();
     } catch (err) {
       notify(err.message || 'Action failed', true);
     } finally {
-      setBusyId(null);
+      setBusyIds((ids) => {
+        const remaining = new Set(ids);
+        remaining.delete(booking.id);
+        return remaining;
+      });
     }
   };
 
   const actionsFor = (b) => {
-    const busy = busyId === b.id;
+    const busy = busyIds.has(b.id);
     const past = isPastStay(b);
     if (b.status === 'CONFIRMED') {
       return (
@@ -166,7 +174,7 @@ export default function HotelBookings() {
           footer={
             <>
               <button type="button" className="btn-light" onClick={() => setConfirmCancel(null)}>Keep booking</button>
-              <button type="button" className="btn-cancel" disabled={busyId === confirmCancel.id}
+              <button type="button" className="btn-cancel" disabled={busyIds.has(confirmCancel.id)}
                 onClick={() => act(confirmCancel, cancelBooking, 'Booking cancelled')}>Cancel booking</button>
             </>
           }

@@ -1,22 +1,35 @@
 import { useMemo } from 'react';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useAuth } from '@/context/AuthContext.jsx';
-import { usePartnerHotelsQuery, usePartnerRoomsQuery } from './hotelApi.js';
+import { getHotelAccountId, usePartnerBookingsQuery, usePartnerHotelsQuery, usePartnerRoomsQuery } from './hotelApi.js';
 import { selectProperties, selectRooms } from './selectors.js';
 
 const EMPTY_ROOMS = [];
 const refreshOnOpen = { refetchOnMountOrArgChange: true };
+const bookingRefreshOnOpen = { refetchOnMountOrArgChange: 30 };
 
 export function usePartnerHotels() {
   const { user } = useAuth();
-  const userId = user?.userId || user?.id || user?.username;
-  const accountId = user?.role === 'hotel' && userId ? String(userId) : null;
+  const accountId = getHotelAccountId(user);
   const query = usePartnerHotelsQuery(accountId ?? skipToken, refreshOnOpen);
   const data = query.currentData ?? null;
   return {
     accountId,
     data,
     loading: query.isFetching && !data?.length,
+    error: query.error ?? null,
+    reload: query.refetch,
+  };
+}
+
+export function usePartnerBookings() {
+  const { user } = useAuth();
+  const accountId = getHotelAccountId(user);
+  const query = usePartnerBookingsQuery(accountId ?? skipToken, bookingRefreshOnOpen);
+  return {
+    accountId,
+    data: query.currentData ?? null,
+    loading: query.isFetching,
     error: query.error ?? null,
     reload: query.refetch,
   };
