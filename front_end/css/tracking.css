@@ -1,0 +1,149 @@
+/* ==================================
+   LIVE TRACKING MODULE STYLES
+   ================================== */
+
+.tracking-container {
+  display: flex;
+  height: 100%;
+  gap: 24px;
+}
+
+.tracking-left {
+  width: 40%;
+  padding: 16px 20px;
+  overflow-y: auto;
+  background: var(--bg-light, #f8fafc);
+  border-radius: 12px;
+  border: 1px solid var(--border-color, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+}
+
+.tracking-right {
+  width: 60%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+#trackingMap {
+  height: 100%;
+  width: 100%;
+  border-radius: 12px;
+}
+
+#trackingStops {
+  list-style-type: none;
+  padding: 0;
+  margin: 0 0 20px 0;
+  flex: 1;
+}
+
+#trackingStops li {
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border-left: 4px solid transparent;
+}
+
+.current { 
+  background: #eff6ff; 
+  color: #1d4ed8;
+  border-left-color: #3b82f6 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.completed { 
+  background: #f0fdf4; 
+  color: #166534;
+  border-left-color: #22c55e !important;
+}
+.pending { 
+  background: #f8fafc; 
+  color: #64748b;
+  border-left-color: #cbd5e1 !important;
+}
+
+/* BUTTONS */
+#guideControls button,
+#travellerControls button {
+  margin: 4px 4px 4px 0;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  background: var(--primary-blue, #2563eb);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.1s ease;
+}
+
+#guideControls button:hover,
+#travellerControls button:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+#travellerControls button {
+  background: #ea580c; /* Orange */
+}
+
+#travellerControls button:hover {
+  background: #c2410c;
+}
+
+/* INPUTS */
+#trackingMsgInput {
+  flex: 1; 
+  padding: 10px 14px; 
+  border: 1px solid #d1d5db; 
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+#trackingMsgInput:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* MESSAGES */
+#trackingMessages {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1000;
+  width: 80%;
+  max-width: 300px;
+}
+
+.tracking-msg {
+  padding: 12px 16px;
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  animation: slideFade 4s forwards;
+  backdrop-filter: blur(4px);
+}
+
+.msg-guide { background: rgba(37, 99, 235, 0.95); }
+.msg-arrival { background: rgba(22, 163, 74, 0.95); }
+.msg-request { background: rgba(220, 38, 38, 0.95); }
+
+@keyframes slideFade {
+  0% { opacity: 0; transform: translateY(-20px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-15px); }
+}

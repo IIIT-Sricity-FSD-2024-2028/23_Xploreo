@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Activity Monitoring - Xploreo</title>
+    <link rel="stylesheet" href="../../css/shared.css">
+    <link rel="stylesheet" href="../../css/tours.css">
+</head>
+<body>
+    <div id="navbar"></div>
+
+    <div class="page-wrapper">
+        <div class="welcome">
+            <h1 class="page-title">User Activity Monitoring</h1>
+            <p class="page-subtitle">Detailed log of user actions and system interactions across the platform.</p>
+        </div>
+
+        <div class="card-header" style="margin-bottom: 20px;">
+            <div class="search-container" style="flex: 1; max-width: 400px;">
+                <input type="text" id="activity-search" placeholder="Search by User, Action, or ID..." 
+                       style="width: 100%; padding: 12px 16px; border: 1px solid #E5E7EB; border-radius: 10px; font-size: 14px;">
+            </div>
+        </div>
+
+        <div class="content-card" style="padding: 0; overflow: hidden; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+            <table class="tour-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>User</th>
+                        <th>User ID</th>
+                        <th>Action Performed</th>
+                        <th style="text-align: right;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="activity-tbody">
+                    <!-- Activity logs will be rendered here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script type="module" src="../../js/app.js"></script>
+</body>
+</html>
+

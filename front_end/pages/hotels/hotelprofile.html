@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Xploreo</title>
+    <!-- Link CSS properly -->
+    <link rel="stylesheet" href="../../css/shared.css">
+    <link rel="stylesheet" href="../../css/hotelstyle.css">
+</head>
+
+<body class="hotel-bg-light">
+
+    <!-- Shared Navbar Component -->
+    <div id="navbar"></div>
+
+    <main id="main" class="dashboard-wrapper">
+        <div class="hotel-page-header">
+            <h1>Profile</h1>
+            <p>Manage your hotel and account details</p>
+        </div>
+
+        <form id="profileForm" class="profile-layout">
+            
+            <!-- Profile Card -->
+            <div class="hotel-content-card profile-card-top fade-in">
+                <div class="profile-card-left">
+                    <div class="profile-hotel-icon">
+                        <i class="hotel-building-icon"></i>
+                    </div>
+                    <div class="profile-hotel-info">
+                        <h2>Grand Plaza Hotel</h2>
+                        <p class="location-text"><span class="loc-pin"></span> Downtown, New York City</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Basic Information -->
+            <div class="hotel-content-card section-card slide-up block-view-mode" id="block-basicInfo">
+                <div class="section-header-flex">
+                    <h3>Basic Information</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-form-grid">
+                    <div class="hotel-form-group">
+                        <label>Hotel Name</label>
+                        <input type="text" name="hotelName" value="Grand Plaza Hotel">
+                    </div>
+                    <div class="hotel-form-group" style="grid-column: span 2;">
+                        <label>Description</label>
+                        <textarea name="description">Premium hotel in downtown</textarea>
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <!-- Contact Details -->
+            <div class="hotel-content-card section-card slide-up delay-1 block-view-mode" id="block-contact">
+                <div class="section-header-flex">
+                    <h3>Contact Details</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-form-grid">
+                    <div class="hotel-form-group">
+                        <label>Contact Number</label>
+                        <input type="tel" name="contactNumber" value="+1 (212) 555-0123">
+                    </div>
+                    <div class="hotel-form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" value="info@grandplazahotel.com">
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <!-- Location -->
+            <div class="hotel-content-card section-card slide-up delay-2 block-view-mode" id="block-location">
+                <div class="section-header-flex">
+                    <h3>Location</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-form-grid">
+                    <div class="hotel-form-group" style="grid-column: span 2;">
+                        <label>Location</label>
+                        <input type="text" name="location" value="Downtown, New York City">
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <!-- Business Information -->
+            <div class="hotel-content-card section-card slide-up delay-3 block-view-mode" id="block-business">
+                <div class="section-header-flex">
+                    <h3>Business Information</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-form-grid">
+                    <div class="hotel-form-group">
+                        <label>GST / Tax ID</label>
+                        <input type="text" name="gst" value="GST123456789">
+                    </div>
+                    <div class="hotel-form-group">
+                        <label>Bank Account</label>
+                        <input type="text" name="bankAccount" value="*** *** *** 4582" readonly>
+                    </div>
+                    <div class="hotel-form-group">
+                        <label>Payout Method</label>
+                        <input type="text" name="payoutMethod" value="Wire Transfer">
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <!-- Policies -->
+            <div class="hotel-content-card section-card slide-up delay-4 block-view-mode" id="block-policies">
+                <div class="section-header-flex">
+                    <h3>Policies</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-form-grid">
+                    <div class="hotel-form-group">
+                        <label>Check-in Time</label>
+                        <input type="time" name="checkInTime" value="14:00">
+                    </div>
+                    <div class="hotel-form-group">
+                        <label>Check-out Time</label>
+                        <input type="time" name="checkOutTime" value="11:00">
+                    </div>
+                    <div class="hotel-form-group" style="grid-column: span 2;">
+                        <label>Cancellation Policy</label>
+                        <input type="text" name="cancellationPolicy" value="Free cancellation up to 48 hours before check-in">
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <!-- Media Uploads -->
+            <div class="hotel-content-card section-card slide-up delay-5 block-view-mode" id="block-media">
+                <div class="section-header-flex">
+                    <h3>Media Uploads</h3>
+                    <button type="button" class="edit-block-btn">✎ Edit</button>
+                </div>
+                <div class="hotel-upload-container">
+                    <div class="hotel-dashed-upload">
+                        <span class="upload-icon">📁</span>
+                        <p>Upload Profile Logo</p>
+                        <small>Upload at least 1 high-quality photo</small>
+                        <input type="file" accept="image/*">
+                    </div>
+                </div>
+                <div class="block-actions hidden">
+                    <button type="button" class="cancel-block-btn">Cancel</button>
+                    <button type="button" class="save-block-btn">Save</button>
+                </div>
+            </div>
+
+            <button type="submit" id="saveProfileBtn" style="display: none;"></button>
+            
+        </form>
+    </main>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="hotel-modal hidden">
+        <div class="hotel-modal-content edit-modal-override">
+            <span class="hotel-modal-close" id="closeEditModalBtn">&times;</span>
+            <h2 class="modal-title">Edit Profile</h2>
+
+            <div class="modal-body-scroll">
+                <!-- Logo Section -->
+                <div class="logo-upload-section">
+                    <div class="logo-placeholder">
+                        <span class="hotel-building-icon large-icon">🏨</span>
+                    </div>
+                    <div class="logo-actions">
+                        <button type="button" class="btn-blue btn-small">Upload Logo</button>
+                        <p class="helper-text">Recommended: Square image, at least 400x400px</p>
+                    </div>
+                </div>
+
+                <!-- Form Fields -->
+                <div class="profile-grid">
+                    <div class="input-group">
+                        <label>Hotel Name</label>
+                        <input type="text" id="modalHotelName" class="profile-input">
+                    </div>
+                    <div class="input-group">
+                        <label>Location</label>
+                        <input type="text" id="modalLocation" class="profile-input">
+                    </div>
+                </div>
+
+                <div class="input-group" style="margin-top: 20px;">
+                    <label>Description</label>
+                    <textarea id="modalDescription" class="profile-input textarea-tall"></textarea>
+                </div>
+
+                <div class="profile-grid" style="margin-top: 20px;">
+                    <div class="input-group">
+                        <label>Contact Number</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon call-icon">📞</span>
+                            <input type="tel" id="modalContactNumber" class="profile-input padded-left">
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Email</label>
+                        <div class="input-with-icon">
+                            <span class="input-icon mail-icon">✉️</span>
+                            <input type="email" id="modalEmail" class="profile-input padded-left">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" id="cancelEditModalBtn">Cancel</button>
+                <button type="button" class="btn-blue" id="saveEditModalBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import JS modules -->
+    <script type="module" src="../../js/app.js"></script>
+    <script type="module" src="../../js/modules/hotelprofile.js"></script>
+</body>
+
+</html>

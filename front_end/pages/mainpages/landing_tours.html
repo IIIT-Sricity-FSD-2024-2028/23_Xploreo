@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Xploreo - Tours</title>
+
+    <!-- CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400&family=Plus+Jakarta+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/landing.css">
+    <style>
+        .page-content {
+            padding: 80px 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        .page-content h2 {
+            font-family: serif ;
+            font-size: 48px;
+            color: #1F2937;
+            margin-bottom: 20px;
+        }
+        .page-content p {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 18px;
+            color: #4B5563;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto 40px auto;
+        }
+        .tour-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        .tour-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+        }
+        .tour-card:hover {
+            transform: translateY(-10px);
+        }
+        .tour-img {
+            height: 200px;
+            background: #E5E7EB;
+            width: 100%;
+            object-fit: cover;
+        }
+        .tour-info {
+            padding: 24px;
+            text-align: left;
+        }
+        .tour-info h3 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: #111827;
+        }
+        .tour-info span {
+            color: #10B981;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Desktop Frame -->
+    <div class="desktop-container">
+
+        <!-- Top Navigation Bar is injected centrally here -->
+        <div id="navbar"></div>
+
+        <!-- Hero Section -->
+        <section class="hero" style="height: 40vh; min-height: 400px;">
+            <video autoplay muted loop class="hero-bg">
+                <source src="../../components/ui/landing/beach.mp4" type="video/mp4">
+            </video>
+            
+            <div class="hero-content">
+                <h1>Discover Our Tours</h1>
+                <p>Epic adventures, crafted exclusively for you.</p>
+            </div>
+        </section>
+
+        <div class="page-content">
+            <h2>Explore The World</h2>
+            <p>From local coastal escapes to deep cultural immersions across Europe and Asia, our curated platform of expert guides handles it all. Browse a sample of our popular upcoming tours below.</p>
+
+            <div class="tour-grid">
+                <!-- Mock Tour Cards -->
+                <div class="tour-card">
+                    <img src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=600&q=80" class="tour-img" alt="Bali">
+                    <div class="tour-info">
+                        <h3>Magical Bali Escape</h3>
+                        <span>From $899</span>
+                        <p style="font-size: 14px; margin-top: 10px; text-align: left;">Discover the vibrant culture, temples, and beaches of Indonesia.</p>
+                    </div>
+                </div>
+                
+                <div class="tour-card">
+                    <img src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=600&q=80" class="tour-img" alt="Paris">
+                    <div class="tour-info">
+                        <h3>Best of Europe</h3>
+                        <span>From $2,499</span>
+                        <p style="font-size: 14px; margin-top: 10px; text-align: left;">A multi-city adventure through Paris, Rome, and the Swiss Alps.</p>
+                    </div>
+                </div>
+
+                <div class="tour-card">
+                    <img src="https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=600&q=80" class="tour-img" alt="Japan">
+                    <div class="tour-info">
+                        <h3>Japan Discovery</h3>
+                        <span>From $1,750</span>
+                        <p style="font-size: 14px; margin-top: 10px; text-align: left;">Trace the legendary Golden Route via Shinkansen bullet train.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- NAVBAR INJECTION SCRIPT -->
+    <script type="module">
+        import { renderLandingNavbar } from "../../components/layout/navbar_landing.js";
+        renderLandingNavbar();
+    </script>
+</body>
+</html>

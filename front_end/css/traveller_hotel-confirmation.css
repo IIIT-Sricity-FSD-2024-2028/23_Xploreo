@@ -1,0 +1,382 @@
+.traveler-hotel-confirmation-page {
+    background: #eef2fb;
+    min-height: calc(100vh - 72px);
+    padding: 26px 0 42px;
+}
+
+.traveler-hotel-confirmation-frame {
+    width: 1440px;
+    margin: 0 auto;
+}
+
+.traveler-hotel-confirmation-hero,
+.traveler-hotel-confirmation-card,
+.traveler-hotel-confirmation-panel,
+.traveler-hotel-confirmation-next {
+    background: #ffffff;
+    border: 1px solid #e8edf5;
+    border-radius: 26px;
+    box-shadow: 0 10px 26px rgba(15, 23, 42, 0.04);
+}
+
+.traveler-hotel-confirmation-hero {
+    padding: 34px 32px 34px;
+    text-align: center;
+}
+
+.traveler-hotel-confirmation-icon {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1fb8b1 0%, #2d62eb 100%);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+}
+
+.traveler-hotel-confirmation-icon svg {
+    width: 48px;
+    height: 48px;
+}
+
+.traveler-hotel-confirmation-hero h1 {
+    margin: 0;
+    color: #273248;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 42px;
+    font-weight: 700;
+    line-height: 1.08;
+}
+
+.traveler-hotel-confirmation-hero p {
+    margin: 12px 0 0;
+    color: #697488;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-meta {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 38px;
+    margin-top: 28px;
+    color: #697488;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-meta strong {
+    color: #273248;
+    font-weight: 700;
+}
+
+.traveler-hotel-confirmation-meta-divider {
+    width: 1px;
+    height: 20px;
+    background: #e1e7f0;
+}
+
+.traveler-hotel-confirmation-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 556px;
+    gap: 28px;
+    margin-top: 28px;
+    align-items: start;
+}
+
+.traveler-hotel-confirmation-card {
+    padding: 36px 40px 38px;
+}
+
+.traveler-hotel-confirmation-card h2,
+.traveler-hotel-confirmation-next h2 {
+    margin: 0 0 28px;
+    color: #273248;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.traveler-hotel-confirmation-heading {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+.traveler-hotel-confirmation-heading svg {
+    width: 28px;
+    height: 28px;
+    color: #2f62ea;
+    flex: 0 0 28px;
+}
+
+.traveler-hotel-confirmation-heading h2 {
+    margin: 0;
+    font-size: 23px;
+}
+
+.traveler-hotel-confirmation-property {
+    margin-top: 30px;
+}
+
+.traveler-hotel-confirmation-property strong {
+    display: block;
+    color: #273248;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.traveler-hotel-confirmation-location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    color: #697488;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-location svg {
+    width: 18px;
+    height: 18px;
+}
+
+.traveler-hotel-confirmation-datebar {
+    margin-top: 34px;
+    min-height: 104px;
+    border-radius: 16px;
+    background: #f7f9fc;
+    display: grid;
+    grid-template-columns: 1fr 60px 1fr;
+    align-items: center;
+    padding: 0 18px;
+}
+
+.traveler-hotel-confirmation-dateblock span,
+.traveler-hotel-confirmation-grid span {
+    display: block;
+    color: #697488;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-dateblock strong,
+.traveler-hotel-confirmation-grid strong {
+    display: block;
+    margin-top: 9px;
+    color: #273248;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.traveler-hotel-confirmation-dateblock.align-right {
+    text-align: right;
+}
+
+.traveler-hotel-confirmation-arrow {
+    color: #0ebbb0;
+    display: grid;
+    place-items: center;
+}
+
+.traveler-hotel-confirmation-arrow svg {
+    width: 24px;
+    height: 24px;
+}
+
+.traveler-hotel-confirmation-divider {
+    height: 1px;
+    margin: 28px 0;
+    background: #e8edf5;
+}
+
+.traveler-hotel-confirmation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 64px;
+}
+
+.traveler-hotel-confirmation-side {
+    display: grid;
+    gap: 22px;
+}
+
+.traveler-hotel-confirmation-panel {
+    position: relative;
+    overflow: hidden;
+    padding: 30px 30px 26px;
+    background: #eaf7ff;
+    border-color: #b9def8;
+    min-height: 466px;
+}
+
+.traveler-hotel-confirmation-panel-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.traveler-hotel-confirmation-panel-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1fb8b1 0%, #2d62eb 100%);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    flex: 0 0 50px;
+}
+
+.traveler-hotel-confirmation-panel-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.traveler-hotel-confirmation-panel-arrow {
+    position: absolute;
+    right: -20px;
+    bottom: 18px;
+    width: 360px;
+    height: 360px;
+    color: rgba(255, 255, 255, 0.86);
+    pointer-events: none;
+}
+
+.traveler-hotel-confirmation-panel-arrow svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.traveler-hotel-confirmation-panel h2 {
+    margin-bottom: 14px;
+    font-size: 21px;
+}
+
+.traveler-hotel-confirmation-panel p {
+    margin: 0;
+    color: #5f6b7f;
+    font-size: 16px;
+    line-height: 1.45;
+    font-weight: 500;
+    max-width: 420px;
+}
+
+.traveler-hotel-confirmation-mini {
+    position: relative;
+    z-index: 1;
+    margin-top: 26px;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 18px 20px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.traveler-hotel-confirmation-mini-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #1fb8b1 0%, #2d62eb 100%);
+    color: #ffffff;
+    display: grid;
+    place-items: center;
+    flex: 0 0 60px;
+}
+
+.traveler-hotel-confirmation-mini-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.traveler-hotel-confirmation-mini-copy span {
+    display: block;
+    color: #08b5a6;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.traveler-hotel-confirmation-mini-copy strong {
+    display: block;
+    margin-top: 6px;
+    color: #273248;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.traveler-hotel-confirmation-mini-copy small {
+    display: block;
+    margin-top: 6px;
+    color: #697488;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-primary,
+.traveler-hotel-confirmation-secondary {
+    width: 100%;
+    height: 60px;
+    border-radius: 18px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+}
+
+.traveler-hotel-confirmation-primary {
+    margin-top: 22px;
+    border: none;
+    background: linear-gradient(90deg, #1fb8b1 0%, #2d62eb 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.traveler-hotel-confirmation-secondary {
+    margin-top: 14px;
+    border: none;
+    background: #ffffff;
+    color: #273248;
+}
+
+.traveler-hotel-confirmation-primary svg {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+}
+
+.traveler-hotel-confirmation-next {
+    padding: 22px 24px 20px;
+}
+
+.traveler-hotel-confirmation-next ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.traveler-hotel-confirmation-next li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    color: #697488;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.traveler-hotel-confirmation-next svg {
+    width: 20px;
+    height: 20px;
+    color: #08b5a6;
+    flex: 0 0 20px;
+}

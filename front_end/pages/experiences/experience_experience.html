@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Experiences</title>
+  <link rel="stylesheet" href="../../css/styles.css">
+  <link rel="stylesheet" href="../../css/experiencestyles.css">
+</head>
+
+<body class="experience-page experience-catalog-page">
+
+<div id="navbar"></div>
+
+<main class="experience-shell">
+  <section class="page-header experience-toolbar" id="catalogHeader">
+    <div>
+      <p class="experience-eyebrow">Catalog Management</p>
+      <h1>Experiences</h1>
+      <p>Manage your experience offerings</p>
+    </div>
+
+    <button class="primary-btn" id="openAddExperienceBtn" type="button">+ Add Experience</button>
+  </section>
+
+  <section id="experienceList" class="experience-cards-stack"></section>
+
+  <section id="slotsManagerView" class="slots-manager-view hidden">
+    <section class="page-header experience-toolbar slots-manager-header">
+      <div>
+        <p class="experience-eyebrow">Slot Operations</p>
+        <h1 id="slotsManagerTitle">Manage Slots</h1>
+        <p id="slotsManagerSubtitle">Manage time slots and availability</p>
+      </div>
+
+      <div class="slots-manager-toolbar">
+        <button class="primary-btn" id="openAddSlotBtn" type="button">+ Add Slot</button>
+        <label class="experience-select-shell" for="slotsDateFilter">
+          <span>Date</span>
+          <select id="slotsDateFilter">
+            <option value="all">All Dates</option>
+          </select>
+        </label>
+      </div>
+    </section>
+
+    <section id="slotsScheduleList" class="slots-schedule-list"></section>
+  </section>
+</main>
+
+<!-- ================= ADD MODAL ================= -->
+<div id="addModal" class="modal">
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <h2>Add New Experience</h2>
+      <button type="button" class="close" data-close-modal="addModal" aria-label="Close add experience">✕</button>
+    </div>
+
+    <form id="addExperienceForm" class="experience-form" novalidate>
+      <div class="section form-grid">
+        <label class="field-group" for="expName">
+          <span>Experience Name</span>
+          <input id="expName" name="title" required maxlength="80">
+          <small class="field-error" data-error-for="expName"></small>
+        </label>
+
+        <label class="field-group" for="expPrice">
+          <span>Price per Person</span>
+          <input id="expPrice" name="price" type="number" min="1" step="1" required>
+          <small class="field-error" data-error-for="expPrice"></small>
+        </label>
+
+        <label class="field-group" for="expDuration">
+          <span>Duration</span>
+          <input id="expDuration" name="duration" required maxlength="40" placeholder="e.g. 2 hours">
+          <small class="field-error" data-error-for="expDuration"></small>
+        </label>
+
+        <label class="field-group" for="expCapacity">
+          <span>Capacity per Session</span>
+          <input id="expCapacity" name="capacity" type="number" min="1" step="1" required>
+          <small class="field-error" data-error-for="expCapacity"></small>
+        </label>
+
+        <label class="field-group field-group-full add-upload-field" for="expImage">
+          <span>Experience Image</span>
+          <input type="file" id="expImage" name="image" accept="image/*" multiple required class="visually-hidden">
+          <span class="add-upload-group">
+            <span class="edit-upload-icon">⇪</span>
+            <small class="edit-upload-copy">Click to upload or drag and drop</small>
+            <small class="edit-upload-meta">PNG, JPG up to 10MB each</small>
+          </span>
+          <small id="thumbnailHint" class="upload-thumbnail-hint hidden">Click a preview below to choose the thumbnail.</small>
+          <small class="field-error" data-error-for="expImage"></small>
+          <div id="imagePreviewGrid" class="experience-image-preview-grid hidden" aria-live="polite"></div>
+        </label>
+      </div>
+
+      <p id="addExperienceMessage" class="form-message" role="alert"></p>
+
+      <div class="modal-actions">
+        <button type="button" data-close-modal="addModal">Cancel</button>
+        <button class="primary-btn" type="submit">Save</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<!-- ================= EDIT MODAL ================= -->
+<div id="editModal" class="modal">
+  <div class="modal-box edit-modal-box">
+
+    <div class="modal-header">
+      <h2>Edit Experience</h2>
+      <button type="button" class="close" data-close-modal="editModal" aria-label="Close edit experience">✕</button>
+    </div>
+
+    <hr class="slots-modal-divider">
+
+    <form id="editExperienceForm" class="experience-form" novalidate>
+      <div class="edit-modal-body">
+        <div class="section form-grid">
+          <label class="field-group field-group-full" for="editName">
+            <span>Experience Name</span>
+            <input id="editName" name="title" required maxlength="80">
+            <small class="field-error" data-error-for="editName"></small>
+          </label>
+
+          <label class="field-group field-group-full" for="editPrice">
+            <span>Price per Person</span>
+            <input id="editPrice" name="price" type="number" min="1" step="1" required>
+            <small class="field-error" data-error-for="editPrice"></small>
+          </label>
+
+          <label class="field-group field-group-full" for="editDuration">
+            <span>Duration</span>
+            <input id="editDuration" name="duration" required maxlength="40">
+            <small class="field-error" data-error-for="editDuration"></small>
+          </label>
+
+          <label class="field-group field-group-full" for="editCapacity">
+            <span>Capacity per Session</span>
+            <input id="editCapacity" name="capacity" type="number" min="1" step="1" required>
+            <small class="field-error" data-error-for="editCapacity"></small>
+          </label>
+
+          <label class="field-group field-group-full edit-upload-group" for="editImage">
+            <span>Experience Image <em>(Optional)</em></span>
+            <input type="file" id="editImage" name="editImage" accept="image/*" class="visually-hidden">
+            <span class="edit-upload-icon">⇪</span>
+            <small class="edit-upload-copy">Click to upload or drag and drop</small>
+            <small class="edit-upload-meta">PNG, JPG up to 10MB</small>
+          </label>
+        </div>
+
+        <p id="editExperienceMessage" class="form-message" role="alert"></p>
+      </div>
+
+      <div class="edit-modal-footer">
+        <div class="modal-actions">
+          <button type="button" data-close-modal="editModal">Cancel</button>
+          <button class="primary-btn" type="submit">Save Changes</button>
+        </div>
+      </div>
+    </form>
+
+  </div>
+</div>
+<div id="slotsModal" class="modal">
+  <div class="modal-box slots-modal-box">
+
+    <div class="modal-header">
+      <h2 id="slotsModalTitle">Add Slot</h2>
+      <button type="button" class="close" data-close-modal="slotsModal" aria-label="Close session editor">✕</button>
+    </div>
+
+    <hr class="slots-modal-divider">
+
+    <form id="slotsForm" class="experience-form" novalidate>
+      <div class="section form-grid">
+        <label class="field-group" for="slotDate">
+          <span>Date</span>
+          <input id="slotDate" name="slotDate" type="date" required>
+          <small class="field-error" data-error-for="slotDate"></small>
+        </label>
+
+        <label class="field-group" for="slotTime">
+          <span>Session Time</span>
+          <input id="slotTime" name="slotTime" required maxlength="40" placeholder="e.g. 10:00 AM">
+          <small class="field-error" data-error-for="slotTime"></small>
+        </label>
+
+        <label class="field-group" for="slotCapacity">
+          <span>Capacity</span>
+          <input id="slotCapacity" name="capacity" type="number" min="1" step="1" required>
+          <small class="field-error" data-error-for="slotCapacity"></small>
+        </label>
+      </div>
+
+      <p id="slotsMessage" class="form-message" role="alert"></p>
+
+      <div class="modal-actions">
+        <button type="button" data-close-modal="slotsModal">Cancel</button>
+        <button class="primary-btn" id="slotsSubmitBtn" type="submit">Add Slot</button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script type="module" src="../../js/app.js"></script>
+
+</body>
+</html>

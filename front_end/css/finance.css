@@ -1,0 +1,322 @@
+/* ========================================
+   FINANCE / ADMIN PAGE STYLES
+   Ledger, Revenue Recovery, Disputes
+   ======================================== */
+
+/* --- Ledger Table Container --- */
+.ledger-card {
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #eaeaea;
+    overflow: hidden;
+    margin-top: 24px;
+    width: 100%;
+}
+
+.ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.ledger-table th {
+    background-color: #f4f5f7;
+    padding: 20px 24px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #4a5568;
+    letter-spacing: 1px;
+}
+
+.ledger-table td {
+    padding: 20px 24px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.ledger-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* --- Typography & Links --- */
+.id-link {
+    color: #0056b3;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.text-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.main-text {
+    font-weight: 700;
+    color: #1a202c;
+    font-size: 15px;
+}
+
+.sub-text {
+    font-size: 13px;
+    color: #718096;
+}
+
+.date-text {
+    color: #1a202c;
+    font-weight: 500;
+}
+
+/* --- Flex Layouts --- */
+.cell-flex {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatar-empty {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: #e2e8f0;
+}
+
+/* --- Revenue Recovery Section --- */
+.revenue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-top: 40px;
+    margin-bottom: 24px;
+}
+
+.revenue-header h2 {
+    font-size: 22px;
+    margin: 0 0 4px 0;
+    color: #1a202c;
+}
+
+.revenue-header p {
+    color: #4a5568;
+    margin: 0;
+    font-size: 15px;
+}
+
+.manage-link {
+    color: #0056b3;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+/* --- Ticket Cards --- */
+.recovery-card {
+    background: #ffffff;
+    border: 1px solid #eaeaea;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.recovery-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.recovery-meta {
+    font-size: 12px;
+    font-weight: 700;
+    color: #718096;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.recovery-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0 0 24px 0;
+    color: #1a202c;
+}
+
+/* Internal Gray Boxes */
+.details-grid {
+    display: grid;
+    gap: 16px;
+}
+
+.grid-3-col { grid-template-columns: repeat(3, 1fr); }
+.grid-2-col { grid-template-columns: repeat(2, 1fr); }
+
+.detail-box {
+    background-color: #f4f5f7;
+    border-radius: 8px;
+    padding: 16px 20px;
+}
+
+.detail-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #4a5568;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    display: block;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a202c;
+    line-height: 1.4;
+}
+
+/* Specific Badges */
+.badge-refunded { background-color: #e6f4ea; color: #1e8e3e; border: 1px solid #ceead6; }
+.badge-agent { background-color: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
+
+/* --- Dispute Resolution Center --- */
+.dispute-header {
+    margin-top: 40px;
+    margin-bottom: 20px;
+}
+
+.dispute-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: #1a202c;
+}
+
+.dispute-header p {
+    margin: 4px 0 0;
+    color: #4a5568;
+    font-size: 14px;
+}
+
+.dispute-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 40px;
+}
+
+.dispute-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dispute-table th {
+    background: #f7fafc;
+    text-align: left;
+    padding: 16px 20px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #4a5568;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.dispute-table td {
+    padding: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.dispute-table tr:last-child td {
+    border-bottom: none;
+}
+
+.case-link {
+    color: #e53e3e;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ref-text {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.issue-main {
+    font-weight: 600;
+    color: #1a202c;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.issue-sub {
+    color: #718096;
+    font-size: 13px;
+    line-height: 1.4;
+    display: block;
+}
+
+.severity-critical {
+    background: #c53030;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.severity-standard {
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.flow-status {
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.action-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-resolve {
+    background: #0056b3;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-resolve:hover { background: #004494; }
+
+.btn-escalate {
+    background: white;
+    color: #1a202c;
+    border: 1px solid #cbd5e0;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-escalate:hover { background: #f7fafc; }

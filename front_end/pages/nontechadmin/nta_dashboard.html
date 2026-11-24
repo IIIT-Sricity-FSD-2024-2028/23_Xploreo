@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Dashboard - Plans & Packages</title>
+    <link rel="stylesheet" href="../../css/shared.css">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/nontechadmin.css">
+</head>
+
+<body>
+    <div id="navbar"></div>
+
+    <div id="nta-dashboard" class="page-wrapper" style="display:none;">
+
+        <!-- HEADER -->
+        <div id="nta-header"></div>
+
+        <!-- STATS -->
+        <div id="nta-stats"></div>
+
+        <!-- OVERVIEW + ACTIVITY -->
+        <div class="nta-split-grid">
+            <div id="nta-overview" class="nta-overview-card"></div>
+            <div id="nta-activity" class="nta-activity-card"></div>
+        </div>
+
+        <!-- PLAN SUBSCRIBERS CHART -->
+        <div id="nta-chart" class="nta-chart-area"></div>
+    </div>
+
+    <!-- Also include other dashboard containers for routing compatibility -->
+    <div id="admin-dashboard" class="page-wrapper" style="display:none;"></div>
+    <main id="main" class="page-wrapper" style="display:none;"></main>
+    <div id="hotel-dashboard" class="dashboard-wrapper" style="display:none;"></div>
+    <div id="tech-admin-dash" class="page-wrapper" style="display:none;"></div>
+    <div id="experience-dashboard" class="experience-page experience-home-page" style="display:none;"></div>
+
+    <script type="module" src="../../js/app.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Signup</title>
+
+
+
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="../../css/landing.css">
+
+</head>
+
+<body>
+
+<div id="navbar"></div>
+
+<section class="hero">
+
+    <video autoplay muted loop class="hero-bg">
+
+        <source
+            src="../../components/ui/landing/beach.mp4"
+            type="video/mp4"
+        >
+
+    </video>
+
+    <div class="signup-hero-content">
+
+        <h1>
+            Sign Up
+        </h1>
+
+    </div>
+
+</section>
+
+<!-- SIGNUP SECTION -->
+
+<section class="signup-section">
+
+    <div class="signup-overlay">
+
+        <div class="signup-card">
+
+            <!-- ================= STEP 1 ================= -->
+
+            <div id="signup-card-step1" class="signup-step step-1">
+
+                <div class="progress-header">
+
+                    <span class="step-text">
+                        Step 1 of 4
+                    </span>
+
+                    <!-- <span class="step-percent">
+                        25%
+                    </span> -->
+
+                </div>
+
+                <div class="progress-bar">
+
+                    <div class="progress-fill">
+
+                    </div>
+
+                </div>
+
+                <p class="role-label">
+
+                    Role Selection
+
+                </p>
+
+                <div class="role-grid">
+
+                    <!-- Traveler -->
+
+                    <div class="role-card">
+
+                        <div class="role-icon">
+
+                            <img src="../../components/ui/landing/traveler.png">
+
+                        </div>
+
+                        <h4>
+                            Traveler
+                        </h4>
+
+                        <p>
+
+                            Explore the world and book
+                            services tailored to your wanderlust.
+
+                        </p>
+
+                    </div>
+
+                    <!-- Service Partner -->
+
+                    <div class="role-card">
+
+                        <div class="role-icon">
+
+                            <img src="../../components/ui/landing/partner.png">
+
+                        </div>
+
+                        <h4>
+                            Service Partner
+                        </h4>
+
+                        <p>
+
+                            Offer premium services
+                            to travelers worldwide.
+
+                        </p>
+
+                    </div>
+
+                    <!-- Local Guide -->
+
+                    <div class="role-card">
+
+                        <div class="role-icon">
+
+                            <img src="../../components/ui/landing/guide.png">
+
+                        </div>
+
+                        <h4>
+                            Local Guide
+                        </h4>
+
+                        <p>
+
+                            Share local knowledge
+                            and guide travelers.
+
+                        </p>
+
+                    </div>
+
+                </div>
+
+                <button class="next-btn">
+
+                    Next Step
+
+                </button>
+
+                <p class="signup-link">
+
+                    Already have an account?
+
+                    <a href="./login.html">
+
+                        Log in
+
+                    </a>
+
+                </p>
+
+            </div>
+
+
+
+            <div id="signup-card-step1-partner" class="signup-step step-1-partner hidden">
+
+                <button class="back-btn step1-partner-back-btn" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #1F2937; position: absolute; left: 30px; top: 30px;">←</button>
+
+                <div class="progress-header">
+                    <span class="step-text">Step 1 of 4</span>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+
+                <p class="role-label">Service Type</p>
+
+                <div class="role-grid" style="grid-template-columns: 1fr 1fr; max-width: 500px; margin: 0 auto 30px auto;">
+
+                    <!-- Hotel -->
+                    <div class="role-card partner-type-card">
+                        <div class="role-icon">
+                            <img src="../../components/ui/landing/partner.png">
+                        </div>
+                        <h4>Hotel</h4>
+                        <p>Register and manage your hotel or lodging facility.</p>
+                    </div>
+
+                    <!-- Experiences -->
+                    <div class="role-card partner-type-card">
+                        <div class="role-icon">
+                            <img src="../../components/ui/landing/guide.png">
+                        </div>
+                        <h4>Experiences</h4>
+                        <p>Offer curated local experiences and special activities.</p>
+                    </div>
+
+                </div>
+
+                <button class="next-btn step1-partner-next-btn">
+                    Next Step
+                </button>
+
+            </div>
+
+
+            <div id="signup-card-step2" class="signup-step step-2 hidden">
+
+                <div class="progress-header">
+                    <span class="step-text">Step 2 of 4</span>
+                </div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 50%;"></div>
+                </div>
+
+                <p class="form-subtitle">
+                    Common Account Details
+                </p>
+
+                <h3 class="form-title">
+                    Create Your Account
+                </h3>
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input id="fullName" type="text">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Username (6-20 alphabets only)</label>
+                        <input id="username" type="text" >
+                        <small class="success-text">
+                            <!-- ✓ Username available -->
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input id="email" type="email" placeholder="hello@example.com">
+                    </div>
+
+                    <div class="form-group" style="width: 100%;">
+                        <label>Phone Number</label>
+                        <div class="phone-input-wrapper" style="display: flex; width: 100%;">
+                            <span style="display: flex; align-items: center; justify-content: center; background: #F5F7F8; border: 1px solid #D1D5DB; border-right: none; border-radius: 10px 0 0 10px; padding: 0 14px; color: #6B7B79; font-size: 14px; font-weight: 500;">+91</span>
+                            <input id="phone" type="tel" placeholder="98765 43210" style="border-radius: 0 10px 10px 0; flex: 1;">
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="width: 100%;">
+                        <label>Date of Birth</label>
+                        <input id="dob" type="date" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 10px; background: #F5F7F8; color: #1F2937; font-size: 14px;">
+                    </div>
+
+                    <div class="form-group" style="width: 100%;">
+                        <label>Gender</label>
+                        <select id="gender" style="width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 10px; background: #F5F7F8; color: #1F2937; font-size: 14px;">
+                            <option value="">Select gender</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                            <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="width: 100%;">
+                        <label>Password</label>
+                        <div class="password-wrapper" style="position: relative; width: 100%;">
+                            <input id="password" type="password" placeholder="••••••••" style="width: 100%;">
+                            <button type="button" class="toggle-password" onclick="togglePasswordVisibility('password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6B7B79;">
+                                <img src="../../components/ui/eye-closed.svg" alt="Toggle Password" style="width: 20px; height: 20px;">
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="width: 100%;">
+                        <label>Confirm Password</label>
+                        <div class="password-wrapper" style="position: relative; width: 100%;">
+                            <input id="confirmPassword" type="password" placeholder="••••••••" style="width: 100%;">
+                            <button type="button" class="toggle-password" onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6B7B79;">
+                                <img src="../../components/ui/eye-closed.svg" alt="Toggle Password" style="width: 20px; height: 20px;">
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button class="back-btn">
+                        ← Back
+                    </button>
+
+                    <button class="next-btn">
+                        Next →
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <div id="signup-card-step3-traveler" class="signup-step step-3-traveler hidden">
+
+                <div class="signin-card">
+
+                    <div class="progress-header">
+                        <span>Step 3 of 4</span>
+                    </div>
+
+                    <div class="progress-bar">
+                        <div class="progress-fill step3" style="width: 75%;"></div>
+                    </div>
+
+                    <p class="step-label">
+                        Specific Details
+                    </p>
+
+                    <div class="step3-traveler-grid">
+
+                        <div class="step3-traveler-left">
+
+                            <label>Home Location</label>
+                            <input id="homeLocation" type="text" class="step3-traveler-input" placeholder="e.g. New York, USA">
+
+                            <label>Preferred Language</label>
+                            <input id="prefLanguage" type="text" class="step3-traveler-input" placeholder="e.g. English, Spanish">
+
+                            <label>Activity Style</label>
+                            <select id="activityStyle" class="step3-traveler-input">
+                                <option value="">Select your style</option>
+                                <option value="Backpacking">Backpacking</option>
+                                <option value="Luxury">Luxury</option>
+                                <option value="Cultural">Cultural</option>
+                                <option value="Adventure">Adventure</option>
+                                <option value="Relaxation">Relaxation</option>
+                            </select>
+
+                            <label>Budget Range</label>
+                            <select id="budgetRange" class="step3-traveler-input">
+                                <option value="">Select budget range</option>
+                                <option value="Budget">Budget ($)</option>
+                                <option value="Moderate">Moderate ($$)</option>
+                                <option value="Luxury">Luxury ($$$)</option>
+                            </select>
+
+                            <label>Transport Preference</label>
+                            <select id="transportPref" class="step3-traveler-input">
+                                <option value="">Select transport</option>
+                                <option value="Flight">Flight</option>
+                                <option value="Train">Train</option>
+                                <option value="Bus">Bus</option>
+                                <option value="Car">Car</option>
+                            </select>
+
+                            <label>Accommodation Preference</label>
+                            <select id="accommodationPref" class="step3-traveler-input">
+                                <option value="">Select accommodation</option>
+                                <option value="Hotel">Hotel</option>
+                                <option value="Hostel">Hostel</option>
+                                <option value="Resort">Resort</option>
+                                <option value="Airbnb">Airbnb</option>
+                            </select>
+
+                        </div>
+
+
+
+                        <div class="step3-traveler-right">
+
+                            <label>
+                                About Me
+                            </label>
+
+                            <textarea id="bio" class="step3-traveler-input" placeholder="Tell us a little about yourself" style="min-height: 100px; resize: vertical; margin-bottom: 20px; padding: 15px;"></textarea>
+
+                            <label>
+                                Travel Interests
+                            </label>
+
+                            <div class="step3-traveler-interest-list">
+
+                                <label class="step3-traveler-interest-card">
+                                    <input type="checkbox">
+                                    Adventure
+                                </label>
+
+                                <label class="step3-traveler-interest-card">
+                                    <input type="checkbox">
+                                    Culture
+                                </label>
+
+                                <label class="step3-traveler-interest-card">
+                                    <input type="checkbox">
+                                    Food
+                                </label>
+
+                                <label class="step3-traveler-interest-card">
+                                    <input type="checkbox">
+                                    Nature
+                                </label>
+
+                                <label class="step3-traveler-interest-card">
+                                    <input type="checkbox">
+                                    History
+                                </label>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="step3-traveler-buttons">
+
+                        <button class="back-btn step3-back-btn">
+                            ← Back
+                        </button>
+
+                        <button class="step3-traveler-complete-btn">
+                            Complete Sign Up
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            <div id="signup-card-step3-guide"
+ class="signup-step step-3-guide hidden">
+
+                <div class="signin-card">
+
+                    <!-- Progress -->
+
+                    <div class="progress-header">
+
+                        <span>
+                            Step 3 of 4
+                        </span>
+
+
+
+                    </div>
+
+                    <div class="progress-bar">
+
+                        <div class="progress-fill step3" style="width: 75%;"></div>
+
+
+                    </div>
+
+                    <p class="step-label">
+
+                        Tell us more about your expertise as a local guide.
+
+                    </p>
+
+
+
+                    <!-- TOP GRID -->
+
+                    <div class="step3-guide-top-grid">
+
+                        <!-- PROFILE PHOTO -->
+
+                        <div class="guide-photo-section">
+
+                            <p>
+                                Upload Profile Photo
+                            </p>
+
+                            <div class="guide-photo-upload">
+
+                                <input
+                                    type="file"
+                                    id="guide-photo"
+                                    class="file-input"
+                                    accept="image/*"
+                                >
+                                </div>
+
+                            <p class="upload-note">
+                                JPG, PNG up to 5MB
+                            </p>
+
+                        </div>
+
+
+                        <!-- CERTIFICATE -->
+
+                        <div class="guide-certificate-section">
+
+                            <p>
+                                Upload Certification
+                            </p>
+
+                            <div class="guide-certificate-upload">
+
+                                <input
+                                    type="file"
+                                    id="guide-certificate"
+                                    class="file-input"
+                                    accept=".pdf,.jpg,.png"
+                                >
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- MAIN GRID -->
+
+                    <div class="step3-guide-grid">
+
+                        <!-- LEFT -->
+
+                        <div class="step3-guide-left">
+
+                            <label>
+
+                                Cities / Regions Covered
+
+                            </label>
+
+                            <input
+                                type="text"
+                                class="step3-guide-input"
+                                placeholder="e.g. Rome, Tuscany, Florence"
+                            >
+
+
+
+                            <label>
+
+                                Guide Rate (USD/hr)
+
+                            </label>
+
+                            <input
+                                type="number"
+                                class="step3-guide-input"
+                                placeholder="0.00"
+                            >
+
+                        </div>
+
+
+
+                        <!-- RIGHT -->
+
+                        <div class="step3-guide-right">
+
+                            <label>
+
+                                Years of Experience
+
+                            </label>
+
+                            <select class="step3-guide-input">
+
+                                <option>
+
+                                    Select experience
+
+                                </option>
+
+                                <option>
+
+                                    1-2 years
+
+                                </option>
+
+                                <option>
+
+                                    3-5 years
+
+                                </option>
+
+                                <option>
+
+                                    5+ years
+
+                                </option>
+
+                            </select>
+
+
+
+                            <label>
+
+                                Languages Spoken
+
+                            </label>
+
+                            <input
+                                type="text"
+                                class="step3-guide-input"
+                                placeholder="e.g. English, Spanish"
+                            >
+
+
+
+                            <label>
+
+                                Availability Schedule
+
+                            </label>
+
+                            <select class="step3-guide-input">
+
+                                <option>
+
+                                    Select availability
+
+                                </option>
+
+                                <option>
+
+                                    Full Time
+
+                                </option>
+
+                                <option>
+
+                                    Weekends
+
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- SPECIALITIES -->
+
+                    <div class="guide-specialities">
+
+                        <label>
+
+                            Guide Specialities
+
+                        </label>
+
+                        <div class="speciality-grid">
+
+                            <div class="speciality-card">
+
+                                Historical
+
+                            </div>
+
+                            <div class="speciality-card">
+
+                                Cultural
+
+                            </div>
+
+                            <div class="speciality-card">
+
+                                Adventure
+
+                            </div>
+
+                            <div class="speciality-card">
+
+                                Food Tours
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- BUTTONS -->
+
+                    <div class="step3-guide-buttons">
+
+                        <button class="guide-back-btn">
+
+                            ← Back
+
+                        </button>
+
+                        <button class="guide-complete-btn">
+
+                            Complete Sign Up
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div
+                id="signup-card-step3-partner"
+                class="signup-step step-3-partner hidden"
+            >
+
+                <!-- HEADER -->
+
+                <div class="step-header">
+
+                    <div class="step-top">
+
+                        <span class="step-text">
+                            Step 3 of 4
+                        </span>
+
+
+
+                    </div>
+
+                    <div class="progress-bar">
+
+                        <div
+                            class="progress-fill"
+                            style="width: 75%;"
+                        ></div>
+
+                    </div>
+
+                    <p class="step-subtitle">
+
+                        Tell us more about your business to get started.
+
+                    </p>
+
+                </div>
+
+                <!-- PROVIDER DETAILS -->
+
+                <div class="partner-form-grid">
+
+                    <!-- Business Name -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Business Name
+
+                        </label>
+
+                        <input
+                            type="text"
+                            id="business-name"
+                            placeholder="Enter your registered business name"
+                        >
+
+                    </div>
+
+                    <!-- Category -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Service Category
+
+                        </label>
+
+                        <select id="service-category">
+
+                            <option value="">
+                                Select category
+                            </option>
+
+                            <option>
+                                Hotel
+                            </option>
+
+                            <option>
+                                Transport
+                            </option>
+
+                            <option>
+                                Tour Agency
+                            </option>
+
+                            <option>
+                                Restaurant
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                    <!-- Location -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Service Location
+
+                        </label>
+
+                        <input
+                            type="text"
+                            id="service-location"
+                            placeholder="City, Country"
+                        >
+
+                    </div>
+
+                    <!-- Operating Hours -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Operating Hours
+
+                        </label>
+
+                        <div class="time-range">
+
+                            <input type="time">
+
+                            <span>
+
+                                to
+
+                            </span>
+
+                            <input type="time">
+
+                        </div>
+
+                    </div>
+
+                    <!-- Pricing -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Pricing Range (USD)
+
+                        </label>
+
+                        <div class="price-range">
+
+                            <input
+                                type="number"
+                                placeholder="Min"
+                            >
+
+                            <input
+                                type="number"
+                                placeholder="Max"
+                            >
+
+                        </div>
+
+                    </div>
+
+                    <!-- License Upload -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Business License Upload
+
+                        </label>
+
+                        <div class="upload-box">
+
+                            <input
+                                type="file"
+                                accept=".pdf,.jpg,.png"
+                            >
+
+                            <span>
+
+                                Click to upload or drag & drop
+
+                            </span>
+
+                            <small>
+
+                                PDF, JPG or PNG. Max 5MB
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <!-- Service Photos -->
+
+                    <div class="form-group">
+
+                        <label>
+
+                            Service Photos
+
+                        </label>
+
+                        <div class="upload-box">
+
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                            >
+
+                            <span>
+
+                                Upload service photos
+
+                            </span>
+
+                            <small>
+
+                                Upload at least 3 high-quality photos
+
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- ACTION BUTTONS -->
+
+                <div class="signup-actions">
+
+                    <button
+                        class="back-btn"
+                        id="partner-back-btn"
+                    >
+
+                        ← Back
+
+                    </button>
+
+                    <button
+                        class="complete-btn"
+                        id="partner-complete-btn"
+                    >
+
+                        Complete Sign Up
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        
+        <!-- ================= STEP 4 ================= -->
+        <div id="signup-card-step4" class="signup-step step-4 hidden">
+            <div class="step4-content">
+                <div class="success-icon-container">
+                    <div class="success-icon">
+                        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="30" cy="30" r="24" fill="#A8B4B4"/>
+                            <path d="M22 30.5L27 35.5L38 24.5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <h2 class="step4-title">Account Created Successfully</h2>
+                <p class="step4-subtitle" id="step4-dynamic-subtitle">Welcome to Xploreo! Your traveler account is ready.</p>
+                
+                <div class="step4-summary-box">
+                    <div class="summary-row">
+                        <span class="summary-label">USERNAME</span>
+                        <span class="summary-value" id="step4-username">traveler_explorer</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">ROLE</span>
+                        <span class="summary-value" id="step4-role">Traveler</span>
+                    </div>
+                </div>
+                
+                <div class="step4-actions">
+                    <button class="step4-login-btn">Login</button>
+                    <button class="step4-home-btn">Return to Home</button>
+                </div>
+            </div>
+        </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+<!-- NAVBAR & UTILITIES -->
+<script type="module">
+    import { renderLandingNavbar } from "../../components/layout/navbar_landing.js";
+    renderLandingNavbar();
+
+    document.addEventListener("click", function (event) {
+        if (event.target.closest("#login-btn")) {
+            window.location.href = new URL("./login.html", window.location.href).href;
+        }
+        if (event.target.closest("#signup-btn")) {
+            window.location.href = new URL("./signup.html", window.location.href).href;
+        }
+    });
+</script>
+
+<!-- SIGNUP LOGIC -->
+<script type="module" src="../../js/app.js"></script>
+
+</body>
+
+</html>
