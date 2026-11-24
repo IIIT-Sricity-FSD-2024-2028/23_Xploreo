@@ -1,0 +1,728 @@
+.plan-detail-page {
+    min-height: 100vh;
+    background: #f4f7fb;
+    color: #0f172a;
+    font-family: "Plus Jakarta Sans", "Inter", sans-serif;
+    padding: 32px 24px 60px;
+}
+
+.plan-detail-shell {
+    max-width: 1320px;
+    margin: 0 auto;
+}
+
+.plan-detail-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: #64748b;
+    font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 24px;
+}
+
+.plan-detail-back:hover {
+    color: #0f172a;
+}
+
+.plan-detail-header {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 32px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+
+.plan-detail-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 28px;
+    padding: 32px 36px 24px;
+}
+
+.plan-detail-title-block {
+    flex: 1 1 780px;
+    min-width: 0;
+}
+
+.plan-detail-title-block h1 {
+    font-size: clamp(2rem, 4vw, 3.15rem);
+    line-height: 1.05;
+    margin: 0 0 22px;
+    letter-spacing: -0.04em;
+}
+
+.plan-detail-meta {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    min-width: 0;
+}
+
+.plan-detail-meta-card {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.plan-detail-meta-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 16px;
+    background: #eef2ff;
+    color: #4f46e5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.plan-detail-meta-card span,
+.plan-detail-meta-card small {
+    display: block;
+}
+
+.plan-detail-meta-card span {
+    color: #64748b;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
+.plan-detail-meta-card strong {
+    display: block;
+    font-size: 1.15rem;
+    line-height: 1.3;
+}
+
+.plan-detail-meta-card small {
+    color: #475569;
+    font-size: 0.95rem;
+    line-height: 1.35;
+}
+
+.plan-detail-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 16px;
+    flex: 0 1 380px;
+    min-width: 280px;
+    margin-left: auto;
+}
+
+.plan-detail-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 130px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #14b8a6;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.plan-detail-action-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.plan-detail-ghost-btn,
+.plan-detail-danger-btn,
+.plan-detail-primary-btn,
+.plan-detail-outline-btn,
+.plan-detail-cta-btn,
+.plan-detail-link-btn {
+    border-radius: 22px;
+    border: 1px solid transparent;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.plan-detail-ghost-btn:hover,
+.plan-detail-danger-btn:hover,
+.plan-detail-primary-btn:hover,
+.plan-detail-outline-btn:hover,
+.plan-detail-cta-btn:hover,
+.plan-detail-link-btn:hover {
+    transform: translateY(-1px);
+}
+
+.plan-detail-ghost-btn {
+    background: #ffffff;
+    border-color: #d7dee9;
+    color: #1e293b;
+    padding: 20px 26px;
+    min-width: 240px;
+}
+
+.plan-detail-danger-btn {
+    background: #ffffff;
+    border-color: #fecaca;
+    color: #dc2626;
+    padding: 20px 26px;
+    min-width: 240px;
+}
+
+.plan-detail-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 0 24px;
+    border-top: 1px solid #eef2f7;
+}
+
+.plan-detail-tab {
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 1.05rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 16px 18px;
+    border-bottom: 4px solid transparent;
+    cursor: pointer;
+}
+
+.plan-detail-tab.active {
+    color: #14b8a6;
+    border-bottom-color: #14b8a6;
+}
+
+.plan-detail-content {
+    margin-top: 28px;
+}
+
+.plan-detail-panel {
+    display: grid;
+    gap: 24px;
+}
+
+.plan-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.plan-detail-card,
+.plan-detail-section-card,
+.plan-detail-itinerary-shell,
+.plan-detail-booking-group,
+.plan-detail-payment-card,
+.plan-detail-support-card,
+.plan-detail-faq-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+}
+
+.plan-detail-card,
+.plan-detail-section-card,
+.plan-detail-booking-group,
+.plan-detail-payment-card,
+.plan-detail-support-card,
+.plan-detail-faq-card {
+    padding: 28px 30px;
+}
+
+.plan-detail-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+}
+
+.plan-detail-card-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.plan-detail-card-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.plan-detail-card-icon.flight { background: #e0e7ff; color: #2563eb; }
+.plan-detail-card-icon.hotel { background: #dcfce7; color: #16a34a; }
+.plan-detail-card-icon.activity { background: #fff7ed; color: #f59e0b; }
+.plan-detail-card-icon.transfer { background: #ede9fe; color: #7c3aed; }
+.plan-detail-card-icon.payment { background: #dbeafe; color: #2563eb; }
+.plan-detail-card-icon.support { background: #dff7f5; color: #14b8a6; }
+
+.plan-detail-card-title h2,
+.plan-detail-section-card h2,
+.plan-detail-booking-group h2,
+.plan-detail-payment-card h2,
+.plan-detail-support-card h2,
+.plan-detail-faq-card h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    letter-spacing: -0.03em;
+}
+
+.plan-detail-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #dcfce7;
+    color: #16a34a;
+    font-weight: 700;
+}
+
+.plan-detail-info-list {
+    display: grid;
+    gap: 18px;
+}
+
+.plan-detail-info-item {
+    padding-bottom: 18px;
+    border-bottom: 1px solid #e8edf4;
+}
+
+.plan-detail-info-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.plan-detail-info-label {
+    color: #64748b;
+    font-size: 0.98rem;
+    margin-bottom: 6px;
+}
+
+.plan-detail-info-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.plan-detail-info-subvalue {
+    margin-top: 5px;
+    color: #64748b;
+}
+
+.plan-detail-card-footer {
+    margin-top: 26px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.plan-detail-link-btn,
+.plan-detail-primary-btn,
+.plan-detail-outline-btn,
+.plan-detail-cta-btn {
+    padding: 16px 24px;
+    font-size: 1rem;
+}
+
+.plan-detail-primary-btn {
+    color: #ffffff;
+    background: linear-gradient(90deg, #1DB7A6, #1E5EEA);
+    box-shadow: 0 14px 30px rgba(37, 99, 235, 0.22);
+}
+
+.plan-detail-outline-btn {
+    background: #ffffff;
+    border-color: #d9e2ef;
+    color: #0f172a;
+}
+
+.plan-detail-link-btn {
+    color: #2563eb;
+    background: transparent;
+    border: none;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.plan-detail-cta-btn {
+    color: #ffffff;
+    background: linear-gradient(90deg, #1DB7A6, #1E5EEA);
+    box-shadow: 0 14px 30px rgba(30, 94, 234, 0.22);
+}
+
+.plan-detail-itinerary-shell {
+    padding: 28px;
+    display: grid;
+    grid-template-columns: 290px minmax(0, 1fr);
+    gap: 28px;
+}
+
+.plan-detail-day-rail {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 28px;
+    padding: 24px;
+    display: grid;
+    gap: 14px;
+    align-self: start;
+    position: sticky;
+    top: 110px;
+}
+
+.plan-detail-day-rail h3,
+.plan-detail-day-panel h2 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.plan-detail-day-option {
+    text-align: left;
+    width: 100%;
+    border: none;
+    border-radius: 22px;
+    padding: 20px;
+    cursor: pointer;
+    background: #f8fafc;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.plan-detail-day-option small {
+    display: block;
+    margin-top: 10px;
+    color: #64748b;
+    font-size: 0.98rem;
+    font-weight: 600;
+}
+
+.plan-detail-day-option.active {
+    background: linear-gradient(135deg, #14b8a6, #2563eb);
+    color: #ffffff;
+    box-shadow: 0 18px 32px rgba(37, 99, 235, 0.18);
+}
+
+.plan-detail-day-option.active small {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.plan-detail-day-panel {
+    display: grid;
+    gap: 20px;
+}
+
+.plan-detail-day-panel-header p {
+    margin: 10px 0 0;
+    color: #64748b;
+    font-size: 1rem;
+}
+
+.plan-detail-day-event {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 18px;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 24px;
+    padding: 24px;
+}
+
+.plan-detail-day-event-time {
+    color: #64748b;
+    font-weight: 700;
+    min-width: 95px;
+}
+
+.plan-detail-day-event-copy strong {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+
+.plan-detail-day-event-copy span,
+.plan-detail-day-event-copy small {
+    display: block;
+    color: #64748b;
+}
+
+.plan-detail-day-event-copy small {
+    margin-top: 8px;
+}
+
+.plan-detail-add-activity {
+    border: 2px dashed #2dd4bf;
+    background: #f0fdfa;
+    color: #14b8a6;
+    border-radius: 24px;
+    padding: 20px 24px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.plan-detail-booking-list {
+    display: grid;
+    gap: 16px;
+}
+
+.plan-detail-booking-item,
+.plan-detail-payment-history-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    align-items: center;
+    padding: 22px 24px;
+    border: 1px solid #e2e8f0;
+    border-radius: 22px;
+    background: #ffffff;
+}
+
+.plan-detail-booking-copy strong,
+.plan-detail-payment-history-copy strong {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+
+.plan-detail-booking-copy span,
+.plan-detail-booking-copy small,
+.plan-detail-payment-history-copy span,
+.plan-detail-payment-history-copy small {
+    display: block;
+    color: #64748b;
+}
+
+.plan-detail-booking-actions {
+    display: flex;
+    gap: 14px;
+}
+
+.plan-detail-payment-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.plan-detail-amount-card {
+    border-radius: 24px;
+    padding: 28px;
+}
+
+.plan-detail-amount-card span {
+    display: block;
+    margin-bottom: 16px;
+    font-size: 1rem;
+}
+
+.plan-detail-amount-card strong {
+    font-size: 2rem;
+    letter-spacing: -0.03em;
+}
+
+.plan-detail-amount-card.total { background: #ecfdf5; color: #15803d; }
+.plan-detail-amount-card.paid { background: #eff6ff; color: #1d4ed8; }
+.plan-detail-amount-card.pending { background: #fff7ed; color: #c2410c; }
+
+.plan-detail-breakdown {
+    margin-top: 28px;
+    border-top: 1px solid #e8edf4;
+    padding-top: 24px;
+    display: grid;
+    gap: 18px;
+}
+
+.plan-detail-breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    color: #475569;
+    font-size: 1.05rem;
+}
+
+.plan-detail-breakdown-row.total {
+    color: #2563eb;
+    font-weight: 800;
+    font-size: 1.2rem;
+    padding-top: 18px;
+    border-top: 1px solid #e8edf4;
+}
+
+.plan-detail-payment-history {
+    margin-top: 28px;
+    display: grid;
+    gap: 16px;
+}
+
+.plan-detail-support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.plan-detail-support-copy p,
+.plan-detail-support-card p {
+    color: #64748b;
+    margin: 10px 0 0;
+}
+
+.plan-detail-contact-list {
+    display: grid;
+    gap: 22px;
+}
+
+.plan-detail-contact-item {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+}
+
+.plan-detail-contact-item strong {
+    display: block;
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+}
+
+.plan-detail-contact-item span {
+    color: #64748b;
+    display: block;
+}
+
+.plan-detail-faq-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.plan-detail-faq-list details {
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 22px 24px;
+    background: #ffffff;
+}
+
+.plan-detail-faq-list summary {
+    list-style: none;
+    cursor: pointer;
+    font-size: 1.15rem;
+    font-weight: 700;
+    position: relative;
+    padding-right: 24px;
+}
+
+.plan-detail-faq-list summary::-webkit-details-marker {
+    display: none;
+}
+
+.plan-detail-faq-list summary::after {
+    content: "›";
+    position: absolute;
+    right: 0;
+    top: -1px;
+    color: #64748b;
+    font-size: 2rem;
+    line-height: 1;
+    transform: rotate(0deg);
+    transition: transform 0.18s ease;
+}
+
+.plan-detail-faq-list details[open] summary::after {
+    transform: rotate(90deg);
+}
+
+.plan-detail-faq-list p {
+    color: #64748b;
+    margin: 16px 0 0;
+    line-height: 1.7;
+}
+
+.plan-detail-empty {
+    max-width: 760px;
+    margin: 40px auto 0;
+    padding: 44px;
+    border-radius: 30px;
+    text-align: center;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+}
+
+.plan-detail-empty h1 {
+    margin: 0 0 12px;
+    font-size: 2rem;
+}
+
+.plan-detail-empty p {
+    margin: 0 0 18px;
+    color: #64748b;
+}
+
+@media (max-width: 1100px) {
+    .plan-detail-hero,
+    .plan-detail-booking-item,
+    .plan-detail-payment-history-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .plan-detail-meta,
+    .plan-detail-grid,
+    .plan-detail-support-grid,
+    .plan-detail-payment-summary,
+    .plan-detail-itinerary-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .plan-detail-day-rail {
+        position: static;
+    }
+
+    .plan-detail-actions {
+        align-items: stretch;
+        min-width: 0;
+    }
+
+    .plan-detail-action-row,
+    .plan-detail-booking-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 720px) {
+    .plan-detail-page {
+        padding: 20px 14px 48px;
+    }
+
+    .plan-detail-hero,
+    .plan-detail-card,
+    .plan-detail-section-card,
+    .plan-detail-booking-group,
+    .plan-detail-payment-card,
+    .plan-detail-support-card,
+    .plan-detail-faq-card,
+    .plan-detail-itinerary-shell {
+        padding: 20px;
+    }
+
+    .plan-detail-tabs {
+        overflow-x: auto;
+        padding: 0 14px;
+    }
+
+    .plan-detail-tab {
+        white-space: nowrap;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .plan-detail-meta {
+        grid-template-columns: 1fr;
+    }
+}

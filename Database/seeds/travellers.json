@@ -1,0 +1,136 @@
+[
+  {
+    "userId": "T001",
+    "legacyId": "20001",
+    "fname": "Anjali",
+    "lname": "Sharma",
+    "email": "anjali@xploreo.com",
+    "phno": 9123456780,
+    "plang": [
+      "English",
+      "Hindi",
+      "Gujarati"
+    ],
+    "bio": "Loves exploring local cultures and street food",
+    "interests": [
+      "food",
+      "culture"
+    ]
+  },
+  {
+    "userId": "20002",
+    "fname": "Rohit",
+    "lname": "Malhotra",
+    "email": "rohit.m@example.com",
+    "phno": 9812345671,
+    "plang": [
+      "English",
+      "Hindi"
+    ],
+    "bio": "Frequent business traveller and heritage enthusiast",
+    "interests": [
+      "heritage",
+      "sightseeing"
+    ]
+  },
+  {
+    "userId": "20004",
+    "fname": "Priya",
+    "lname": "Nair",
+    "email": "priya.nair@example.com",
+    "phno": 9812345672,
+    "plang": [
+      "English",
+      "Malayalam"
+    ],
+    "bio": "Nature lover exploring South India backwaters",
+    "interests": [
+      "nature",
+      "wildlife"
+    ]
+  },
+  {
+    "userId": "T002",
+    "fname": "Kunal",
+    "lname": "Kapoor",
+    "email": "kunal.kapoor@example.com",
+    "phno": 9812345673,
+    "plang": [
+      "English",
+      "Hindi",
+      "Punjabi"
+    ],
+    "bio": "Adventure seeker exploring coastal trails and water sports",
+    "interests": [
+      "adventure",
+      "nature"
+    ]
+  },
+  {
+    "userId": "T003",
+    "fname": "Rajiv",
+    "lname": "Mehra",
+    "email": "rajiv.mehra@example.com",
+    "phno": 9812345674,
+    "plang": [
+      "English",
+      "Hindi",
+      "Urdu"
+    ],
+    "bio": "Architectural history enthusiast exploring heritage stepwells",
+    "interests": [
+      "heritage",
+      "culture"
+    ]
+  },
+  {
+    "userId": "T004",
+    "fname": "Farhan",
+    "lname": "Merchant",
+    "email": "farhan.m@example.com",
+    "phno": 9812345675,
+    "plang": [
+      "English",
+      "Hindi",
+      "Marathi"
+    ],
+    "bio": "Urban heritage photographer capturing coastal city promenades",
+    "interests": [
+      "photography",
+      "culture"
+    ]
+  },
+  {
+    "userId": "T005",
+    "fname": "Lakshmi",
+    "lname": "Menon",
+    "email": "lakshmi.m@example.com",
+    "phno": 9812345676,
+    "plang": [
+      "English",
+      "Malayalam",
+      "Tamil"
+    ],
+    "bio": "Eco-traveller passionate about mangrove ecology and village retreats",
+    "interests": [
+      "nature",
+      "wildlife"
+    ]
+  },
+  {
+    "userId": "seed-guest",
+    "fname": "Meera",
+    "lname": "Nair",
+    "email": "meera.nair@example.com",
+    "phno": 9812345679,
+    "plang": [
+      "English",
+      "Malayalam"
+    ],
+    "bio": "Heritage enthusiast and leisure traveller",
+    "interests": [
+      "heritage",
+      "culture"
+    ]
+  }
+]

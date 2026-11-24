@@ -1,0 +1,864 @@
+/* ========================================
+   NON-TECHNICAL ADMIN STYLES
+   Dashboard + Manage Travel Packages
+   Matches existing admin design system
+   ======================================== */
+
+/* --- Page Header --- */
+.nta-page-header {
+    margin-bottom: 10px;
+}
+
+.nta-page-header h1 {
+    margin: 0;
+    font-size: 24px;
+    color: #111827;
+}
+
+.nta-page-header p {
+    margin: 5px 0 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+/* --- Dashboard Stats Grid (4 columns) --- */
+#nta-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+@media (max-width: 1100px) {
+    #nta-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    #nta-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Split Grid (Overview + Activity) --- */
+.nta-split-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.nta-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .nta-split-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Overview Card --- */
+.nta-overview-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.nta-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.nta-overview-item {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #f3f4f6;
+    transition: all 0.2s ease;
+}
+
+.nta-overview-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.nta-overview-item .label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.nta-overview-item .value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+}
+
+.nta-overview-item .hint {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+@media (max-width: 700px) {
+    .nta-overview-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Activity Card --- */
+.nta-activity-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.nta-activity-card h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 20px 0;
+}
+
+.nta-activity-item {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.nta-activity-item:last-child {
+    border-bottom: none;
+}
+
+.nta-activity-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+}
+
+.nta-activity-icon.create { background: #ecfdf5; color: #059669; }
+.nta-activity-icon.update { background: #eff6ff; color: #2563eb; }
+.nta-activity-icon.status { background: #fef3c7; color: #d97706; }
+.nta-activity-icon.purchase { background: #f5f3ff; color: #7c3aed; }
+
+.nta-activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.nta-activity-action {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.nta-activity-detail {
+    margin: 2px 0 0 0;
+    font-size: 12px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nta-activity-time {
+    font-size: 11px;
+    color: #9ca3af;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+/* --- Quick Breakdown Chart Area --- */
+.nta-chart-area {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    margin-top: 20px;
+}
+
+.nta-mini-bars {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    height: 120px;
+    margin-top: 20px;
+    padding: 0 10px;
+}
+
+.nta-mini-bar-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.nta-mini-bar {
+    width: 100%;
+    max-width: 50px;
+    border-radius: 6px 6px 0 0;
+    transition: height 0.5s ease;
+    min-height: 6px;
+}
+
+.nta-mini-bar.bar-blue { background: linear-gradient(180deg, #60a5fa, #3b82f6); }
+.nta-mini-bar.bar-green { background: linear-gradient(180deg, #6ee7b7, #10b981); }
+.nta-mini-bar.bar-violet { background: linear-gradient(180deg, #c4b5fd, #8b5cf6); }
+.nta-mini-bar.bar-orange { background: linear-gradient(180deg, #fdba74, #f59e0b); }
+.nta-mini-bar.bar-teal { background: linear-gradient(180deg, #5eead4, #14b8a6); }
+.nta-mini-bar.bar-pink { background: linear-gradient(180deg, #f9a8d4, #ec4899); }
+
+.nta-mini-bar-label {
+    font-size: 10px;
+    color: #9ca3af;
+    text-align: center;
+    font-weight: 600;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nta-mini-bar-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: #374151;
+}
+
+/* ========================================
+   MANAGE TRAVEL PACKAGES PAGE
+   ======================================== */
+
+/* --- Plans Toolbar --- */
+.nta-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.nta-toolbar-left {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.nta-search-input {
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    min-width: 220px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #ffffff;
+    color: #374151;
+}
+
+.nta-search-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.nta-filter-select {
+    padding: 8px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    background: white;
+    outline: none;
+    cursor: pointer;
+    color: #374151;
+}
+
+/* --- Create Button --- */
+.nta-create-btn {
+    padding: 10px 24px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.nta-create-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+/* --- Plans Table --- */
+.nta-plans-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.nta-plans-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.nta-plans-table th {
+    text-align: left;
+    padding: 14px 12px;
+    background-color: #ffffff;
+    color: #6b7280;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-bottom: 2px solid #e5e7eb;
+    letter-spacing: 0.5px;
+}
+
+.nta-plans-table td {
+    padding: 16px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    color: #1f2937;
+    font-size: 14px;
+}
+
+.nta-plans-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.nta-plans-table tbody tr:hover {
+    background: #f9fafb;
+}
+
+.nta-plan-name {
+    font-weight: 600;
+    color: #111827;
+}
+
+.nta-plan-desc {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 2px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nta-plan-price {
+    font-weight: 700;
+    color: #059669;
+    font-size: 15px;
+}
+
+.nta-plan-duration {
+    font-weight: 500;
+    color: #4b5563;
+}
+
+/* --- Status Pill --- */
+.nta-status-pill {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.nta-status-pill.available {
+    background: #ecfdf5;
+    color: #059669;
+}
+
+.nta-status-pill.unavailable {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* --- Action Buttons --- */
+.nta-action-group {
+    display: flex;
+    gap: 8px;
+}
+
+.nta-action-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+
+.nta-action-btn.edit {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.nta-action-btn.edit:hover {
+    background: #dbeafe;
+}
+
+.nta-action-btn.delete {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.nta-action-btn.delete:hover {
+    background: #fee2e2;
+}
+
+/* --- Modal Form --- */
+.nta-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.nta-modal-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+
+.nta-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 32px;
+    width: 560px;
+    max-width: 92%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    animation: modalSlideUp 0.3s ease;
+}
+
+@keyframes modalSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.nta-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.nta-modal-header h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.nta-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #9ca3af;
+    cursor: pointer;
+    transition: color 0.2s;
+    line-height: 1;
+}
+
+.nta-modal-close:hover {
+    color: #374151;
+}
+
+.nta-form-group {
+    margin-bottom: 18px;
+}
+
+.nta-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.nta-form-group input,
+.nta-form-group textarea,
+.nta-form-group select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #ffffff;
+    color: #374151;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+.nta-form-group input:focus,
+.nta-form-group textarea:focus,
+.nta-form-group select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.nta-form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.nta-form-hint {
+    font-size: 11px;
+    color: #9ca3af;
+    margin-top: 4px;
+}
+
+.nta-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 500px) {
+    .nta-form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* --- Status Toggle --- */
+.nta-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nta-toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.nta-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.nta-toggle-slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #d1d5db;
+    border-radius: 24px;
+    transition: 0.3s;
+}
+
+.nta-toggle-slider::before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+.nta-toggle input:checked + .nta-toggle-slider {
+    background: #10b981;
+}
+
+.nta-toggle input:checked + .nta-toggle-slider::before {
+    transform: translateX(20px);
+}
+
+.nta-toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* --- Features Input --- */
+.nta-features-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.nta-feature-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.nta-feature-tag .remove-feature {
+    cursor: pointer;
+    font-size: 14px;
+    color: #93c5fd;
+    transition: color 0.2s;
+}
+
+.nta-feature-tag .remove-feature:hover {
+    color: #dc2626;
+}
+
+.nta-feature-input-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.nta-feature-input-row input {
+    flex: 1;
+}
+
+.nta-add-feature-btn {
+    padding: 8px 16px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.nta-add-feature-btn:hover {
+    background: #e5e7eb;
+}
+
+/* --- Modal Buttons --- */
+.nta-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #f3f4f6;
+}
+
+.nta-btn-cancel {
+    padding: 10px 24px;
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nta-btn-cancel:hover {
+    background: #e5e7eb;
+}
+
+.nta-btn-save {
+    padding: 10px 24px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nta-btn-save:hover {
+    background: #1d4ed8;
+}
+
+/* --- Delete Confirmation Modal --- */
+.nta-delete-modal {
+    text-align: center;
+    max-width: 400px;
+}
+
+.nta-delete-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fef2f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 28px;
+}
+
+.nta-delete-modal h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #111827;
+}
+
+.nta-delete-modal p {
+    margin: 0 0 24px 0;
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.nta-delete-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.nta-btn-delete {
+    padding: 10px 24px;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.nta-btn-delete:hover {
+    background: #b91c1c;
+}
+
+/* --- Empty State --- */
+.nta-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6b7280;
+}
+
+.nta-empty-state .empty-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+.nta-empty-state p {
+    font-size: 15px;
+    margin: 0;
+}
+
+/* --- Feature list on table --- */
+.nta-features-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.nta-feature-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #f3f4f6;
+    color: #4b5563;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.nta-feature-more {
+    display: inline-block;
+    padding: 2px 8px;
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* --- Responsive Table --- */
+@media (max-width: 768px) {
+    .nta-plans-table thead {
+        display: none;
+    }
+
+    .nta-plans-table tbody tr {
+        display: block;
+        margin-bottom: 16px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+    }
+
+    .nta-plans-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+
+    .nta-plans-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    .nta-plans-table td:last-child {
+        border-bottom: none;
+    }
+}
+

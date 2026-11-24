@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule Management - Xploreo</title>
+    <link rel="stylesheet" href="../../css/shared.css">
+    <link rel="stylesheet" href="../../css/schedule.css">
+    <link rel="stylesheet" href="../../css/module-crud.css">
+</head>
+<body>
+    <div id="navbar"></div>
+    <div id="main"></div>
+
+    <!-- Tour Modal (Reuse from tours.html) -->
+    <div id="tourModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+            <div class="modal-footer">
+                <button class="secondary-btn" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Block Date Modal -->
+    <div id="blockDateModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Block Specific Dates</h2>
+                <span class="close-btn" onclick="closePopup('blockDateModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Date Range</label>
+                    <input type="text" id="blockRange" class="input-field" placeholder="e.g. April 10-15, 2026" style="width: 100%;">
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Reason</label>
+                    <input type="text" id="blockReason" class="input-field" placeholder="e.g. Spring Vacation" style="width: 100%;">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn" onclick="closePopup('blockDateModal')">Cancel</button>
+                <button class="primary-btn" id="saveBlockBtn">Save Blocked Date</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time Slot Modal -->
+    <div id="slotModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="slotModalTitle">Set Time Slot</h2>
+                <span class="close-btn" onclick="closePopup('slotModal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Start Time</label>
+                        <input type="text" id="startTime" class="input-field" placeholder="9:00 AM" style="width: 100%;">
+                    </div>
+                    <span style="margin-top: 1.5rem;">To</span>
+                    <div class="form-group">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">End Time</label>
+                        <input type="text" id="endTime" class="input-field" placeholder="5:00 PM" style="width: 100%;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="secondary-btn" onclick="closePopup('slotModal')">Cancel</button>
+                <button class="primary-btn" id="saveSlotBtn">Save Slot</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="../../js/app.js"></script>
+    <!-- We also need tours.js for the modal logic -->
+    <script type="module" src="../../js/tours.js"></script>
+</body>
+</html>

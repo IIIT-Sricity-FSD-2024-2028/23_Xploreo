@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Earnings</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="../../css/experiencestyles.css">
+</head>
+
+<body class="experience-page earnings-page experience-earnings-page">
+
+<div id="navbar"></div>
+
+<main class="experience-shell">
+
+    <section class="top-bar experience-toolbar">
+        <div>
+            <p class="experience-eyebrow">Revenue Overview</p>
+            <h1>Earnings</h1>
+            <p>Track your revenue and financial performance</p>
+        </div>
+
+        <label class="experience-select-shell" for="dateFilter">
+            <span>Date Range</span>
+            <select id="dateFilter">
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90" selected>Last 90 days</option>
+            </select>
+        </label>
+    </section>
+
+    <section class="experience-summary-grid earnings-summary-grid">
+        <article class="experience-card earnings-stat-card">
+            <div class="card-top">
+                <div class="icon blue">$</div>
+                <span class="badge green">+12.5%</span>
+            </div>
+            <h2 id="totalRevenue">$0</h2>
+            <p>Total Revenue</p>
+        </article>
+
+        <article class="experience-card earnings-stat-card">
+            <div class="card-top">
+                <div class="icon green">↗</div>
+                <span class="badge green">+8.2%</span>
+            </div>
+            <h2 id="earnings">$0</h2>
+            <p>Earnings This Period</p>
+        </article>
+
+        <article class="experience-card earnings-stat-card">
+            <div class="card-top">
+                <div class="icon orange">⟳</div>
+                <span class="badge red">-2.1%</span>
+            </div>
+            <h2 id="refundAmount">$0</h2>
+            <p>Refunded Payments</p>
+        </article>
+
+        <article class="experience-card earnings-stat-card">
+            <div class="card-top">
+                <div class="icon purple">💵</div>
+                <span class="badge green">+5.4%</span>
+            </div>
+            <h2 id="avgBooking">$0</h2>
+            <p>Average Booking Value</p>
+        </article>
+    </section>
+
+
+
+    <section class="experience-section">
+    <div class="experience-section-header">
+        <div>
+            <p class="section-kicker">Performance</p>
+            <h2>Performance Insights</h2>
+        </div>
+    </div>
+    <div class="insights-grid earnings-insights-grid">
+        <article class="experience-card earnings-insight-card">
+            <div class="icon green">⌘</div>
+            <h3 id="topExperience">--</h3>
+            <p>Top Performing Experience</p>
+        </article>
+
+        <article class="experience-card earnings-insight-card">
+            <div class="icon blue">🗓</div>
+            <h3 id="bestDay">--</h3>
+            <p>Highest Booking Day</p>
+        </article>
+
+        <article class="experience-card earnings-insight-card">
+            <div class="icon indigo">👥</div>
+            <h3 id="utilization">0%</h3>
+            <p>Capacity Utilization</p>
+        </article>
+
+        <article class="experience-card earnings-insight-card">
+            <div class="icon orange">↘</div>
+            <h3 id="cancelRate">0%</h3>
+            <p>Cancellation Rate</p>
+        </article>
+    </div>
+    </section>
+
+<section class="earnings-bottom">
+
+    <div class="box revenue earnings-panel">
+        <h3>Revenue Sources</h3>
+
+        <div id="revenueSources"></div>
+
+        <div class="divider"></div>
+
+        <div class="total-row">
+            <span>Total Revenue</span>
+            <span id="totalRevenueText">$0</span>
+        </div>
+    </div>
+
+    <div class="box refund earnings-panel">
+        <h3>Refund Breakdown</h3>
+
+        <p class="label">Total Refunded</p>
+        <h2 id="refundAmountBig">$0</h2>
+
+        <p class="label">Percentage of Revenue</p>
+        <div class="refund-percentage">
+            <span id="refundPercent">0%</span>
+            <span class="trend" id="refundTrendText">+0% from last period</span>
+        </div>
+
+        <div class="refund-rate-row">
+            <span>Refund Rate</span>
+            <span id="refundRateText">0%</span>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill red" id="refundBar"></div>
+        </div>
+
+        <div class="refund-note">
+            <strong id="refundNoteTitle">Low Refund Rate</strong>
+            <p id="refundNoteBody">Your refund rate is below industry average (5%)</p>
+        </div>
+    </div>
+
+</section>
+
+<section class="box experience-table-card earnings-transactions-card">
+    <div class="experience-section-header">
+        <div>
+            <p class="section-kicker">Payout trail</p>
+            <h3>Recent Transactions</h3>
+        </div>
+        <label class="experience-select-shell earnings-status-filter" for="transactionStatusFilter">
+            <span>Status</span>
+            <select id="transactionStatusFilter">
+                <option value="all" selected>All Statuses</option>
+                <option value="Paid">Paid</option>
+                <option value="Refunded">Refunded</option>
+            </select>
+        </label>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Guest Name</th>
+                <th>Experience Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody id="earningsTable"></tbody>
+    </table>
+</section>
+
+
+<script type="module" src="../../js/app.js"></script>
+
+</main>
+</body>
+</html>

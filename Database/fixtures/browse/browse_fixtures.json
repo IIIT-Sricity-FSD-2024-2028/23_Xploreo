@@ -1,0 +1,614 @@
+{
+  "hotels": [
+    {
+      "id": "hotel-hp001-1",
+      "name": "Xploreo Heritage Inn",
+      "city": "Jaipur",
+      "location": "Amer Road, Jaipur, Rajasthan",
+      "description": "A heritage-style stay close to the Amer Fort with modern comforts.",
+      "stars": 4,
+      "rating": 5,
+      "reviewCount": 1,
+      "pricePerNight": 4500,
+      "taxesAndFees": 540,
+      "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+      "amenities": [
+        "WiFi",
+        "Breakfast",
+        "Parking",
+        "Air Conditioning"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "HP-GOA-001",
+      "name": "Coconut Grove Luxury Beach Resort",
+      "city": "Goa",
+      "location": "Betalbatim Beach, South Goa",
+      "description": "Secluded beachfront resort in South Goa surrounded by swaying coconut palms and direct shore access.",
+      "stars": 5,
+      "rating": 4.8,
+      "reviewCount": 260,
+      "pricePerNight": 7600,
+      "taxesAndFees": 912,
+      "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+      "amenities": [
+        "Private Beach Access",
+        "Infinity Pool",
+        "Seafood Grill",
+        "Spa & Wellness"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "HP-DEL-001",
+      "name": "The Imperial Heritage Hotel",
+      "city": "Delhi",
+      "location": "Janpath, Connaught Place, New Delhi",
+      "description": "Legendary art deco hotel located on Janpath, combining Victorian elegance with contemporary 5-star luxury.",
+      "stars": 5,
+      "rating": 4.9,
+      "reviewCount": 450,
+      "pricePerNight": 9200,
+      "taxesAndFees": 1104,
+      "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+      "amenities": [
+        "Heritage Art Gallery",
+        "Heated Pool",
+        "Fine Dining Restaurants",
+        "Luxury Spa"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hotel-mumbai-4",
+      "name": "Marine Plaza Waterfront",
+      "city": "Mumbai",
+      "location": "Marine Drive, Mumbai",
+      "description": "Prime seafront hotel overlooking the famous Queen’s Necklace with rooftop glass-bottom pool.",
+      "stars": 4,
+      "rating": 4.5,
+      "reviewCount": 290,
+      "pricePerNight": 11000,
+      "taxesAndFees": 1320,
+      "image": "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80",
+      "amenities": [
+        "Sea View Rooms",
+        "Rooftop Pool",
+        "Fitness Center",
+        "Cocktail Bar"
+      ],
+      "status": "active"
+    },
+    {
+      "id": "hotel-kumarakom-1",
+      "name": "Kumarakom Lake Luxury Retreat",
+      "city": "Kerala",
+      "location": "Kottayam, Kerala",
+      "description": "Heritage villas with private plunge pools, tranquil backwaters, and Ayurvedic wellness treatments.",
+      "stars": 5,
+      "rating": 4.9,
+      "reviewCount": 418,
+      "pricePerNight": 18500,
+      "taxesAndFees": 2220,
+      "image": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80",
+      "amenities": [
+        "Backwater View",
+        "Ayurvedic Spa",
+        "Infinity Pool",
+        "Houseboat Dining"
+      ],
+      "status": "active"
+    }
+  ],
+  "experiences": [
+    {
+      "id": "exp-3",
+      "partnerId": "XP001",
+      "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
+      "description": "Experience Amber Fort under evening illumination followed by authentic Rajasthani street delicacies.",
+      "destination": "Jaipur",
+      "category": "culture",
+      "availability": "available",
+      "price": 2200,
+      "durationHours": 4,
+      "capacity": 12,
+      "booked": 2,
+      "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+      "nextSlot": "2026-10-24 16:30",
+      "slots": [
+        {
+          "id": "slot-6",
+          "date": "2026-10-24",
+          "time": "16:30",
+          "booked": 2,
+          "capacity": 12,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "EXP-GOA-201",
+      "partnerId": "XP002",
+      "title": "Fontainhas Latin Quarter Heritage Walk",
+      "description": "Wander past vibrant Portuguese colonial villas, historic chapels, and traditional bakeries in Panaji.",
+      "destination": "Goa",
+      "category": "culture",
+      "availability": "available",
+      "price": 1400,
+      "durationHours": 2.5,
+      "capacity": 12,
+      "booked": 4,
+      "image": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80",
+      "nextSlot": "2026-10-25 09:00",
+      "slots": [
+        {
+          "id": "slot-goa-201",
+          "date": "2026-10-25",
+          "time": "09:00",
+          "booked": 4,
+          "capacity": 12,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "EXP-DEL-301",
+      "partnerId": "XP003",
+      "title": "Old Delhi Culinary & Street Food Safari",
+      "description": "Sample legendary paranthas, kebabs, jalebis, and spiced lassis through hidden historical gullies.",
+      "destination": "Delhi",
+      "category": "culinary",
+      "availability": "available",
+      "price": 1750,
+      "durationHours": 3,
+      "capacity": 12,
+      "booked": 5,
+      "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+      "nextSlot": "2026-10-25 17:00",
+      "slots": [
+        {
+          "id": "slot-del-301",
+          "date": "2026-10-25",
+          "time": "17:00",
+          "booked": 5,
+          "capacity": 12,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "EXP-BOM-401",
+      "partnerId": "XP004",
+      "title": "South Mumbai Art Deco & Heritage Promenade",
+      "description": "Explore the world second largest collection of Art Deco architecture along Oval Maidan and Marine Drive.",
+      "destination": "Mumbai",
+      "category": "culture",
+      "availability": "available",
+      "price": 1600,
+      "durationHours": 2.5,
+      "capacity": 15,
+      "booked": 4,
+      "image": "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80",
+      "nextSlot": "2026-10-25 08:30",
+      "slots": [
+        {
+          "id": "slot-bom-401",
+          "date": "2026-10-25",
+          "time": "08:30",
+          "booked": 4,
+          "capacity": 15,
+          "available": true
+        }
+      ]
+    },
+    {
+      "id": "exp-1",
+      "partnerId": "XP005",
+      "title": "Western Ghats Guided Rainforest Trek",
+      "description": "A guided trek through lush Western Ghats forest trails with stream crossings and bird watching.",
+      "destination": "Kerala",
+      "category": "adventure",
+      "availability": "available",
+      "price": 1800,
+      "durationHours": 6,
+      "capacity": 15,
+      "booked": 9,
+      "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+      "nextSlot": "2026-10-16 07:00",
+      "slots": [
+        {
+          "id": "slot-1",
+          "date": "2026-10-16",
+          "time": "07:00",
+          "booked": 9,
+          "capacity": 15,
+          "available": true
+        },
+        {
+          "id": "slot-2",
+          "date": "2026-10-22",
+          "time": "07:00",
+          "booked": 3,
+          "capacity": 15,
+          "available": true
+        },
+        {
+          "id": "slot-3",
+          "date": "2026-09-28",
+          "time": "07:00",
+          "booked": 12,
+          "capacity": 15,
+          "available": true
+        }
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "plan-1",
+      "title": "Kerala Backwaters & Hill Station Escape",
+      "description": "Relax in serene Alleppey backwaters with houseboat stays and tea garden excursions in Munnar.",
+      "originCity": "Bangalore",
+      "destination": "Kerala",
+      "status": "available",
+      "durationNights": 5,
+      "pricePerPerson": 22000,
+      "hotelStars": 4,
+      "includesFlight": false,
+      "image": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80",
+      "tags": [
+        "Backwaters",
+        "Houseboat",
+        "Tea Gardens",
+        "South India"
+      ],
+      "itinerary": {
+        "day1": {
+          "flight": null,
+          "transport": {
+            "id": "plan-1-day-1-trans",
+            "provider": "Self-Arranged",
+            "vehicleType": "Sedan",
+            "pickupLocation": "Bangalore",
+            "dropoffLocation": "Kochi",
+            "pickupAt": "2026-07-01T09:00:00.000Z",
+            "status": "planned"
+          },
+          "hotel": {
+            "id": "plan-1-day-1-htl",
+            "hotelId": "hotel-hp001-2",
+            "name": "Xploreo Backwater Resort",
+            "checkInDate": "2026-07-01",
+            "checkOutDate": "2026-07-06",
+            "roomType": "Backwater Villa",
+            "status": "planned"
+          }
+        },
+        "days": [
+          {
+            "dayNumber": 2,
+            "experiences": [
+              {
+                "id": "plan-1-day-2-exp-1",
+                "experienceId": "exp-2",
+                "title": "Alleppey Sunrise Kayaking & Canal Walk",
+                "location": "Alleppey",
+                "startsAt": "2026-07-02T06:00:00.000Z",
+                "endsAt": "2026-07-02T09:00:00.000Z",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "plan-kerala-backwaters-03",
+      "title": "Kerala Backwaters & Houseboat Retreat",
+      "description": "Experience serene luxury on the Vembanad lake with private houseboat cruises, Ayurvedic wellness therapies, and local cuisine.",
+      "originCity": "Kochi",
+      "destination": "Kerala",
+      "status": "available",
+      "durationNights": 4,
+      "pricePerPerson": 32000,
+      "hotelStars": 5,
+      "includesFlight": false,
+      "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+      "tags": [
+        "Backwaters",
+        "Wellness",
+        "Ayurveda",
+        "Luxury"
+      ],
+      "itinerary": {
+        "day1": {
+          "flight": null,
+          "hotel": {
+            "id": "hotel-ker-01",
+            "hotelId": "HP-KER-001",
+            "name": "Kumarakom Backwater Palace Resort",
+            "checkInDate": "2026-11-01",
+            "checkOutDate": "2026-11-05",
+            "roomType": "Lagoon Heritage Villa",
+            "status": "planned"
+          }
+        },
+        "days": [
+          {
+            "dayNumber": 2,
+            "experiences": [
+              {
+                "id": "exp-ker-01",
+                "experienceId": "EXP-KER-501",
+                "title": "Alleppey Sunrise Kayaking & Canal Walk",
+                "location": "Alleppey, Kerala",
+                "startsAt": "2026-11-02T06:00:00.000Z",
+                "endsAt": "2026-11-02T09:00:00.000Z",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "plan-2",
+      "title": "Rajasthan Royal Heritage Trail",
+      "description": "Explore majestic forts, royal palaces, desert culture, and bustling bazaars in Jaipur & Udaipur.",
+      "originCity": "Delhi",
+      "destination": "Jaipur",
+      "status": "available",
+      "durationNights": 7,
+      "pricePerPerson": 35000,
+      "hotelStars": 5,
+      "includesFlight": false,
+      "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+      "tags": [
+        "Heritage",
+        "Forts",
+        "Palaces",
+        "Culture"
+      ],
+      "itinerary": {
+        "day1": {
+          "flight": null,
+          "transport": {
+            "id": "plan-2-day-1-trans",
+            "provider": "Self-Arranged",
+            "vehicleType": "SUV",
+            "pickupLocation": "Delhi",
+            "dropoffLocation": "Jaipur",
+            "pickupAt": "2026-08-01T08:00:00.000Z",
+            "status": "planned"
+          },
+          "hotel": {
+            "id": "plan-2-day-1-htl",
+            "hotelId": "hotel-hp001-1",
+            "name": "Xploreo Heritage Inn",
+            "checkInDate": "2026-08-01",
+            "checkOutDate": "2026-08-08",
+            "roomType": "Heritage Deluxe Room",
+            "status": "planned"
+          }
+        },
+        "days": [
+          {
+            "dayNumber": 2,
+            "experiences": [
+              {
+                "id": "plan-2-day-2-exp-1",
+                "experienceId": "exp-3",
+                "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
+                "location": "Jaipur",
+                "startsAt": "2026-08-02T16:30:00.000Z",
+                "endsAt": "2026-08-02T20:30:00.000Z",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "plan-jaipur-heritage-01",
+      "title": "Royal Jaipur Heritage & Palaces",
+      "description": "Immerse yourself in Rajasthan royal history with guided tours through Amer Fort, City Palace, and traditional artisan workshops in the Pink City.",
+      "originCity": "Delhi",
+      "destination": "Jaipur",
+      "status": "available",
+      "durationNights": 4,
+      "pricePerPerson": 24500,
+      "hotelStars": 4,
+      "includesFlight": false,
+      "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+      "tags": [
+        "Heritage",
+        "Culture",
+        "Architecture",
+        "Artisans"
+      ],
+      "itinerary": {
+        "day1": {
+          "flight": null,
+          "hotel": {
+            "id": "hotel-jaipur-palace-01",
+            "hotelId": "HP-JAI-001",
+            "name": "The Heritage Haveli & Spa, Jaipur",
+            "checkInDate": "2026-11-01",
+            "checkOutDate": "2026-11-05",
+            "roomType": "Heritage Deluxe Room",
+            "status": "planned"
+          }
+        },
+        "days": [
+          {
+            "dayNumber": 2,
+            "experiences": [
+              {
+                "id": "exp-jai-amer-01",
+                "experienceId": "EXP-JAI-101",
+                "title": "Amer Fort Sunrise Guided Walk",
+                "location": "Amer, Jaipur",
+                "startsAt": "2026-11-02T07:00:00.000Z",
+                "endsAt": "2026-11-02T10:30:00.000Z",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "plan-jaipur-crafts-06",
+      "title": "Jaipur Block Printing & Fort Trails (Draft)",
+      "description": "Hands-on artisan textile printing workshops in Sanganer coupled with Nahargarh rampart sunset excursions.",
+      "originCity": "Jaipur",
+      "destination": "Jaipur",
+      "status": "unavailable",
+      "durationNights": 3,
+      "pricePerPerson": 14000,
+      "hotelStars": 3,
+      "includesFlight": false,
+      "image": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
+      "tags": [
+        "Crafts",
+        "Textiles",
+        "Workshops",
+        "Artisans"
+      ],
+      "itinerary": {
+        "day1": {
+          "flight": null,
+          "hotel": {
+            "id": "hotel-jai-03",
+            "hotelId": "HP-JAI-003",
+            "name": "Jaipur Central Comfort Inn",
+            "checkInDate": "2026-11-10",
+            "checkOutDate": "2026-11-13",
+            "roomType": "Superior Room",
+            "status": "planned"
+          }
+        },
+        "days": [
+          {
+            "dayNumber": 2,
+            "experiences": [
+              {
+                "id": "exp-jai-03",
+                "experienceId": "EXP-JAI-103",
+                "title": "Blue Pottery Artisan Workshop",
+                "location": "Sanganer, Jaipur",
+                "startsAt": "2026-11-11T15:00:00.000Z",
+                "endsAt": "2026-11-11T17:00:00.000Z",
+                "status": "planned"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "guides": [
+    {
+      "userId": "G003",
+      "fname": "Priya",
+      "lname": "Rathore",
+      "email": "priya.rathore@example.com",
+      "location": "Jaipur",
+      "prof_title": "Architectural Historian & City Storyteller",
+      "years_exp": 5,
+      "bio": "Passionate about Rajput architecture, royal cuisine histories, and hidden gem alleyways in the Pink City.",
+      "lang_spoken": [
+        "English",
+        "Hindi",
+        "Rajasthani"
+      ],
+      "certifications": [
+        "Archaeological Heritage Expert",
+        "Official City Tour Guide"
+      ]
+    },
+    {
+      "userId": "G006",
+      "fname": "Carlos",
+      "lname": "Fernandes",
+      "email": "carlos.fernandes@example.com",
+      "location": "Goa",
+      "prof_title": "Indo-Portuguese Architecture & Latin Quarter Guide",
+      "years_exp": 10,
+      "bio": "Historian specializing in Fontainhas heritage preservation, church murals of Old Goa, and colonial culinary roots.",
+      "lang_spoken": [
+        "English",
+        "Konkani",
+        "Portuguese",
+        "Hindi"
+      ],
+      "certifications": [
+        "Goa Tourism Development Corp Certified",
+        "Heritage Historian"
+      ]
+    },
+    {
+      "userId": "G009",
+      "fname": "Amitav",
+      "lname": "Sengupta",
+      "email": "amitav.sengupta@example.com",
+      "location": "Delhi",
+      "prof_title": "Mughal Architecture & Old Delhi Food Historian",
+      "years_exp": 9,
+      "bio": "Author and historian specializing in Shahjahanabad heritage, Jama Masjid culinary streets, and Red Fort history.",
+      "lang_spoken": [
+        "English",
+        "Hindi",
+        "Bengali",
+        "Urdu"
+      ],
+      "certifications": [
+        "Archaeological Survey of India License",
+        "First Aid"
+      ]
+    },
+    {
+      "userId": "G001",
+      "fname": "Sreekar",
+      "lname": "Sharma",
+      "email": "sreekar@gmail.com",
+      "location": "Mumbai",
+      "prof_title": "Senior Western Ghats Trek Leader & Heritage Guide",
+      "years_exp": 7,
+      "bio": "Expert mountain guide with 7+ years experience in Western Ghats and cultural trails.",
+      "lang_spoken": [
+        "English",
+        "Hindi",
+        "Marathi",
+        "Rajasthani"
+      ],
+      "certifications": [
+        "First Aid",
+        "Mountain Rescue",
+        "Govt Tourism License"
+      ]
+    },
+    {
+      "userId": "G002",
+      "fname": "Arjun",
+      "lname": "Nair",
+      "email": "arjun.nair@example.com",
+      "location": "Kerala",
+      "prof_title": "Kerala Backwaters & Wildlife Naturalist",
+      "years_exp": 9,
+      "bio": "Lifelong resident naturalist specializing in avian biodiversity, mangrove ecology, and local spice culture.",
+      "lang_spoken": [
+        "English",
+        "Malayalam",
+        "Hindi",
+        "Tamil"
+      ],
+      "certifications": [
+        "Naturalist Guide Level 2",
+        "CPR Certified"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,812 @@
+/* ========================================
+   EARNINGS PAGE â€” Premium Redesign
+   ======================================== */
+
+/* --- Keyframe Animations --- */
+@keyframes earn-fadeInUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes earn-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+@keyframes earn-pulse-soft {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.12); }
+    50% { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
+
+/* --- Page Wrapper --- */
+.earn-page {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 30px 40px 50px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    animation: earn-fadeInUp 0.5s ease-out;
+}
+
+#earnings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+#earnings-content {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+/* --- Page Header with Gradient Accent --- */
+.earn-header {
+    margin-bottom: 6px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, #ffffff 0%, #f0f5ff 40%, #e8f0fe 100%);
+    border-radius: 18px;
+    border: 1px solid rgba(59, 130, 246, 0.08);
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.06);
+    position: relative;
+    overflow: hidden;
+}
+
+.earn-header::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.earn-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px;
+    left: 60%;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.earn-page-title {
+    font-size: 30px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+    position: relative;
+}
+
+.earn-page-subtitle {
+    font-size: 15px;
+    color: #64748b;
+    margin: 0;
+    font-weight: 400;
+}
+
+/* --- Toolbar --- */
+.earn-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    align-items: center;
+    animation: earn-fadeInUp 0.5s ease-out 0.1s both;
+}
+
+.earn-year-select {
+    padding: 9px 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    background: white;
+    cursor: pointer;
+    outline: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+}
+
+.earn-year-select:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.earn-year-select:focus {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.earn-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border: 1.5px solid #3B82F6;
+    background: linear-gradient(135deg, #ffffff, #f0f7ff);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3B82F6;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.08);
+}
+
+.earn-export-btn:hover {
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+    transform: translateY(-1px);
+}
+
+.earn-export-btn:hover svg {
+    stroke: white;
+}
+
+/* --- Stat Cards Row --- */
+.earn-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    animation: earn-fadeInUp 0.5s ease-out 0.15s both;
+}
+
+.earn-stat-card {
+    background: white;
+    border-radius: 16px;
+    padding: 22px 24px;
+    position: relative;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-top: 4px solid #e5e7eb;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.earn-stat-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.6) 100%);
+    pointer-events: none;
+}
+
+.earn-stat-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.earn-stat-card:hover::after {
+    opacity: 1;
+}
+
+/* Theme Colors */
+.earn-stat-blue { border-top-color: #3B82F6; }
+.earn-stat-blue:hover { background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%); }
+.earn-stat-green { border-top-color: #10B981; }
+.earn-stat-green:hover { background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%); }
+.earn-stat-orange { border-top-color: #F59E0B; }
+.earn-stat-orange:hover { background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%); }
+.earn-stat-purple { border-top-color: #8B5CF6; }
+.earn-stat-purple:hover { background: linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%); }
+
+.earn-stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    transition: transform 0.3s ease;
+}
+
+.earn-stat-card:hover .earn-stat-icon {
+    transform: scale(1.1);
+}
+
+.earn-stat-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.3px;
+}
+
+.earn-badge-green {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    color: #059669;
+}
+
+.earn-stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
+}
+
+.earn-stat-label {
+    font-size: 13px;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* --- Charts Row --- */
+.earn-charts-row {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 24px;
+    animation: earn-fadeInUp 0.5s ease-out 0.2s both;
+}
+
+.earn-chart-card {
+    background: white;
+    border-radius: 16px;
+    padding: 26px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-top: 4px solid #E5E7EB;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.earn-chart-card:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07), 0 2px 8px rgba(0, 0, 0, 0.03);
+    transform: translateY(-2px);
+}
+
+.earn-chart-line { border-top-color: #3B82F6; }
+.earn-chart-donut { border-top-color: #10B981; }
+
+.earn-chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.earn-chart-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+}
+
+.earn-chart-sub {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.earn-line-chart {
+    width: 100%;
+    height: auto;
+}
+
+/* --- Doughnut --- */
+.earn-donut-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+.earn-donut-svg {
+    width: 150px;
+    height: 150px;
+    flex-shrink: 0;
+    filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.08));
+    transition: transform 0.4s ease;
+}
+
+.earn-chart-donut:hover .earn-donut-svg {
+    transform: rotate(5deg) scale(1.03);
+}
+
+.earn-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.earn-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #475569;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.earn-legend-item:hover {
+    background: #f8fafc;
+}
+
+.earn-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.earn-legend-pct {
+    margin-left: auto;
+    font-weight: 700;
+    color: #0f172a;
+    min-width: 40px;
+    text-align: right;
+}
+
+/* --- Pending Payouts --- */
+.earn-pending-section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-top: 4px solid #F59E0B;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    animation: earn-fadeInUp 0.5s ease-out 0.25s both;
+    transition: all 0.35s ease;
+}
+
+.earn-pending-section:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.07);
+}
+
+.earn-pending-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.earn-pending-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+}
+
+.earn-pending-sub {
+    font-size: 13px;
+    color: #94a3b8;
+    margin: 0;
+}
+
+.earn-payout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: linear-gradient(135deg, #10B981, #059669);
+    border: none;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+}
+
+.earn-payout-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+}
+
+.earn-pending-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+}
+
+.earn-pending-card {
+    border-radius: 14px;
+    padding: 22px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.earn-pending-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    opacity: 0.15;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.earn-pending-card:hover {
+    transform: translateY(-3px);
+}
+
+.earn-pc-green {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1px solid #a7f3d0;
+}
+
+.earn-pc-green::before {
+    background: radial-gradient(circle, #10b981, transparent);
+}
+
+.earn-pc-blue {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 1px solid #93c5fd;
+}
+
+.earn-pc-blue::before {
+    background: radial-gradient(circle, #3b82f6, transparent);
+}
+
+.earn-pc-gray {
+    background: linear-gradient(135deg, #f9fafb 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+}
+
+.earn-pc-gray::before {
+    background: radial-gradient(circle, #6b7280, transparent);
+}
+
+.earn-pc-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.earn-pc-value {
+    font-size: 30px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 10px 0 6px 0;
+    letter-spacing: -0.5px;
+}
+
+.earn-pc-sub {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 400;
+}
+
+/* --- Recent Transactions --- */
+.earn-tx-section {
+    background: white;
+    border-radius: 16px;
+    padding: 26px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-top: 4px solid #8B5CF6;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    animation: earn-fadeInUp 0.5s ease-out 0.3s both;
+}
+
+.earn-tx-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.earn-tx-section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.earn-tx-view-all {
+    background: none;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    color: #3B82F6;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 14px;
+    border-radius: 8px;
+    transition: all 0.25s ease;
+}
+
+.earn-tx-view-all:hover {
+    color: white;
+    background: #3B82F6;
+    border-color: #3B82F6;
+}
+
+.earn-tx-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 12px;
+    border-bottom: 1px solid #f1f5f9;
+    border-radius: 10px;
+    margin-bottom: 4px;
+    transition: all 0.25s ease;
+}
+
+.earn-tx-row:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.earn-tx-row:hover {
+    background: #f8fafc;
+    transform: translateX(4px);
+}
+
+.earn-tx-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.earn-tx-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f172a;
+    margin: 0;
+}
+
+.earn-tx-sub {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.earn-tx-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.earn-tx-status {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    padding: 4px 12px;
+    border-radius: 20px;
+}
+
+.earn-tx-amount {
+    font-size: 16px;
+    font-weight: 800;
+    color: #059669;
+    letter-spacing: -0.3px;
+}
+
+/* --- Payout History Table --- */
+.earn-pay-section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+    border-top: 4px solid #3B82F6;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02);
+    animation: earn-fadeInUp 0.5s ease-out 0.2s both;
+}
+
+.earn-pay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.earn-pay-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+}
+
+.earn-download-all-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 20px;
+    border: 1.5px solid #3B82F6;
+    background: linear-gradient(135deg, #ffffff, #f0f7ff);
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #3B82F6;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.08);
+}
+
+.earn-download-all-btn:hover {
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+    transform: translateY(-1px);
+}
+
+.earn-download-all-btn:hover svg {
+    stroke: white;
+}
+
+.earn-pay-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid #f1f5f9;
+}
+
+.earn-pay-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.earn-pay-table thead th {
+    text-align: left;
+    padding: 14px 18px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 2px solid #e2e8f0;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.earn-pay-table thead th:first-child {
+    border-radius: 12px 0 0 0;
+}
+
+.earn-pay-table thead th:last-child {
+    border-radius: 0 12px 0 0;
+}
+
+.earn-pay-table tbody td {
+    padding: 16px 18px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #374151;
+    font-weight: 450;
+}
+
+.earn-pay-row {
+    transition: all 0.2s ease;
+}
+
+.earn-pay-row:hover {
+    background: linear-gradient(90deg, #f8fafc, #f0f7ff) !important;
+}
+
+.earn-pay-row:nth-child(even) {
+    background: #fafbfc;
+}
+
+.earn-pay-date-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.earn-pay-ref {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 3px 8px;
+    border-radius: 6px;
+}
+
+.earn-pay-method-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 500;
+}
+
+.earn-pay-amount {
+    font-weight: 800;
+    color: #0f172a;
+    font-size: 15px;
+}
+
+.earn-pay-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    color: #059669;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    padding: 4px 14px;
+    border-radius: 20px;
+    display: inline-block;
+}
+
+.earn-receipt-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: white;
+    border: 1px solid #dbeafe;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #3B82F6;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.earn-receipt-btn:hover {
+    background: linear-gradient(135deg, #3B82F6, #2563eb);
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    transform: translateY(-1px);
+}
+
+.earn-receipt-btn:hover svg {
+    stroke: white;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1100px) {
+    .earn-stats-row { grid-template-columns: repeat(2, 1fr); }
+    .earn-charts-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 900px) {
+    .earn-page { padding: 20px 16px 40px 16px; }
+    .earn-stats-row { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .earn-charts-row { grid-template-columns: 1fr; }
+    .earn-pending-cards { grid-template-columns: 1fr; }
+    .earn-header { padding: 22px 20px; }
+    .earn-page-title { font-size: 24px; }
+}
+
+@media (max-width: 600px) {
+    .earn-stats-row { grid-template-columns: 1fr; }
+    .earn-pending-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .earn-toolbar { flex-direction: column; align-items: stretch; }
+    .earn-pay-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+}

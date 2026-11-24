@@ -1,0 +1,524 @@
+[
+  {
+    "id": "plan-1",
+    "title": "Kerala Backwaters & Hill Station Escape",
+    "description": "Relax in serene Alleppey backwaters with houseboat stays and tea garden excursions in Munnar.",
+    "originCity": "Bangalore",
+    "destination": "Kerala",
+    "status": "available",
+    "durationNights": 5,
+    "pricePerPerson": 22000,
+    "hotelStars": 4,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Backwaters",
+      "Houseboat",
+      "Tea Gardens",
+      "South India"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "transport": {
+          "id": "plan-1-day-1-trans",
+          "provider": "Self-Arranged",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Bangalore",
+          "dropoffLocation": "Punnamada, Alleppey, Kerala",
+          "pickupAt": "2026-12-01T09:00:00.000Z",
+          "status": "planned"
+        },
+        "hotel": {
+          "id": "plan-1-day-1-htl",
+          "hotelId": "hotel-hp001-2",
+          "name": "Xploreo Backwater Resort",
+          "checkInDate": "2026-12-01",
+          "checkOutDate": "2026-12-06",
+          "roomType": "Backwater Villa",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-1-day-2-exp-1",
+              "experienceId": "exp-2",
+              "title": "Alleppey Sunrise Kayaking & Canal Walk",
+              "location": "Alleppey",
+              "startsAt": "2026-12-02T06:00:00.000Z",
+              "endsAt": "2026-12-02T09:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-kerala-backwaters-03",
+    "title": "Kerala Backwaters & Houseboat Retreat",
+    "description": "Experience serene luxury on the Vembanad lake with private houseboat cruises, Ayurvedic wellness therapies, and local cuisine.",
+    "originCity": "Kochi",
+    "destination": "Kerala",
+    "status": "available",
+    "durationNights": 4,
+    "pricePerPerson": 32000,
+    "hotelStars": 5,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Backwaters",
+      "Wellness",
+      "Ayurveda",
+      "Luxury"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-ker-01",
+          "hotelId": "hotel-kumarakom-1",
+          "name": "Kumarakom Lake Luxury Retreat",
+          "checkInDate": "2026-12-08",
+          "checkOutDate": "2026-12-12",
+          "roomType": "Lagoon Heritage Villa",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-kerala-backwaters-03-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Kochi",
+          "dropoffLocation": "Kottayam, Kerala",
+          "pickupAt": "2026-12-08T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-kerala-backwaters-03-day-2-exp-1",
+              "experienceId": "exp-kerala-2",
+              "title": "Kumarakom Houseboat Cooking & Village Walk",
+              "location": "Kerala",
+              "startsAt": "2026-12-09T10:00:00.000Z",
+              "endsAt": "2026-12-09T14:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-2",
+    "title": "Rajasthan Royal Heritage Trail",
+    "description": "Explore majestic forts, royal palaces, desert culture, and bustling bazaars in Jaipur & Udaipur.",
+    "originCity": "Delhi",
+    "destination": "Jaipur",
+    "status": "available",
+    "durationNights": 7,
+    "pricePerPerson": 35000,
+    "hotelStars": 5,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Heritage",
+      "Forts",
+      "Palaces",
+      "Culture"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "transport": {
+          "id": "plan-2-day-1-trans",
+          "provider": "Self-Arranged",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Delhi",
+          "dropoffLocation": "Amer Road, Jaipur, Rajasthan",
+          "pickupAt": "2026-12-12T09:00:00.000Z",
+          "status": "planned"
+        },
+        "hotel": {
+          "id": "plan-2-day-1-htl",
+          "hotelId": "hotel-hp001-1",
+          "name": "Xploreo Heritage Inn",
+          "checkInDate": "2026-12-12",
+          "checkOutDate": "2026-12-19",
+          "roomType": "Heritage Deluxe Room",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-2-day-2-exp-1",
+              "experienceId": "exp-3",
+              "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
+              "location": "Jaipur",
+              "startsAt": "2026-12-13T16:30:00.000Z",
+              "endsAt": "2026-12-13T20:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-jaipur-heritage-01",
+    "title": "Royal Jaipur Heritage & Palaces",
+    "description": "Immerse yourself in Rajasthan royal history with guided tours through Amer Fort, City Palace, and traditional artisan workshops in the Pink City.",
+    "originCity": "Delhi",
+    "destination": "Jaipur",
+    "status": "available",
+    "durationNights": 4,
+    "pricePerPerson": 24500,
+    "hotelStars": 4,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Heritage",
+      "Culture",
+      "Architecture",
+      "Artisans"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-jaipur-palace-01",
+          "hotelId": "hotel-jaipur-3",
+          "name": "Heritage Haveli Jaipur",
+          "checkInDate": "2026-12-20",
+          "checkOutDate": "2026-12-24",
+          "roomType": "Heritage Deluxe Room",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-jaipur-heritage-01-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Delhi",
+          "dropoffLocation": "Old City, Jaipur",
+          "pickupAt": "2026-12-20T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-jaipur-heritage-01-day-2-exp-1",
+              "experienceId": "exp-3",
+              "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
+              "location": "Jaipur",
+              "startsAt": "2026-12-21T16:30:00.000Z",
+              "endsAt": "2026-12-21T20:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-jaipur-crafts-06",
+    "title": "Jaipur Block Printing & Fort Trails (Draft)",
+    "description": "Hands-on artisan textile printing workshops in Sanganer coupled with Nahargarh rampart sunset excursions.",
+    "originCity": "Jaipur",
+    "destination": "Jaipur",
+    "status": "unavailable",
+    "durationNights": 3,
+    "pricePerPerson": 14000,
+    "hotelStars": 3,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Crafts",
+      "Textiles",
+      "Workshops",
+      "Artisans"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-jai-03",
+          "hotelId": "hotel-jaipur-3",
+          "name": "Heritage Haveli Jaipur",
+          "checkInDate": "2027-01-05",
+          "checkOutDate": "2027-01-08",
+          "roomType": "Superior Room",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-jaipur-crafts-06-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Jaipur",
+          "dropoffLocation": "Old City, Jaipur",
+          "pickupAt": "2027-01-05T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-jaipur-crafts-06-day-2-exp-1",
+              "experienceId": "exp-jaipur-2",
+              "title": "Jaipur Block-Printing Workshop",
+              "location": "Jaipur",
+              "startsAt": "2027-01-06T11:00:00.000Z",
+              "endsAt": "2027-01-06T14:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-goa-coastal-02",
+    "title": "Goa Coastal Serenity & Spice Trails",
+    "description": "Discover Portuguese colonial heritage in Fontainhas, organic spice plantation tours, and tranquil South Goa sands.",
+    "originCity": "Mumbai",
+    "destination": "Goa",
+    "status": "available",
+    "durationNights": 4,
+    "pricePerPerson": 28000,
+    "hotelStars": 4,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Coastal",
+      "Heritage",
+      "Latin Quarter",
+      "Spice Trail"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-goa-02",
+          "hotelId": "hotel-goa-1",
+          "name": "Calangute Palm Resort",
+          "checkInDate": "2026-12-03",
+          "checkOutDate": "2026-12-07",
+          "roomType": "Portuguese Balcony Suite",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-goa-coastal-02-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Mumbai",
+          "dropoffLocation": "Calangute, North Goa",
+          "pickupAt": "2026-12-03T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-goa-coastal-02-day-2-exp-1",
+              "experienceId": "exp-goa-1",
+              "title": "Fontainhas Latin Quarter Heritage Walk",
+              "location": "Goa",
+              "startsAt": "2026-12-04T09:00:00.000Z",
+              "endsAt": "2026-12-04T12:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-goa-beach-07",
+    "title": "South Goa Luxury Beach & Plantation Escape",
+    "description": "Indulge in 5-star beachfront villas, guided botanical walks through Ponda spice gardens, and sunset beach relaxation.",
+    "originCity": "Goa",
+    "destination": "Goa",
+    "status": "available",
+    "durationNights": 5,
+    "pricePerPerson": 34000,
+    "hotelStars": 5,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Beach",
+      "Luxury",
+      "Nature",
+      "Relaxation"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-goa-01",
+          "hotelId": "hotel-goa-2",
+          "name": "Baga Beach Retreat",
+          "checkInDate": "2026-12-15",
+          "checkOutDate": "2026-12-20",
+          "roomType": "Ocean Breeze Villa",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-goa-beach-07-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Goa",
+          "dropoffLocation": "Baga, North Goa",
+          "pickupAt": "2026-12-15T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-goa-beach-07-day-2-exp-1",
+              "experienceId": "exp-goa-2",
+              "title": "Sunrise Dolphin Spotting Cruise",
+              "location": "Goa",
+              "startsAt": "2026-12-16T06:30:00.000Z",
+              "endsAt": "2026-12-16T09:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-delhi-monuments-04",
+    "title": "Historic Delhi: Mughal Glory to Modern City",
+    "description": "Step through centuries of Delhi history with insider culinary safaris in Old Delhi, monuments, and imperial avenues.",
+    "originCity": "Delhi",
+    "destination": "Delhi",
+    "status": "available",
+    "durationNights": 3,
+    "pricePerPerson": 18500,
+    "hotelStars": 5,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Monuments",
+      "Culinary",
+      "Mughal",
+      "History"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-del-01",
+          "hotelId": "hotel-delhi-1",
+          "name": "Connaught Heritage Hotel",
+          "checkInDate": "2026-12-06",
+          "checkOutDate": "2026-12-09",
+          "roomType": "Heritage Colonial Suite",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-delhi-monuments-04-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Delhi",
+          "dropoffLocation": "Connaught Place, New Delhi",
+          "pickupAt": "2026-12-06T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-delhi-monuments-04-day-2-exp-1",
+              "experienceId": "exp-delhi-1",
+              "title": "Old Delhi Culinary & Street Food Safari",
+              "location": "Delhi",
+              "startsAt": "2026-12-07T17:00:00.000Z",
+              "endsAt": "2026-12-07T21:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "plan-mumbai-harbour-05",
+    "title": "Mumbai Coastal Lights & Art Deco Legacy",
+    "description": "Experience the vibrant energy of Mumbai with waterfront heritage promenades, Art Deco architectural trails, and luxury harbour stays.",
+    "originCity": "Mumbai",
+    "destination": "Mumbai",
+    "status": "available",
+    "durationNights": 3,
+    "pricePerPerson": 26000,
+    "hotelStars": 5,
+    "includesFlight": false,
+    "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "tags": [
+      "Architecture",
+      "Art Deco",
+      "Harbour",
+      "Coastal"
+    ],
+    "itinerary": {
+      "day1": {
+        "flight": null,
+        "hotel": {
+          "id": "hotel-bom-01",
+          "hotelId": "hotel-mumbai-4",
+          "name": "Marine Plaza Waterfront",
+          "checkInDate": "2026-12-09",
+          "checkOutDate": "2026-12-12",
+          "roomType": "Harbour View Luxury Room",
+          "status": "planned"
+        },
+        "transport": {
+          "id": "plan-mumbai-harbour-05-day-1-trans",
+          "provider": "Xploreo Cabs",
+          "vehicleType": "Sedan",
+          "pickupLocation": "Mumbai",
+          "dropoffLocation": "Marine Drive, Mumbai",
+          "pickupAt": "2026-12-09T09:00:00.000Z",
+          "status": "planned"
+        }
+      },
+      "days": [
+        {
+          "dayNumber": 2,
+          "experiences": [
+            {
+              "id": "plan-mumbai-harbour-05-day-2-exp-1",
+              "experienceId": "exp-mumbai-1",
+              "title": "South Mumbai Art Deco Promenade",
+              "location": "Mumbai",
+              "startsAt": "2026-12-10T16:30:00.000Z",
+              "endsAt": "2026-12-10T19:00:00.000Z",
+              "status": "planned"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

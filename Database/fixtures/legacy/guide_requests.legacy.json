@@ -1,0 +1,15 @@
+{
+  "description": "Historical guide request seed record preserved for legacy test compatibility before canonical experience normalization.",
+  "originalRecord": {
+    "id": "guide-request-1",
+    "travellerId": "20004",
+    "tripId": "trip-guide-request-1",
+    "experienceId": "trip-guide-request-1-legacy-experience-1",
+    "guideId": "G001",
+    "status": "pending"
+  },
+  "canonicalResolution": {
+    "resolvedExperienceId": "exp-2",
+    "rationale": "trip-guide-request-1 references plan-1 ('Kerala Backwaters & Hill Station Escape'), whose itinerary contains exp-2 ('Alleppey Sunrise Kayaking & Canal Walk') in Kerala. Guide G001 is assigned to region Kerala."
+  }
+}

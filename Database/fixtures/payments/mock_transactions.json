@@ -1,0 +1,24 @@
+{
+  "sampleOrder": {
+    "orderId": "demo_order_1729112400000",
+    "amount": 24500,
+    "currency": "INR",
+    "status": "created",
+    "isDemo": true,
+    "gatewayNotes": "SIMULATED ORDER - NO REAL FINANCIAL TRANSACTION"
+  },
+  "sampleSuccessPayment": {
+    "paymentId": "demo_pay_1729112405000",
+    "signature": "demo_sig_valid",
+    "method": "upi",
+    "amountPaid": 0,
+    "status": "PAID",
+    "receiptId": "RCPT-DEMO-982341",
+    "note": "DEMO RECEIPT: Processed using Mock Payment Adapter"
+  },
+  "sampleFailurePayment": {
+    "status": "FAILED",
+    "errorCode": "SIMULATED_PAYMENT_DECLINED",
+    "errorMessage": "Simulated payment declined by the demo payment processor."
+  }
+}

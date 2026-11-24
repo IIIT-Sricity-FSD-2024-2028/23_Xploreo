@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Ticket Management - Xploreo</title>
+    <link rel="stylesheet" href="../../css/shared.css" />
+    <link rel="stylesheet" href="../../css/tours.css" />
+  </head>
+  <body>
+    <div id="navbar"></div>
+
+    <div class="page-wrapper">
+      <div class="welcome">
+        <h1 class="page-title">Ticket Management</h1>
+        <p class="page-subtitle">
+          Track and resolve system-wide support tickets and technical issues.
+        </p>
+      </div>
+
+      <div class="internal-navbar">
+        <button class="tab-btn active filter-btn" data-status="all">
+          All Tickets
+        </button>
+        <button class="tab-btn filter-btn" data-status="pending">
+          Pending
+        </button>
+        <button class="tab-btn filter-btn" data-status="in-progress">
+          In-Progress
+        </button>
+        <button class="tab-btn filter-btn" data-status="resolved">
+          Resolved
+        </button>
+      </div>
+
+      <div class="card-header" style="margin-bottom: 20px">
+        <div
+          class="search-container"
+          style="flex: 1; max-width: 400px; position: relative"
+        >
+          <input
+            type="text"
+            id="ticket-search"
+            placeholder="Search by ID, User, or Subject..."
+            style="
+              width: 100%;
+              padding: 12px 16px;
+              border: 1px solid #e5e7eb;
+              border-radius: 10px;
+              font-size: 14px;
+            "
+          />
+        </div>
+      </div>
+
+      <div
+        class="content-card"
+        style="
+          padding: 0;
+          overflow: hidden;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        "
+      >
+        <table class="tour-table">
+          <thead>
+            <tr>
+              <th>Ticket ID</th>
+              <th>User & Role</th>
+              <th>Subject</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Category</th>
+              <th style="text-align: right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ticket-tbody">
+            <!-- Tickets will be rendered here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Ticket Detail Modal -->
+    <div id="ticket-modal" class="modal-overlay">
+      <div class="modal-content" style="width: 600px">
+        <div class="modal-header">
+          <h2 id="modal-ticket-id">Ticket Details</h2>
+          <span class="close-btn" onclick="window.closeModal()">&times;</span>
+        </div>
+        <div id="modal-body" class="modal-body">
+          <!-- Ticket details will be rendered here -->
+        </div>
+        <div class="modal-footer" id="modal-footer">
+          <!-- Actions will be rendered here -->
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="../../js/app.js?v=phase3-tickets"></script>
+  </body>
+</html>

@@ -1,0 +1,355 @@
+[
+  {
+    "userId": "G001",
+    "fname": "Sreekar",
+    "lname": "Sharma",
+    "email": "sreekar@gmail.com",
+    "phone": 9876543210,
+    "location": "Kerala",
+    "prof_title": "Senior Western Ghats Trek Leader & Heritage Guide",
+    "years_exp": 7,
+    "bio": "Expert mountain guide with 7+ years experience in Western Ghats and cultural trails.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Marathi",
+      "Rajasthani"
+    ],
+    "certifications": [
+      "First Aid",
+      "Mountain Rescue",
+      "Govt Tourism License"
+    ],
+    "bank_name": "HDFC Bank",
+    "bank_acc_num_end": 1234,
+    "iban": "IN123456789012345678"
+  },
+  {
+    "userId": "G012",
+    "fname": "Farhan",
+    "lname": "Merchant",
+    "email": "farhan.merchant@example.com",
+    "phone": 9820001122,
+    "location": "Mumbai",
+    "prof_title": "South Bombay Art Deco & Waterfront Historian",
+    "years_exp": 8,
+    "bio": "Architectural historian leading heritage promenades across Marine Drive, Fort precinct, and vintage docks.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Gujarati",
+      "Marathi"
+    ],
+    "certifications": [
+      "Certified Urban Heritage Guide",
+      "First Aid"
+    ],
+    "bank_name": "Axis Bank",
+    "bank_acc_num_end": 3456,
+    "iban": "IN234567890123456789"
+  },
+  {
+    "userId": "G013",
+    "fname": "Tanvi",
+    "lname": "Gupte",
+    "email": "tanvi.gupte@example.com",
+    "phone": 9820001123,
+    "location": "Mumbai",
+    "prof_title": "Sanjay Gandhi National Park & Caves Naturalist",
+    "years_exp": 5,
+    "bio": "Wildlife biologist and certified naturalist specializing in Kanheri Caves trails and coastal mangrove habitats.",
+    "lang_spoken": [
+      "English",
+      "Marathi",
+      "Hindi"
+    ],
+    "certifications": [
+      "Naturalist Guide Level 2",
+      "CPR Certified"
+    ],
+    "bank_name": "Bank of Baroda",
+    "bank_acc_num_end": 7890,
+    "iban": "IN345678901234567890"
+  },
+  {
+    "userId": "G002",
+    "fname": "Arjun",
+    "lname": "Nair",
+    "email": "arjun.nair@example.com",
+    "phone": 9822334455,
+    "location": "Kerala",
+    "prof_title": "Kerala Backwaters & Wildlife Naturalist",
+    "years_exp": 9,
+    "bio": "Lifelong resident naturalist specializing in avian biodiversity, mangrove ecology, and local spice culture.",
+    "lang_spoken": [
+      "English",
+      "Malayalam",
+      "Hindi",
+      "Tamil"
+    ],
+    "certifications": [
+      "Naturalist Guide Level 2",
+      "CPR Certified"
+    ],
+    "bank_name": "State Bank of India",
+    "bank_acc_num_end": 5678,
+    "iban": "IN987654321098765432"
+  },
+  {
+    "userId": "G014",
+    "fname": "Lakshmi",
+    "lname": "Menon",
+    "email": "lakshmi.menon@example.com",
+    "phone": 9847001122,
+    "location": "Kerala",
+    "prof_title": "Alleppey Kayaking & Village Cultural Guide",
+    "years_exp": 6,
+    "bio": "Passionate water sports leader and storyteller guiding serene canal kayak tours and paddy field walking trails.",
+    "lang_spoken": [
+      "English",
+      "Malayalam",
+      "Tamil",
+      "Hindi"
+    ],
+    "certifications": [
+      "Water Safety Instructor",
+      "Govt Tourism License"
+    ],
+    "bank_name": "Federal Bank",
+    "bank_acc_num_end": 2345,
+    "iban": "IN456789012345678901"
+  },
+  {
+    "userId": "G015",
+    "fname": "Joseph",
+    "lname": "Kurian",
+    "email": "joseph.kurian@example.com",
+    "phone": 9847001123,
+    "location": "Kerala",
+    "prof_title": "Munnar High-Range Spice & Tea Trail Expert",
+    "years_exp": 11,
+    "bio": "Highland trek leader with over a decade guiding tea plantation walks, Anamudi foothill treks, and spice biodiversity.",
+    "lang_spoken": [
+      "English",
+      "Malayalam",
+      "Tamil"
+    ],
+    "certifications": [
+      "Senior Trek Leader",
+      "Wilderness First Responder"
+    ],
+    "bank_name": "South Indian Bank",
+    "bank_acc_num_end": 6789,
+    "iban": "IN567890123456789012"
+  },
+  {
+    "userId": "G003",
+    "fname": "Priya",
+    "lname": "Rathore",
+    "email": "priya.rathore@example.com",
+    "phone": 9811223344,
+    "location": "Jaipur",
+    "prof_title": "Architectural Historian & City Storyteller",
+    "years_exp": 5,
+    "bio": "Passionate about Rajput architecture, royal cuisine histories, and hidden gem alleyways in the Pink City.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Rajasthani"
+    ],
+    "certifications": [
+      "Archaeological Heritage Expert",
+      "Official City Tour Guide"
+    ],
+    "bank_name": "ICICI Bank",
+    "bank_acc_num_end": 9012,
+    "iban": "IN456789012345678901"
+  },
+  {
+    "userId": "G004",
+    "fname": "Vikram Singh",
+    "lname": "Chauhan",
+    "email": "vikram.chauhan@example.com",
+    "phone": 9811223345,
+    "location": "Jaipur",
+    "prof_title": "Amer & Nahargarh Fort Expedition Leader",
+    "years_exp": 8,
+    "bio": "Specialist in Rajput military architecture, stepwell engineering, and Aravali sunrise ridge trails.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Marwari"
+    ],
+    "certifications": [
+      "Senior Fort Tour Specialist",
+      "First Aid Certified"
+    ],
+    "bank_name": "State Bank of India",
+    "bank_acc_num_end": 4321,
+    "iban": "IN678901234567890123"
+  },
+  {
+    "userId": "G005",
+    "fname": "Sunita",
+    "lname": "Shekhawat",
+    "email": "sunita.shekhawat@example.com",
+    "phone": 9811223346,
+    "location": "Jaipur",
+    "prof_title": "Textile Arts & Sanganer Print Master Storyteller",
+    "years_exp": 6,
+    "bio": "Master storyteller conducting immersive walks across traditional blue pottery studios and block-print artisan colonies.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Rajasthani"
+    ],
+    "certifications": [
+      "Traditional Craft Council Guide",
+      "Heritage Tourism License"
+    ],
+    "bank_name": "HDFC Bank",
+    "bank_acc_num_end": 8765,
+    "iban": "IN789012345678901234"
+  },
+  {
+    "userId": "G006",
+    "fname": "Carlos",
+    "lname": "Fernandes",
+    "email": "carlos.fernandes@example.com",
+    "phone": 9822112233,
+    "location": "Goa",
+    "prof_title": "Indo-Portuguese Architecture & Latin Quarter Guide",
+    "years_exp": 10,
+    "bio": "Historian specializing in Fontainhas heritage preservation, church murals of Old Goa, and colonial culinary roots.",
+    "lang_spoken": [
+      "English",
+      "Konkani",
+      "Portuguese",
+      "Hindi"
+    ],
+    "certifications": [
+      "Goa Tourism Development Corp Certified",
+      "Heritage Historian"
+    ],
+    "bank_name": "Bank of India",
+    "bank_acc_num_end": 1122,
+    "iban": "IN890123456789012345"
+  },
+  {
+    "userId": "G007",
+    "fname": "Savio",
+    "lname": "D Souza",
+    "email": "savio.dsouza@example.com",
+    "phone": 9822112234,
+    "location": "Goa",
+    "prof_title": "Coastal Kayak Leader & Chorao Mangrove Naturalist",
+    "years_exp": 6,
+    "bio": "Avian ecologist guiding quiet canoe and kayak trails through Dr Salim Ali Bird Sanctuary and backwater islands.",
+    "lang_spoken": [
+      "English",
+      "Konkani",
+      "Hindi",
+      "Marathi"
+    ],
+    "certifications": [
+      "Coastal Kayak Instructor",
+      "Wilderness First Aid"
+    ],
+    "bank_name": "HDFC Bank",
+    "bank_acc_num_end": 3344,
+    "iban": "IN901234567890123456"
+  },
+  {
+    "userId": "G008",
+    "fname": "Maria",
+    "lname": "Rebello",
+    "email": "maria.rebello@example.com",
+    "phone": 9822112235,
+    "location": "Goa",
+    "prof_title": "Spice Plantation Botanist & Goan Culinary Expert",
+    "years_exp": 4,
+    "bio": "Botanist leading fragrant plantation walks through Ponda spice gardens with hands-on traditional cooking demos.",
+    "lang_spoken": [
+      "English",
+      "Konkani",
+      "Hindi"
+    ],
+    "certifications": [
+      "Agri-Tourism Specialist",
+      "Food Safety Certified"
+    ],
+    "bank_name": "Canara Bank",
+    "bank_acc_num_end": 5566,
+    "iban": "IN012345678901234567"
+  },
+  {
+    "userId": "G009",
+    "fname": "Amitav",
+    "lname": "Sengupta",
+    "email": "amitav.sengupta@example.com",
+    "phone": 9811001122,
+    "location": "Delhi",
+    "prof_title": "Mughal Architecture & Old Delhi Food Historian",
+    "years_exp": 9,
+    "bio": "Author and historian specializing in Shahjahanabad heritage, Jama Masjid culinary streets, and Red Fort history.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Bengali",
+      "Urdu"
+    ],
+    "certifications": [
+      "Archaeological Survey of India License",
+      "First Aid"
+    ],
+    "bank_name": "Punjab National Bank",
+    "bank_acc_num_end": 7788,
+    "iban": "IN123450987654321098"
+  },
+  {
+    "userId": "G010",
+    "fname": "Zoya",
+    "lname": "Khan",
+    "email": "zoya.khan@example.com",
+    "phone": 9811001123,
+    "location": "Delhi",
+    "prof_title": "Mehrauli Archaeological Park & Sufi Trail Storyteller",
+    "years_exp": 5,
+    "bio": "Researcher dedicated to Sultanate-era stepwells, Jamali Kamali monument complexes, and Hazrat Nizamuddin musical lore.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Urdu"
+    ],
+    "certifications": [
+      "Heritage Council Guide",
+      "CPR Certified"
+    ],
+    "bank_name": "ICICI Bank",
+    "bank_acc_num_end": 9900,
+    "iban": "IN234561098765432109"
+  },
+  {
+    "userId": "G011",
+    "fname": "Harpreet",
+    "lname": "Singh",
+    "email": "harpreet.singh@example.com",
+    "phone": 9811001124,
+    "location": "Delhi",
+    "prof_title": "Lutyens Delhi & Colonial Monuments Specialist",
+    "years_exp": 7,
+    "bio": "Expert in imperial capital planning, Rashtrapati Bhavan architecture, and India Gate memorial histories.",
+    "lang_spoken": [
+      "English",
+      "Hindi",
+      "Punjabi"
+    ],
+    "certifications": [
+      "Delhi Tourism License",
+      "Senior Cultural Guide"
+    ],
+    "bank_name": "State Bank of India",
+    "bank_acc_num_end": 1212,
+    "iban": "IN345672109876543210"
+  }
+]

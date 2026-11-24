@@ -1,0 +1,32 @@
+{
+  "nonTechAdmins": [
+    {
+      "adminId": "NTA001",
+      "name": "Neha Mehra",
+      "email": "nontech.admin@xploreo.com",
+      "location": "Mumbai",
+      "region": "Jaipur"
+    }
+  ],
+  "techAdmins": [
+    {
+      "adminId": "TA001",
+      "legacyId": "seed-tech-1",
+      "fname": "Dev",
+      "lname": "Mehta",
+      "email": "dev@xploreo.com",
+      "phone_number": 9876543210,
+      "location": "Bangalore"
+    }
+  ],
+  "superAdmins": [
+    {
+      "adminId": "SA001",
+      "legacyId": "seed-superadmin-1",
+      "fname": "Raj",
+      "lname": "Sharma",
+      "email": "raj@xploreo.com",
+      "phone_number": 9988776655
+    }
+  ]
+}

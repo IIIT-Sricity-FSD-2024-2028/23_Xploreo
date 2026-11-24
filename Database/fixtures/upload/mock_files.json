@@ -1,0 +1,12 @@
+{
+  "allowedMimeTypes": ["image/jpeg", "image/png", "image/gif", "image/webp"],
+  "maxFileSizeBytes": 5242880,
+  "sampleUploadedFile": {
+    "filename": "mock-img-7a8b9c.jpg",
+    "originalName": "hotel_facade.jpg",
+    "mimetype": "image/jpeg",
+    "size": 102400,
+    "path": "/uploads/images/mock-img-7a8b9c.jpg",
+    "url": "/uploads/images/mock-img-7a8b9c.jpg"
+  }
+}

@@ -33,11 +33,11 @@ export class ApiError extends Error {
  * NOTE: Decision reasons are kept strictly in this in-memory store
  * because the backend GuideRequest entity does not persist rejection notes.
  */
-/*let ntaMockStore = {
+let ntaMockStore = {
   applications: JSON.parse(JSON.stringify(DEMO_GUIDE_APPLICATIONS)),
   recentActivity: JSON.parse(JSON.stringify(DEMO_NTA_RECENT_ACTIVITY)),
   recentBookings: JSON.parse(JSON.stringify(DEMO_NTA_RECENT_BOOKINGS)),
-};*/
+};
 
 /**
  * Helper to determine if NTA mock mode is enabled.
