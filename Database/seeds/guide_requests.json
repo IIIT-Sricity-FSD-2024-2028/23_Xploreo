@@ -1,0 +1,67 @@
+[
+  {
+    "id": "guide-request-1",
+    "travellerId": "T001",
+    "travellerName": "Anjali Sharma",
+    "tripId": "TRIP-JAI-101",
+    "experienceId": "EXP-JAI-101",
+    "guideId": "G003",
+    "destination": "Jaipur",
+    "itinerarySummary": [
+      "Amer Fort Sunrise Guided Walk"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "guide-request-2",
+    "travellerId": "T002",
+    "travellerName": "Kunal Kapoor",
+    "tripId": "TRIP-GOA-201",
+    "experienceId": "EXP-GOA-201",
+    "guideId": "G006",
+    "destination": "Goa",
+    "itinerarySummary": [
+      "Fontainhas Latin Quarter Heritage Walk"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "guide-request-3",
+    "travellerId": "T003",
+    "travellerName": "Rajiv Mehra",
+    "tripId": "TRIP-DEL-301",
+    "experienceId": "EXP-DEL-301",
+    "guideId": "G009",
+    "destination": "Delhi",
+    "itinerarySummary": [
+      "Old Delhi Culinary & Street Food Safari"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "guide-request-4",
+    "travellerId": "T004",
+    "travellerName": "Farhan Merchant",
+    "tripId": "TRIP-MUM-401",
+    "experienceId": "EXP-BOM-401",
+    "guideId": "G001",
+    "destination": "Mumbai",
+    "itinerarySummary": [
+      "South Mumbai Art Deco Promenade"
+    ],
+    "status": "pending"
+  },
+  {
+    "id": "guide-request-5",
+    "travellerId": "T005",
+    "travellerName": "Lakshmi Menon",
+    "tripId": "TRIP-KER-501",
+    "experienceId": "EXP-KER-501",
+    "guideId": "G002",
+    "destination": "Kerala",
+    "itinerarySummary": [
+      "Alleppey Sunrise Kayaking & Canal Walk"
+    ],
+    "status": "pending"
+  }
+]

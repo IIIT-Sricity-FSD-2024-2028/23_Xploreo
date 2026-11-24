@@ -1,0 +1,112 @@
+[
+  {
+    "userId": "HP001",
+    "businessName": "Heritage Stays Pvt Ltd",
+    "contactPerson": "Ramesh Kumar",
+    "email": "hotel.partner@xploreo.com",
+    "phone": "9000000001",
+    "location": "Jaipur",
+    "taxId": "GSTIN08AABCH1234F1Z5",
+    "bankAccount": "HDFC0001234-987654321",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "HP002",
+    "businessName": "Goa Coastal Resorts & Stays Ltd",
+    "contactPerson": "Anthony D Silva",
+    "email": "hotel.goa@xploreo.com",
+    "phone": "9000000012",
+    "location": "Goa",
+    "taxId": "GSTIN30AABCG1234F1Z9",
+    "bankAccount": "HDFC0002345-123456789",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "HP003",
+    "businessName": "Capital Heritage Stays Pvt Ltd",
+    "contactPerson": "Rajesh Khanna",
+    "email": "hotel.delhi@xploreo.com",
+    "phone": "9000000013",
+    "location": "Delhi",
+    "taxId": "GSTIN07AABCD1234F1Z4",
+    "bankAccount": "ICIC0003456-234567890",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "HP004",
+    "businessName": "Marine Bay Hotels & Suites",
+    "contactPerson": "Cyrus Mistry",
+    "email": "hotel.mumbai@xploreo.com",
+    "phone": "9000000014",
+    "location": "Mumbai",
+    "taxId": "GSTIN27AABCM1234F1Z1",
+    "bankAccount": "AXIS0004567-345678901",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "HP005",
+    "businessName": "Malabar Coast Retreats Pvt Ltd",
+    "contactPerson": "Mathew Varghese",
+    "email": "hotel.kerala@xploreo.com",
+    "phone": "9000000015",
+    "location": "Kerala",
+    "taxId": "GSTIN32AABCK1234F1Z3",
+    "bankAccount": "SBIN0005678-456789012",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "XP001",
+    "businessName": "Pink City Days & Heritage Trails",
+    "contactPerson": "Sunita Verma",
+    "email": "experience.partner@xploreo.com",
+    "phone": "9000000002",
+    "location": "Kerala",
+    "taxId": "GSTIN08AABCP1234K1Z0",
+    "bankAccount": "ICIC0005678-123456789",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "XP002",
+    "businessName": "Goa Coastal Adventures Ltd",
+    "contactPerson": "Noel Pinto",
+    "email": "exp.goa@xploreo.com",
+    "phone": "9000000022",
+    "location": "Goa",
+    "taxId": "GSTIN30AABCP2345K1Z8",
+    "bankAccount": "HDFC0002345-987654321",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "XP003",
+    "businessName": "Dilli Walking Tours & Trails",
+    "contactPerson": "Meenakshi Sundaram",
+    "email": "exp.delhi@xploreo.com",
+    "phone": "9000000023",
+    "location": "Delhi",
+    "taxId": "GSTIN07AABCP3456K1Z7",
+    "bankAccount": "ICIC0003456-876543210",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "XP004",
+    "businessName": "Bombay Heritage Expeditions",
+    "contactPerson": "Rohit Deshmukh",
+    "email": "exp.mumbai@xploreo.com",
+    "phone": "9000000024",
+    "location": "Mumbai",
+    "taxId": "GSTIN27AABCP4567K1Z6",
+    "bankAccount": "AXIS0004567-765432109",
+    "verificationStatus": "verified"
+  },
+  {
+    "userId": "XP005",
+    "businessName": "Kerala Backwaters Kayaking & Tours",
+    "contactPerson": "Biju Thomas",
+    "email": "exp.kerala@xploreo.com",
+    "phone": "9000000025",
+    "location": "Jaipur",
+    "taxId": "GSTIN32AABCP5678K1Z5",
+    "bankAccount": "SBIN0005678-654321098",
+    "verificationStatus": "verified"
+  }
+]

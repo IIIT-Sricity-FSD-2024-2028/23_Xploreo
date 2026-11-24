@@ -1,0 +1,26 @@
+{
+  "description": "Cross-role legacy identity mapping fixture preserving backward compatibility for deprecated development and testing IDs.",
+  "mappings": [
+    {
+      "role": "traveller",
+      "canonicalId": "T001",
+      "legacyIds": ["20001", "trav-usr-20001"],
+      "name": "Anjali Sharma",
+      "email": "anjali@xploreo.com"
+    },
+    {
+      "role": "techadmin",
+      "canonicalId": "TA001",
+      "legacyIds": ["seed-tech-1"],
+      "name": "Dev Mehta",
+      "email": "dev@xploreo.com"
+    },
+    {
+      "role": "superadmin",
+      "canonicalId": "SA001",
+      "legacyIds": ["seed-superadmin-1"],
+      "name": "Raj Sharma",
+      "email": "raj@xploreo.com"
+    }
+  ]
+}

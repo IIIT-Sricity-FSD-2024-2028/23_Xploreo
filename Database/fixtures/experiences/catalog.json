@@ -1,0 +1,502 @@
+[
+  {
+    "id": "exp-3",
+    "experienceId": "exp-3",
+    "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
+    "destination": "Jaipur",
+    "category": "culture",
+    "pricePerPerson": 2200,
+    "price": 2200,
+    "durationHours": 4,
+    "capacity": 12,
+    "booked": 2,
+    "partnerId": "XP001",
+    "defaultStartTime": "16:30",
+    "description": "Experience Amber Fort under evening illumination followed by authentic Rajasthani street delicacies.",
+    "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-24 16:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-6",
+        "date": "2026-10-24",
+        "time": "16:30",
+        "booked": 2,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-JAI-101",
+    "experienceId": "EXP-JAI-101",
+    "title": "Amer Fort Sunrise Guided Walk",
+    "destination": "Jaipur",
+    "category": "culture",
+    "pricePerPerson": 1800,
+    "price": 1800,
+    "durationHours": 3.5,
+    "capacity": 15,
+    "booked": 4,
+    "partnerId": "XP001",
+    "defaultStartTime": "06:30",
+    "description": "Expert historian-led walk across the Sheesh Mahal, ramparts, and Maota Lake at dawn.",
+    "image": "https://images.unsplash.com/photo-1599661046289-e31897846e41?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-25 06:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-jai-101",
+        "date": "2026-10-25",
+        "time": "06:30",
+        "booked": 4,
+        "capacity": 15,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-JAI-102",
+    "experienceId": "EXP-JAI-102",
+    "title": "Old Bazaar Spice & Textile Trail",
+    "destination": "Jaipur",
+    "category": "culinary",
+    "pricePerPerson": 1500,
+    "price": 1500,
+    "durationHours": 2.5,
+    "capacity": 10,
+    "booked": 3,
+    "partnerId": "XP001",
+    "defaultStartTime": "16:00",
+    "description": "Navigate Johari and Bapu Bazaars with a local insider, discovering natural dye textiles and street teas.",
+    "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-26 16:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-jai-102",
+        "date": "2026-10-26",
+        "time": "16:00",
+        "booked": 3,
+        "capacity": 10,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-JAI-103",
+    "experienceId": "EXP-JAI-103",
+    "title": "Blue Pottery Artisan Workshop",
+    "destination": "Jaipur",
+    "category": "culture",
+    "pricePerPerson": 1200,
+    "price": 1200,
+    "durationHours": 2,
+    "capacity": 8,
+    "booked": 2,
+    "partnerId": "XP001",
+    "defaultStartTime": "15:00",
+    "description": "Hands-on molding and painting workshop in a master artisan studio in Sanganer.",
+    "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-27 15:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-jai-103",
+        "date": "2026-10-27",
+        "time": "15:00",
+        "booked": 2,
+        "capacity": 8,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-GOA-201",
+    "experienceId": "EXP-GOA-201",
+    "title": "Fontainhas Latin Quarter Heritage Walk",
+    "destination": "Goa",
+    "category": "culture",
+    "pricePerPerson": 1400,
+    "price": 1400,
+    "durationHours": 2.5,
+    "capacity": 12,
+    "booked": 4,
+    "partnerId": "XP002",
+    "defaultStartTime": "09:00",
+    "description": "Wander past vibrant Portuguese colonial villas, historic chapels, and traditional bakeries in Panaji.",
+    "image": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-25 09:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-goa-201",
+        "date": "2026-10-25",
+        "time": "09:00",
+        "booked": 4,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-GOA-202",
+    "experienceId": "EXP-GOA-202",
+    "title": "Organic Spice Plantation & Goan Feast",
+    "destination": "Goa",
+    "category": "culinary",
+    "pricePerPerson": 1650,
+    "price": 1650,
+    "durationHours": 4,
+    "capacity": 15,
+    "booked": 6,
+    "partnerId": "XP002",
+    "defaultStartTime": "10:00",
+    "description": "Guided tour of medicinal herbs, cardamom, and vanilla plantations followed by a traditional buffet lunch.",
+    "image": "https://images.unsplash.com/photo-1540541338287-41700207dee6?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-26 10:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-goa-202",
+        "date": "2026-10-26",
+        "time": "10:00",
+        "booked": 6,
+        "capacity": 15,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-GOA-203",
+    "experienceId": "EXP-GOA-203",
+    "title": "Chorao Island Mangrove Bird Watching & Kayaking",
+    "destination": "Goa",
+    "category": "adventure",
+    "pricePerPerson": 1950,
+    "price": 1950,
+    "durationHours": 3.5,
+    "capacity": 10,
+    "booked": 3,
+    "partnerId": "XP002",
+    "defaultStartTime": "06:30",
+    "description": "Paddle along quiet mangrove backwaters of the Mandovi estuary observing kingfishers and otters.",
+    "image": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-27 06:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-goa-203",
+        "date": "2026-10-27",
+        "time": "06:30",
+        "booked": 3,
+        "capacity": 10,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-DEL-301",
+    "experienceId": "EXP-DEL-301",
+    "title": "Old Delhi Culinary & Street Food Safari",
+    "destination": "Delhi",
+    "category": "culinary",
+    "pricePerPerson": 1750,
+    "price": 1750,
+    "durationHours": 3,
+    "capacity": 12,
+    "booked": 5,
+    "partnerId": "XP003",
+    "defaultStartTime": "17:00",
+    "description": "Sample legendary paranthas, kebabs, jalebis, and spiced lassis through hidden historical gullies.",
+    "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-25 17:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-del-301",
+        "date": "2026-10-25",
+        "time": "17:00",
+        "booked": 5,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-DEL-302",
+    "experienceId": "EXP-DEL-302",
+    "title": "Mehrauli Archaeological Park & Qutub Minar Walk",
+    "destination": "Delhi",
+    "category": "culture",
+    "pricePerPerson": 1300,
+    "price": 1300,
+    "durationHours": 3,
+    "capacity": 15,
+    "booked": 4,
+    "partnerId": "XP003",
+    "defaultStartTime": "08:30",
+    "description": "Explore over 1,000 years of Sultanate architecture, ancient stepwells, and royal tombs among forested ruins.",
+    "image": "https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-26 08:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-del-302",
+        "date": "2026-10-26",
+        "time": "08:30",
+        "booked": 4,
+        "capacity": 15,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-DEL-303",
+    "experienceId": "EXP-DEL-303",
+    "title": "Nizamuddin Dargah Sufi Music & Heritage Trail",
+    "destination": "Delhi",
+    "category": "culture",
+    "pricePerPerson": 1100,
+    "price": 1100,
+    "durationHours": 2.5,
+    "capacity": 12,
+    "booked": 2,
+    "partnerId": "XP003",
+    "defaultStartTime": "18:00",
+    "description": "Evening journey through the medieval Sufi village with qawwali recitals, baoli stepwells, and street kebabs.",
+    "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-27 18:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-del-303",
+        "date": "2026-10-27",
+        "time": "18:00",
+        "booked": 2,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-BOM-401",
+    "experienceId": "EXP-BOM-401",
+    "title": "South Mumbai Art Deco & Heritage Promenade",
+    "destination": "Mumbai",
+    "category": "culture",
+    "pricePerPerson": 1600,
+    "price": 1600,
+    "durationHours": 2.5,
+    "capacity": 15,
+    "booked": 4,
+    "partnerId": "XP004",
+    "defaultStartTime": "08:30",
+    "description": "Explore the world second largest collection of Art Deco architecture along Oval Maidan and Marine Drive.",
+    "image": "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-25 08:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-bom-401",
+        "date": "2026-10-25",
+        "time": "08:30",
+        "booked": 4,
+        "capacity": 15,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-BOM-402",
+    "experienceId": "EXP-BOM-402",
+    "title": "Dharavi Artisan & Community Empowerment Trail",
+    "destination": "Mumbai",
+    "category": "culture",
+    "pricePerPerson": 1250,
+    "price": 1250,
+    "durationHours": 2.5,
+    "capacity": 10,
+    "booked": 3,
+    "partnerId": "XP004",
+    "defaultStartTime": "14:00",
+    "description": "Inspiring insider walking tour highlighting pottery workshops, leather craftsmanship, and thriving small industries.",
+    "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-26 14:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-bom-402",
+        "date": "2026-10-26",
+        "time": "14:00",
+        "booked": 3,
+        "capacity": 10,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-BOM-403",
+    "experienceId": "EXP-BOM-403",
+    "title": "Elephanta Caves Sunset Ferry & Sculptural Exploration",
+    "destination": "Mumbai",
+    "category": "adventure",
+    "pricePerPerson": 2100,
+    "price": 2100,
+    "durationHours": 4.5,
+    "capacity": 14,
+    "booked": 5,
+    "partnerId": "XP004",
+    "defaultStartTime": "13:30",
+    "description": "Scenic boat crossing from the Gateway of India to 6th-century rock-cut Shiva cave temples on Gharapuri Island.",
+    "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-27 13:30",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-bom-403",
+        "date": "2026-10-27",
+        "time": "13:30",
+        "booked": 5,
+        "capacity": 14,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "exp-1",
+    "experienceId": "exp-1",
+    "title": "Western Ghats Guided Rainforest Trek",
+    "destination": "Kerala",
+    "category": "adventure",
+    "pricePerPerson": 1800,
+    "price": 1800,
+    "durationHours": 6,
+    "capacity": 15,
+    "booked": 9,
+    "partnerId": "XP005",
+    "defaultStartTime": "07:00",
+    "description": "A guided trek through lush Western Ghats forest trails with stream crossings and bird watching.",
+    "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-16 07:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-1",
+        "date": "2026-10-16",
+        "time": "07:00",
+        "booked": 9,
+        "capacity": 15,
+        "available": true
+      },
+      {
+        "id": "slot-2",
+        "date": "2026-10-22",
+        "time": "07:00",
+        "booked": 3,
+        "capacity": 15,
+        "available": true
+      },
+      {
+        "id": "slot-3",
+        "date": "2026-09-28",
+        "time": "07:00",
+        "booked": 12,
+        "capacity": 15,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "exp-2",
+    "experienceId": "exp-2",
+    "title": "Alleppey Sunrise Kayaking & Canal Walk",
+    "destination": "Kerala",
+    "category": "adventure",
+    "pricePerPerson": 1450,
+    "price": 1450,
+    "durationHours": 3,
+    "capacity": 10,
+    "booked": 10,
+    "partnerId": "XP005",
+    "defaultStartTime": "06:00",
+    "description": "Paddle through serene narrow backwater canals before the heat of the day, guided by local boatmen.",
+    "image": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-16 06:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-4",
+        "date": "2026-10-16",
+        "time": "06:00",
+        "booked": 10,
+        "capacity": 10,
+        "available": false
+      },
+      {
+        "id": "slot-5",
+        "date": "2026-10-19",
+        "time": "06:00",
+        "booked": 2,
+        "capacity": 10,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-KER-501",
+    "experienceId": "EXP-KER-501",
+    "title": "Vembanad Lake Houseboat Cruise & Village Cooking Class",
+    "destination": "Kerala",
+    "category": "culinary",
+    "pricePerPerson": 2400,
+    "price": 2400,
+    "durationHours": 5,
+    "capacity": 12,
+    "booked": 4,
+    "partnerId": "XP005",
+    "defaultStartTime": "10:00",
+    "description": "Private day cruise on Vembanad Lake stopping at an organic village farm for a hands-on Syrian Christian cooking class.",
+    "image": "https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-25 10:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-ker-501",
+        "date": "2026-10-25",
+        "time": "10:00",
+        "booked": 4,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  },
+  {
+    "id": "EXP-KER-502",
+    "experienceId": "EXP-KER-502",
+    "title": "Munnar Tea Plantation Dawn Trek & Tasting",
+    "destination": "Kerala",
+    "category": "adventure",
+    "pricePerPerson": 1700,
+    "price": 1700,
+    "durationHours": 4,
+    "capacity": 12,
+    "booked": 2,
+    "partnerId": "XP005",
+    "defaultStartTime": "06:00",
+    "description": "Early morning hike through high-elevation orthodox tea estates with panoramic Western Ghats cloud views and tea cupping.",
+    "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+    "nextSlot": "2026-10-26 06:00",
+    "availability": "available",
+    "slots": [
+      {
+        "id": "slot-ker-502",
+        "date": "2026-10-26",
+        "time": "06:00",
+        "booked": 2,
+        "capacity": 12,
+        "available": true
+      }
+    ]
+  }
+]

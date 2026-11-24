@@ -1,0 +1,86 @@
+[
+  {
+    "id": 1,
+    "userId": "seed-guest",
+    "authorName": "Meera Nair",
+    "targetType": "hotel",
+    "targetId": "hotel-hp001-1",
+    "rating": 5,
+    "comment": "Lovely heritage feel and very helpful staff.",
+    "createdAt": "2026-10-01T12:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "userId": "T001",
+    "authorName": "Anjali Sharma",
+    "targetType": "guide",
+    "targetId": "G001",
+    "tripId": "trip-kerala-completed",
+    "rating": 5,
+    "comment": "Sreekar made our Kerala backwaters trip unforgettable. Punctual, knowledgeable and very friendly.",
+    "createdAt": "2026-04-18T10:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "userId": "20002",
+    "authorName": "Rohit Malhotra",
+    "targetType": "guide",
+    "targetId": "G001",
+    "tripId": "trip-goa-completed",
+    "rating": 4,
+    "comment": "Great local tips around North Goa, though we started a bit late on day one.",
+    "createdAt": "2026-03-07T11:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "userId": "20004",
+    "authorName": "Priya Nair",
+    "targetType": "guide",
+    "targetId": "G001",
+    "tripId": "trip-manali-refunded",
+    "rating": 5,
+    "comment": "Patient and attentive despite the heavy rain.",
+    "createdAt": "2026-02-20T14:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "userId": "T001",
+    "authorName": "Anjali Sharma",
+    "targetType": "hotel",
+    "targetId": "hotel-hp001-2",
+    "tripId": "trip-kerala-completed",
+    "rating": 5,
+    "comment": "Woke up to the backwaters right outside our window. The houseboat transfer made check-in effortless.",
+    "createdAt": "2026-04-18T10:00:00.000Z"
+  },
+  {
+    "id": 6,
+    "userId": "20004",
+    "authorName": "Priya Nair",
+    "targetType": "experience",
+    "targetId": "exp-1",
+    "rating": 5,
+    "comment": "The Western Ghats trek was stunning and our host knew every trail. Highly recommend the early slot.",
+    "createdAt": "2026-09-29T10:00:00.000Z"
+  },
+  {
+    "id": 7,
+    "userId": "T001",
+    "authorName": "Anjali Sharma",
+    "targetType": "experience",
+    "targetId": "exp-2",
+    "rating": 4,
+    "comment": "Loved the cooking workshop, the food was fantastic. Workshop ran a little over time though.",
+    "createdAt": "2026-10-11T10:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "userId": "20002",
+    "authorName": "Rohit Malhotra",
+    "targetType": "experience",
+    "targetId": "exp-3",
+    "rating": 5,
+    "comment": "Perfect golden hour light and the guide knew exactly where to stand for the best shots.",
+    "createdAt": "2026-09-06T10:00:00.000Z"
+  }
+]

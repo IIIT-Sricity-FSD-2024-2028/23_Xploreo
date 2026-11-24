@@ -1,0 +1,7 @@
+[
+  { "locationId": "loc-mumbai-1", "id": "loc-mumbai-1", "locationName": "Juhu Beach", "name": "Juhu Beach", "cityId": "city-mumbai-1" },
+  { "locationId": "loc-delhi-1", "id": "loc-delhi-1", "locationName": "India Gate", "name": "India Gate", "cityId": "city-delhi-1" },
+  { "locationId": "loc-jaipur-1", "id": "loc-jaipur-1", "locationName": "Hawa Mahal", "name": "Hawa Mahal", "cityId": "city-jaipur-1" },
+  { "locationId": "loc-goa-beach-1", "id": "loc-goa-beach-1", "locationName": "Calangute Beach", "name": "Calangute Beach", "cityId": "city-goa-1" },
+  { "locationId": "loc-darjeeling-1", "id": "loc-darjeeling-1", "locationName": "Tiger Hill", "name": "Tiger Hill", "cityId": "city-kerala-1" }
+]

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+    "travellerId": "T001",
+    "travellerName": "Anjali Sharma",
+    "subject": "Booking confirmation not received for Jaipur tour",
+    "message": "I completed payment for the Heritage Walk in Jaipur but never received the confirmation email or PDF voucher.",
+    "category": "Booking",
+    "priority": "HIGH",
+    "status": "OPEN",
+    "createdAt": "2026-10-10T08:30:00.000Z"
+  },
+  {
+    "id": "7b5a3e12-8f90-4c31-b654-1a2b3c4d5e6f",
+    "travellerId": "T001",
+    "travellerName": "Anjali Sharma",
+    "subject": "Refund request for cancelled Kerala backwater cruise",
+    "message": "The cruise operator cancelled the slot due to heavy rain. Please initiate a refund to my original payment method.",
+    "category": "Payment",
+    "priority": "HIGH",
+    "status": "RESOLVED",
+    "createdAt": "2026-10-09T14:15:00.000Z",
+    "resolvedAt": "2026-10-10T11:00:00.000Z",
+    "resolvedBy": "TA001",
+    "resolution": "Refund of INR 4500 processed via Razorpay gateway reference #RF982341."
+  },
+  {
+    "id": "3c2b1a09-6e54-4d32-a1b0-9f8e7d6c5b4a",
+    "travellerId": "20002",
+    "travellerName": "Rohit Malhotra",
+    "subject": "Question about guide languages in Delhi heritage walk",
+    "message": "Can I request a French-speaking guide for our upcoming tour of Old Delhi scheduled for next Tuesday?",
+    "category": "Guide Inquiry",
+    "priority": "LOW",
+    "status": "OPEN",
+    "createdAt": "2026-10-11T09:45:00.000Z"
+  },
+  {
+    "id": "9e8d7c6b-5a43-4210-9876-543210fedcba",
+    "travellerId": "20004",
+    "travellerName": "Priya Nair",
+    "subject": "Room type mismatch at Goa beach resort",
+    "message": "The hotel assigned a standard twin room instead of the Deluxe Ocean View room specified in our package itinerary.",
+    "category": "Hotel",
+    "priority": "MEDIUM",
+    "status": "RESOLVED",
+    "createdAt": "2026-10-08T18:20:00.000Z",
+    "resolvedAt": "2026-10-08T20:10:00.000Z",
+    "resolvedBy": "TA001",
+    "resolution": "Contacted hotel front desk manager. Room upgraded to Deluxe Ocean View with complimentary breakfast voucher."
+  },
+  {
+    "id": "4d5e6f7a-8b9c-4d3e-bf10-a2c3d4e5f6a7",
+    "travellerId": "T001",
+    "travellerName": "Anjali Sharma",
+    "subject": "App payment timeout during checkout",
+    "message": "The payment page timed out while processing my credit card for booking reference #XP-90812. Amount was deducted from my account.",
+    "category": "Payment",
+    "priority": "HIGH",
+    "status": "OPEN",
+    "createdAt": "2026-10-12T10:00:00.000Z"
+  },
+  {
+    "id": "1a2b3c4d-5e6f-7a8b-9c0d-e1f2a3b4c5d6",
+    "travellerId": "20004",
+    "travellerName": "Priya Nair",
+    "subject": "Feedback regarding Mumbai street food tour timings",
+    "message": "The tour started 30 minutes late due to traffic, but the guide stayed extra time to cover all stalls. Great experience overall!",
+    "category": "General",
+    "priority": "LOW",
+    "status": "RESOLVED",
+    "createdAt": "2026-10-07T12:00:00.000Z",
+    "resolvedAt": "2026-10-07T16:30:00.000Z",
+    "resolvedBy": "TA001",
+    "resolution": "Feedback logged and shared with partner ops team."
+  }
+]
