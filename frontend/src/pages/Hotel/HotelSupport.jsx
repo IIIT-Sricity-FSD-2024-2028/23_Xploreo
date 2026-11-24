@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState } from 'react';
 import { TicketCreateForm, TicketList } from '../../components/tickets/index.js';
-import { getTickets } from '../../services/tickets.api.js';
-import { useAuth } from '@/foundation';
+import { useCreatePartnerSupportTicketMutation } from '@/store/hotel/hotelApi.js';
+import { usePartnerSupportTickets } from '@/store/hotel/hooks.js';
 import '../Traveller/travellerSupportTickets.css';
 
 /**
@@ -12,48 +12,18 @@ import '../Traveller/travellerSupportTickets.css';
  * while providing hotel-specific copy, context, and issue categories without duplicating ticket logic.
  */
 export default function HotelSupport() {
-  const { user } = useAuth();
-
-  const hotelSession = useMemo(() => {
-    return (
-      user || {
-        name: 'The Grand Heritage Resort',
-        username: 'hotel_grandheritage',
-        role: 'hotel',
-        userId: 'HP1001',
-      }
-    );
-  }, [user]);
-
   const [activeTab, setActiveTab] = useState('list');
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
+  const { accountId, tickets, isLoading, error } = usePartnerSupportTickets();
+  const [createSupportTicket] = useCreatePartnerSupportTicketMutation();
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getTickets(hotelSession);
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || 'Failed to load your hotel support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [hotelSession]);
-
-  useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+  const submitTicket = (values) => createSupportTicket({ accountId, values }).unwrap();
 
   const handleTicketSubmitted = (createdTicket) => {
     setNotification({
       type: 'success',
       message: `Ticket #${createdTicket?.id?.substring(0, 8) || 'new'} submitted successfully! The Xploreo operations desk will review your inquiry.`,
     });
-    fetchTickets();
     setActiveTab('list');
   };
 
@@ -133,9 +103,8 @@ export default function HotelSupport() {
         {activeTab === 'create' && (
           <section aria-labelledby="create-hotel-ticket-form">
             <TicketCreateForm
-              currentUser={hotelSession}
-              onTicketCreated={handleTicketSubmitted}
-              onCancel={() => setActiveTab('list')}
+              submitTicket={submitTicket}
+              onSubmitSuccess={handleTicketSubmitted}
             />
           </section>
         )}

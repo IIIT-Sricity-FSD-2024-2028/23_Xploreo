@@ -27,12 +27,14 @@ const PRIORITIES = [
  * - priority: optional ('LOW' | 'MEDIUM' | 'HIGH')
  * 
  * @param {Object} props
+ * @param {Function} [props.submitTicket] - Submits validated ticket data and returns the created ticket
  * @param {Function} [props.onSubmitSuccess] - Callback with created ticket: (ticket) => void
  * @param {string} [props.initialCategory] - Optional pre-filled category
  * @param {Object} [props.currentUser] - Optional session user { userId, role }
  * @param {string} [props.className] - Optional extra class
  */
 export default function TicketCreateForm({
+  submitTicket = createTicket,
   onSubmitSuccess,
   initialCategory = '',
   currentUser,
@@ -99,7 +101,7 @@ export default function TicketCreateForm({
     setIsSubmitting(true);
 
     try {
-      const created = await createTicket(
+      const created = await submitTicket(
         {
           subject: trimmedSubject,
           message: trimmedMessage,

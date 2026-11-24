@@ -1,11 +1,11 @@
 // Port of front_end/pages/hotels/hotelprofile.html + js/modules/hotelprofile.js: block-by-block
 // edit with the original validation rules, now persisted through /hotels/partner/profile.
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getPartnerProfile, updatePartnerProfile } from '@/services/hotels.api.js';
-import { usePartnerHotels } from '@/store/hotel/hooks.js';
+import { useSavePartnerProfileMutation } from '@/store/hotel/hotelApi.js';
+import { usePartnerHotels, usePartnerProfile } from '@/store/hotel/hooks.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { useHotelData, useToast } from '@/components/hotel/hotelKit.jsx';
+import { useToast } from '@/components/hotel/hotelKit.jsx';
 
 const TIME = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
 const RULES = {
@@ -52,17 +52,15 @@ const BLOCKS = [
 export default function HotelProfile() {
   const [toast, notify] = useToast();
   const hotels = usePartnerHotels();
-  const load = useCallback(() => getPartnerProfile(), []);
-  const { data, loading, error, reload } = useHotelData(load);
-  const [saved, setSaved] = useState(null); // latest server copy after a save
-  const profile = (saved ?? data) && { ...(saved ?? data), hotels: hotels.data ?? [] };
+  const { accountId, data: profile, loading, error, reload } = usePartnerProfile();
+  const [saveProfile, { isLoading: busy }] = useSavePartnerProfileMutation();
+  const properties = hotels.data ?? [];
   const pageLoading = loading || hotels.loading;
   const retry = () => { reload(); hotels.reload(); };
 
   const [editing, setEditing] = useState(null);
   const [draft, setDraft] = useState({});
   const [errors, setErrors] = useState({});
-  const [busy, setBusy] = useState(false);
 
   const startEdit = (block) => {
     setEditing(block.id);
@@ -91,17 +89,13 @@ export default function HotelProfile() {
     const found = validate(block, draft);
     setErrors(found);
     if (Object.keys(found).length) return;
-    setBusy(true);
     try {
       const body = Object.fromEntries(block.fields.filter((f) => !f.readOnly).map((f) => [f.name, String(draft[f.name] ?? '').trim()]));
-      const updated = await updatePartnerProfile(body);
-      setSaved(updated);
+      await saveProfile({ accountId, values: body }).unwrap();
       setEditing(null);
       notify('Profile saved');
     } catch (err) {
       notify(err.message || 'Could not save profile', true);
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -125,12 +119,12 @@ export default function HotelProfile() {
 
             <div className="hotel-content-card section-card">
               <div className="section-header-flex">
-                <h3>My Properties ({profile.hotels?.length ?? 0})</h3>
+                <h3>My Properties ({properties.length})</h3>
                 <Link to="/hotel/properties" className="edit-block-btn">Manage</Link>
               </div>
-              {profile.hotels?.length ? (
+              {properties.length ? (
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
-                  {profile.hotels.map((h) => (
+                  {properties.map((h) => (
                     <li key={h.id}>{h.name} <span className="hotel-sub-text">— {h.location || h.city}</span></li>
                   ))}
                 </ul>

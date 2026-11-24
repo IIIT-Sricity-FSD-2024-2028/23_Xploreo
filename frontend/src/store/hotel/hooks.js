@@ -3,11 +3,12 @@ import { skipToken } from '@reduxjs/toolkit/query';
 import { useAuth } from '@/context/AuthContext.jsx';
 import {
   getHotelAccountId, usePartnerBookingsQuery, usePartnerEarningsQuery, usePartnerHotelsQuery,
-  usePartnerReviewsQuery, usePartnerRoomsQuery,
+  usePartnerProfileQuery, usePartnerReviewsQuery, usePartnerRoomsQuery, usePartnerSupportTicketsQuery,
 } from './hotelApi.js';
 import { selectProperties, selectReviewSummary, selectRooms } from './selectors.js';
 
 const EMPTY_ROOMS = [];
+const EMPTY_TICKETS = [];
 const refreshOnOpen = { refetchOnMountOrArgChange: true };
 const reuseRecentData = { refetchOnMountOrArgChange: 30 };
 
@@ -62,6 +63,31 @@ export function usePartnerEarnings(hotelId) {
     loading: query.isFetching,
     error: query.error ?? null,
     reload: query.refetch,
+  };
+}
+
+export function usePartnerProfile() {
+  const { user } = useAuth();
+  const accountId = getHotelAccountId(user);
+  const query = usePartnerProfileQuery(accountId ?? skipToken, reuseRecentData);
+  return {
+    accountId,
+    data: query.currentData ?? null,
+    loading: query.isFetching,
+    error: query.error ?? null,
+    reload: query.refetch,
+  };
+}
+
+export function usePartnerSupportTickets() {
+  const { user } = useAuth();
+  const accountId = getHotelAccountId(user);
+  const query = usePartnerSupportTicketsQuery(accountId ?? skipToken, refreshOnOpen);
+  return {
+    accountId,
+    tickets: query.currentData ?? EMPTY_TICKETS,
+    isLoading: query.isFetching,
+    error: query.error?.message ?? null,
   };
 }
 
