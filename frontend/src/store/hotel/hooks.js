@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useAuth } from '@/context/AuthContext.jsx';
 import {
-  getHotelAccountId, usePartnerBookingsQuery, usePartnerHotelsQuery, usePartnerReviewsQuery, usePartnerRoomsQuery,
+  getHotelAccountId, usePartnerBookingsQuery, usePartnerEarningsQuery, usePartnerHotelsQuery,
+  usePartnerReviewsQuery, usePartnerRoomsQuery,
 } from './hotelApi.js';
 import { selectProperties, selectReviewSummary, selectRooms } from './selectors.js';
 
@@ -46,6 +47,18 @@ export function usePartnerReviews() {
   return {
     data,
     summary,
+    loading: query.isFetching,
+    error: query.error ?? null,
+    reload: query.refetch,
+  };
+}
+
+export function usePartnerEarnings(hotelId) {
+  const { user } = useAuth();
+  const accountId = getHotelAccountId(user);
+  const query = usePartnerEarningsQuery(accountId ? { accountId, hotelId: hotelId || null } : skipToken, reuseRecentData);
+  return {
+    data: query.currentData ?? null,
     loading: query.isFetching,
     error: query.error ?? null,
     reload: query.refetch,

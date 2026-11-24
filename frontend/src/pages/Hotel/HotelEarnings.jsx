@@ -1,12 +1,11 @@
 // Port of front_end/pages/hotels/hotelEarning.html: KPI cards, performance insights, revenue by
 // room type, refund breakdown, recent transactions and payout. All figures come from the
 // server's /bookings/earnings statement.
-import { useCallback, useState } from 'react';
-import { getPartnerEarnings } from '@/services/hotels.api.js';
-import { usePartnerHotels } from '@/store/hotel/hooks.js';
+import { useState } from 'react';
+import { usePartnerEarnings, usePartnerHotels } from '@/store/hotel/hooks.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { fmtDate, inr, useHotelData } from '@/components/hotel/hotelKit.jsx';
+import { fmtDate, inr } from '@/components/hotel/hotelKit.jsx';
 
 const change = (current, previous) => {
   if (!previous) return { text: current ? 'New this month' : '—', cls: '' };
@@ -17,8 +16,7 @@ const change = (current, previous) => {
 export default function HotelEarnings() {
   const [hotelId, setHotelId] = useState('');
   const hotels = usePartnerHotels();
-  const load = useCallback(() => getPartnerEarnings(hotelId || undefined), [hotelId]);
-  const { data: e, loading, error, reload } = useHotelData(load);
+  const { data: e, loading, error, reload } = usePartnerEarnings(hotelId);
 
   const stats = e && [
     { label: 'Total Revenue', value: inr(e.totalRevenue), icon: 'montlyearning.svg', color: 'blue', sub: `${e.completedStays} completed stays`, subClass: '' },
