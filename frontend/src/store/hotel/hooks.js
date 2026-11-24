@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useAuth } from '@/context/AuthContext.jsx';
-import { getHotelAccountId, usePartnerBookingsQuery, usePartnerHotelsQuery, usePartnerRoomsQuery } from './hotelApi.js';
-import { selectProperties, selectRooms } from './selectors.js';
+import {
+  getHotelAccountId, usePartnerBookingsQuery, usePartnerHotelsQuery, usePartnerReviewsQuery, usePartnerRoomsQuery,
+} from './hotelApi.js';
+import { selectProperties, selectReviewSummary, selectRooms } from './selectors.js';
 
 const EMPTY_ROOMS = [];
 const refreshOnOpen = { refetchOnMountOrArgChange: true };
-const bookingRefreshOnOpen = { refetchOnMountOrArgChange: 30 };
+const reuseRecentData = { refetchOnMountOrArgChange: 30 };
 
 export function usePartnerHotels() {
   const { user } = useAuth();
@@ -25,10 +27,25 @@ export function usePartnerHotels() {
 export function usePartnerBookings() {
   const { user } = useAuth();
   const accountId = getHotelAccountId(user);
-  const query = usePartnerBookingsQuery(accountId ?? skipToken, bookingRefreshOnOpen);
+  const query = usePartnerBookingsQuery(accountId ?? skipToken, reuseRecentData);
   return {
     accountId,
     data: query.currentData ?? null,
+    loading: query.isFetching,
+    error: query.error ?? null,
+    reload: query.refetch,
+  };
+}
+
+export function usePartnerReviews() {
+  const { user } = useAuth();
+  const accountId = getHotelAccountId(user);
+  const query = usePartnerReviewsQuery(accountId ?? skipToken, reuseRecentData);
+  const data = query.currentData ?? null;
+  const summary = useMemo(() => selectReviewSummary(data), [data]);
+  return {
+    data,
+    summary,
     loading: query.isFetching,
     error: query.error ?? null,
     reload: query.refetch,

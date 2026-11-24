@@ -1,34 +1,32 @@
 // Guest reviews for the partner's hotels, in the dashboard's review-card style.
-import { useCallback, useMemo, useState } from 'react';
-import { listPartnerReviews } from '@/services/hotels.api.js';
+import { useMemo, useState } from 'react';
+import { usePartnerReviews } from '@/store/hotel/hooks.js';
 import HotelPage, { EmptyState, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
-import { fmtDate, useHotelData } from '@/components/hotel/hotelKit.jsx';
+import { fmtDate } from '@/components/hotel/hotelKit.jsx';
 
 export default function HotelReviews() {
   const [rating, setRating] = useState(0);
   const [hotel, setHotel] = useState('');
-  const load = useCallback(() => listPartnerReviews(), []);
-  const { data: reviews, loading, error, reload } = useHotelData(load);
+  const { data: reviews, summary, loading, error, reload } = usePartnerReviews();
 
   const hotels = useMemo(() => [...new Set((reviews ?? []).map((r) => r.hotelName))], [reviews]);
   const visible = useMemo(
     () => (reviews ?? []).filter((r) => (!rating || r.rating === rating) && (!hotel || r.hotelName === hotel)),
     [reviews, rating, hotel],
   );
-  const average = reviews?.length ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : '—';
 
   return (
     <HotelPage title="Reviews">
       <PageHeader title="Reviews" subtitle="Authentic traveller feedback and verified stay ratings for your properties" />
       <LoadState loading={loading} error={error} onRetry={reload}>
-        {reviews && reviews.length === 0 ? (
+        {reviews && summary.total === 0 ? (
           <EmptyState title="No reviews yet" text="Reviews will be displayed here once guests rate their stay." />
         ) : reviews ? (
           <>
             <section className="hotel-content-card hotel-summary-strip">
-              <div><span>Total Reviews</span><strong>{reviews.length}</strong></div>
-              <div><span>Average Rating</span><strong>{average} ★</strong></div>
-              <div><span>5-star Reviews</span><strong>{reviews.filter((r) => r.rating === 5).length}</strong></div>
+              <div><span>Total Reviews</span><strong>{summary.total}</strong></div>
+              <div><span>Average Rating</span><strong>{summary.average?.toFixed(1) ?? '—'} ★</strong></div>
+              <div><span>5-star Reviews</span><strong>{summary.fiveStar}</strong></div>
             </section>
 
             <div className="hotel-filters">

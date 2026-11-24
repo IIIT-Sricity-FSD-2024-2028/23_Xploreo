@@ -2,11 +2,10 @@
 // js/modules/hotelDashboard.js, with every block fed from the backend instead of localStorage.
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { listPartnerReviews } from '@/services/hotels.api.js';
-import { usePartnerBookings, usePartnerHotels } from '@/store/hotel/hooks.js';
+import { usePartnerBookings, usePartnerHotels, usePartnerReviews } from '@/store/hotel/hooks.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState } from '@/components/hotel/HotelPage.jsx';
-import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useHotelData } from '@/components/hotel/hotelKit.jsx';
+import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr } from '@/components/hotel/hotelKit.jsx';
 
 const ACTIVITY_TEXT = {
   CONFIRMED: (b) => `New booking from ${b.guestName}`,
@@ -25,7 +24,7 @@ const timeAgo = (value) => {
 export default function HotelDashboard() {
   const { data: hotels, loading: hotelsLoading, error: hotelsError, reload: reloadHotels } = usePartnerHotels();
   const { data: bookings, loading: bookingsLoading, error: bookingsError, reload: reloadBookings } = usePartnerBookings();
-  const { data: reviews, loading: reviewsLoading, error: reviewsError, reload: reloadReviews } = useHotelData(listPartnerReviews);
+  const { data: reviews, summary: reviewSummary, loading: reviewsLoading, error: reviewsError, reload: reloadReviews } = usePartnerReviews();
   const loading = hotelsLoading || bookingsLoading || reviewsLoading;
   const error = hotelsError || bookingsError || reviewsError;
   const reload = () => { reloadHotels(); reloadBookings(); reloadReviews(); };
@@ -42,18 +41,17 @@ export default function HotelDashboard() {
     const upcoming = bookings
       .filter((b) => b.status === 'CONFIRMED' && b.checkIn >= today)
       .sort((a, b) => a.checkIn.localeCompare(b.checkIn));
-    const rated = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : null;
     const activity = [...bookings]
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 5);
-    return { totalRooms, available, occupied: totalRooms - available, monthRevenue, upcoming, rated, activity, bookings, reviews };
+    return { totalRooms, available, occupied: totalRooms - available, monthRevenue, upcoming, activity, bookings, reviews };
   }, [hotels, bookings, reviews]);
 
   const stats = view && [
     { label: 'Total Bookings', value: view.bookings.length, icon: 'todaytours.svg', color: 'blue' },
     { label: 'Revenue This Month', value: inr(view.monthRevenue), icon: 'montlyearning.svg', color: 'dark-green' },
     { label: 'Upcoming Bookings', value: view.upcoming.length, icon: 'upcomingtours.svg', color: 'light-green' },
-    { label: 'Average Rating', value: view.rated ? view.rated.toFixed(1) : '—', icon: 'avgrating.svg', color: 'orange' },
+    { label: 'Average Rating', value: reviewSummary.average?.toFixed(1) ?? '—', icon: 'avgrating.svg', color: 'orange' },
   ];
 
   return (

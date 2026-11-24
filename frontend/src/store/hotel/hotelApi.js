@@ -2,7 +2,7 @@ import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react';
 import {
   cancelBooking, checkInBooking, checkOutBooking, listHotelBookings,
   createHotel, createRoomType, deleteHotel, deleteRoomType,
-  listHotels, listRooms, updateRoomType,
+  listHotels, listPartnerReviews, listRooms, updateRoomType,
 } from '@/services/hotels.api.js';
 import { getUser } from '@/services/session.js';
 
@@ -25,12 +25,13 @@ export function getHotelAccountId(user) {
 
 function runForHotelPartner(accountId, action) {
   if (!accountId || getHotelAccountId(getUser()) !== accountId) {
-    return { error: { status: 403, message: 'Sign in as this hotel partner to manage bookings.' } };
+    return { error: { status: 403, message: 'Sign in as this hotel partner to continue.' } };
   }
   return run(action);
 }
 
 const bookingTag = (accountId) => ({ type: 'Bookings', id: accountId });
+const reviewTag = (accountId) => ({ type: 'Reviews', id: accountId });
 const bookingAndInventoryTags = (_result, error, { accountId }) => error ? [] : [
   bookingTag(accountId), { type: 'Hotels', id: accountId }, { type: 'Rooms', id: accountId },
 ];
@@ -38,7 +39,7 @@ const bookingAndInventoryTags = (_result, error, { accountId }) => error ? [] : 
 export const hotelApi = createApi({
   reducerPath: 'hotelApi',
   baseQuery: fakeBaseQuery(),
-  tagTypes: ['Hotels', 'Rooms', 'Bookings'],
+  tagTypes: ['Hotels', 'Rooms', 'Bookings', 'Reviews'],
   endpoints: (builder) => ({
     partnerHotels: builder.query({
       queryFn: () => run(listHotels),
@@ -54,6 +55,10 @@ export const hotelApi = createApi({
     partnerBookings: builder.query({
       queryFn: (accountId) => runForHotelPartner(accountId, listHotelBookings),
       providesTags: (_result, _error, accountId) => [bookingTag(accountId)],
+    }),
+    partnerReviews: builder.query({
+      queryFn: (accountId) => runForHotelPartner(accountId, listPartnerReviews),
+      providesTags: (_result, _error, accountId) => [reviewTag(accountId)],
     }),
     checkInPartnerBooking: builder.mutation({
       queryFn: ({ accountId, bookingId }) => runForHotelPartner(accountId, () => checkInBooking(bookingId)),
@@ -74,7 +79,7 @@ export const hotelApi = createApi({
     removeProperty: builder.mutation({
       queryFn: ({ hotelId }) => run(() => deleteHotel(hotelId)),
       invalidatesTags: (_result, error, { accountId }) => error ? [] : [
-        { type: 'Hotels', id: accountId }, bookingTag(accountId),
+        { type: 'Hotels', id: accountId }, bookingTag(accountId), reviewTag(accountId),
       ],
     }),
     addRoom: builder.mutation({
@@ -99,7 +104,7 @@ export const hotelApi = createApi({
 });
 
 export const {
-  usePartnerHotelsQuery, usePartnerRoomsQuery, usePartnerBookingsQuery,
+  usePartnerHotelsQuery, usePartnerRoomsQuery, usePartnerBookingsQuery, usePartnerReviewsQuery,
   useAddPropertyMutation, useRemovePropertyMutation,
   useAddRoomMutation, useChangeRoomMutation, useRemoveRoomMutation,
   useCheckInPartnerBookingMutation, useCheckOutPartnerBookingMutation, useCancelPartnerBookingMutation,
