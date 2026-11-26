@@ -5,7 +5,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '../services/notifications.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, setAuthUser } from './authSlice.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 
 const EMPTY_LIST = [];
 
@@ -56,6 +56,7 @@ const initialState = {
   items: [],
   unreadCount: 0,
   loading: false,
+  actionLoading: false,
   error: null,
   lastFetchedAt: null,
 };
@@ -85,7 +86,12 @@ const notificationsSlice = createSlice({
         state.loading = false;
         state.error = action.payload || action.error?.message || 'Failed to load notifications.';
       })
+      .addCase(markNotificationRead.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(markNotificationRead.fulfilled, (state, action) => {
+        state.actionLoading = false;
         const id = action.payload;
         let decremented = false;
         state.items = state.items.map((n) => {
@@ -99,12 +105,26 @@ const notificationsSlice = createSlice({
           state.unreadCount = Math.max(0, state.unreadCount - 1);
         }
       })
+      .addCase(markNotificationRead.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload || action.error?.message || 'Failed to mark notification as read.';
+      })
+      .addCase(markAllNotificationsRead.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(markAllNotificationsRead.fulfilled, (state) => {
+        state.actionLoading = false;
         state.items = state.items.map((n) => ({ ...n, read: true }));
         state.unreadCount = 0;
       })
+      .addCase(markAllNotificationsRead.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload || action.error?.message || 'Failed to mark notifications as read.';
+      })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);
@@ -116,6 +136,7 @@ export const { clearNotificationsError, resetNotificationsState } = notification
 export const selectNotificationsList = (state) => state.notifications?.items || EMPTY_LIST;
 export const selectUnreadNotificationCount = (state) => state.notifications?.unreadCount || 0;
 export const selectNotificationsLoading = (state) => Boolean(state.notifications?.loading);
+export const selectNotificationActionLoading = (state) => Boolean(state.notifications?.actionLoading);
 export const selectNotificationsError = (state) => state.notifications?.error || null;
 
 export default notificationsSlice.reducer;

@@ -4,6 +4,8 @@ import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import {
+  clearBookingActionError,
+  clearBookingCancellationResult,
   fetchTravellerBookings,
   selectBookingsError,
   selectBookingsList,
@@ -112,12 +114,16 @@ function TravellerBookingsCore({
     }
   }, [shouldAutoFetch, fetchLiveBookings]);
 
-  // Reset selected booking detail when entering/leaving via router or returning from another view
+  // Reset selected booking detail & transient action/cancellation state on route transition
   useEffect(() => {
     if (isPreviewMode) return undefined;
     dispatch(setSelectedBookingId(null));
+    dispatch(clearBookingActionError());
+    dispatch(clearBookingCancellationResult());
     return () => {
       dispatch(setSelectedBookingId(null));
+      dispatch(clearBookingActionError());
+      dispatch(clearBookingCancellationResult());
     };
   }, [dispatch, isPreviewMode, locationKey]);
 

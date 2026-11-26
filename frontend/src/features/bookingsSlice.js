@@ -13,8 +13,12 @@ import {
   listExperienceBookings,
   retryExperienceRefund,
 } from '../services/partners.api.js';
-import { cancelExperienceGuide, requestExperienceGuide } from '../services/tripGuides.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, setAuthUser } from './authSlice.js';
+import {
+  cancelExperienceGuide,
+  listExperienceGuides,
+  requestExperienceGuide,
+} from '../services/tripGuides.api.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 import { processCheckoutPayment } from './checkoutSlice.js';
 
 export const fetchTravellerBookings = createAsyncThunk(
@@ -137,6 +141,21 @@ export const requestGuideForExperienceBooking = createAsyncThunk(
   },
 );
 
+export const fetchExperienceAvailableGuides = createAsyncThunk(
+  'bookings/fetchExperienceAvailableGuides',
+  async (bookingId, { rejectWithValue }) => {
+    try {
+      const guides = await listExperienceGuides(bookingId);
+      return { bookingId, guides: Array.isArray(guides) ? guides : [] };
+    } catch (error) {
+      return rejectWithValue({
+        bookingId,
+        message: error?.message || 'Could not load guides.',
+      });
+    }
+  },
+);
+
 export const cancelGuideForExperienceBooking = createAsyncThunk(
   'bookings/cancelGuideForExperience',
   async (bookingId, { rejectWithValue }) => {
@@ -168,6 +187,12 @@ const initialState = {
   detailError: null,
   actionLoading: false,
   actionError: null,
+  guideActionLoading: false,
+  guideActionError: null,
+  lastCancellation: null,
+  availableGuidesByBookingId: {},
+  availableGuidesLoading: {},
+  availableGuidesError: {},
 };
 
 const bookingsSlice = createSlice({
@@ -184,6 +209,10 @@ const bookingsSlice = createSlice({
     },
     clearBookingActionError(state) {
       state.actionError = null;
+      state.guideActionError = null;
+    },
+    clearBookingCancellationResult(state) {
+      state.lastCancellation = null;
     },
     resetBookingsState: () => initialState,
   },
@@ -252,13 +281,16 @@ const bookingsSlice = createSlice({
       .addCase(cancelTravellerBooking.pending, (state) => {
         state.actionLoading = true;
         state.actionError = null;
+        state.lastCancellation = null;
       })
       .addCase(cancelTravellerBooking.fulfilled, (state, action) => {
         state.actionLoading = false;
         state.actionError = null;
-        const { id, result } = action.payload;
+        const { id, bookingType, result } = action.payload;
+        const cancellationPayload = result?.booking ?? result ?? {};
         const patch = result?.booking ? result.booking : {
           status: 'CANCELLED',
+          refundEligibility: result?.refundEligibility,
           refundStatus: result?.refundStatus,
           refundAmount: result?.refundAmount,
           refundReference: result?.refundReference,
@@ -267,9 +299,15 @@ const bookingsSlice = createSlice({
           cancellationReason: result?.cancellationReason,
         };
         applyBookingPatch(state, id, patch);
+        state.lastCancellation = {
+          id,
+          bookingType: bookingType || 'hotel',
+          result: cancellationPayload,
+        };
       })
       .addCase(cancelTravellerBooking.rejected, (state, action) => {
         state.actionLoading = false;
+        state.lastCancellation = null;
         state.actionError = action.payload || action.error.message || 'Failed to cancel booking.';
       })
       .addCase(retryBookingRefund.pending, (state) => {
@@ -292,13 +330,32 @@ const bookingsSlice = createSlice({
         state.actionLoading = false;
         state.actionError = action.payload || action.error.message || 'Failed to retry refund.';
       })
+      .addCase(requestGuideForExperienceBooking.pending, (state) => {
+        state.guideActionLoading = true;
+        state.guideActionError = null;
+        state.actionError = null;
+      })
       .addCase(requestGuideForExperienceBooking.fulfilled, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError = null;
         const { bookingId, updated } = action.payload;
         if (updated) {
           applyBookingPatch(state, bookingId, updated);
         }
       })
+      .addCase(requestGuideForExperienceBooking.rejected, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError =
+          action.payload || action.error?.message || 'Could not send the request.';
+      })
+      .addCase(cancelGuideForExperienceBooking.pending, (state) => {
+        state.guideActionLoading = true;
+        state.guideActionError = null;
+        state.actionError = null;
+      })
       .addCase(cancelGuideForExperienceBooking.fulfilled, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError = null;
         const bookingId = action.payload;
         applyBookingPatch(state, bookingId, {
           guideId: undefined,
@@ -309,13 +366,44 @@ const bookingsSlice = createSlice({
           guide: undefined,
         });
       })
+      .addCase(cancelGuideForExperienceBooking.rejected, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError =
+          action.payload || action.error?.message || 'Could not cancel the request.';
+      })
+      .addCase(fetchExperienceAvailableGuides.pending, (state, action) => {
+        const bookingId = action.meta.arg;
+        state.availableGuidesLoading[bookingId] = true;
+        state.availableGuidesError[bookingId] = null;
+      })
+      .addCase(fetchExperienceAvailableGuides.fulfilled, (state, action) => {
+        const { bookingId, guides } = action.payload;
+        state.availableGuidesLoading[bookingId] = false;
+        state.availableGuidesByBookingId[bookingId] = guides;
+        state.availableGuidesError[bookingId] = null;
+      })
+      .addCase(fetchExperienceAvailableGuides.rejected, (state, action) => {
+        const bookingId = action.payload?.bookingId || action.meta.arg;
+        state.availableGuidesLoading[bookingId] = false;
+        state.availableGuidesError[bookingId] =
+          action.payload?.message || action.error?.message || 'Could not load guides.';
+      })
       .addCase(processCheckoutPayment.fulfilled, (state, action) => {
         if (action.payload?.outcome === 'SUCCEEDED') {
           state.selectedBookingId = null;
+          if (action.payload.createdBooking?.id) {
+            const created = { ...action.payload.createdBooking, bookingType: 'hotel' };
+            state.items = [created, ...state.items.filter((b) => b.id !== created.id)];
+          }
+          if (action.payload.createdExperience?.id) {
+            const createdExp = { ...action.payload.createdExperience, bookingType: 'experience' };
+            state.items = [createdExp, ...state.items.filter((b) => b.id !== createdExp.id)];
+          }
         }
       })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);
@@ -326,6 +414,7 @@ export const {
   setSelectedBookingId,
   setSelectedBookingDetail,
   clearBookingActionError,
+  clearBookingCancellationResult,
   resetBookingsState,
 } = bookingsSlice.actions;
 
@@ -337,5 +426,16 @@ export const selectSelectedBookingDetail = (state) => state.bookings.selectedBoo
 export const selectSelectedBookingHotel = (state) => state.bookings.selectedBookingHotel;
 export const selectBookingDetailLoading = (state) => state.bookings.detailLoading;
 export const selectBookingDetailError = (state) => state.bookings.detailError;
+export const selectBookingActionLoading = (state) => Boolean(state.bookings.actionLoading);
+export const selectBookingActionError = (state) => state.bookings.actionError || null;
+export const selectBookingCancellationResult = (state) => state.bookings.lastCancellation || null;
+export const selectBookingGuideActionLoading = (state) => Boolean(state.bookings.guideActionLoading);
+export const selectBookingGuideActionError = (state) => state.bookings.guideActionError || null;
+export const selectExperienceAvailableGuides = (state, bookingId) =>
+  state.bookings.availableGuidesByBookingId?.[bookingId] ?? null;
+export const selectExperienceGuidesLoading = (state, bookingId) =>
+  Boolean(state.bookings.availableGuidesLoading?.[bookingId]);
+export const selectExperienceGuidesError = (state, bookingId) =>
+  state.bookings.availableGuidesError?.[bookingId] || null;
 
 export default bookingsSlice.reducer;

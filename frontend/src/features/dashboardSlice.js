@@ -3,7 +3,7 @@ import { listHotelBookings } from '../services/hotels.api.js';
 import { listExperienceBookings } from '../services/partners.api.js';
 import { listReviews } from '../services/reviews.api.js';
 import { getTravellerTrips } from '../services/tripGuides.api.js';
-import { logoutSession, logoutUser, loginUser, registerUser, setAuthUser } from './authSlice.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 
 export function calculateBookingStats(list = []) {
   const safeList = Array.isArray(list) ? list : [];
@@ -195,6 +195,7 @@ const dashboardSlice = createSlice({
       })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);

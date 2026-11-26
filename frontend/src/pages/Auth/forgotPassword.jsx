@@ -1,29 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import {
+  clearResetFeedback,
+  requestPasswordReset,
+  selectResetError,
+  selectResetLoading,
+  selectResetMessage,
+} from "../../features/authSlice.js";
 import { AuthVisual } from "./login";
 import "./auth.css";
 
 export default function ForgotPassword({ user }) {
+  const dispatch = useDispatch();
   const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const message = useSelector(selectResetMessage) || "";
+  const error = useSelector(selectResetError) || "";
+  const loading = useSelector(selectResetLoading);
+
+  useEffect(() => {
+    dispatch(clearResetFeedback());
+    return () => {
+      dispatch(clearResetFeedback());
+    };
+  }, [dispatch]);
 
   async function submitHandler(event) {
     event.preventDefault();
-    setLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      const result = await authApi.requestPasswordReset({ email: email.trim() });
-      setMessage(result.message);
-    } catch (requestError) {
-      setError(requestError?.message || "We could not send a reset email. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    await dispatch(requestPasswordReset({ email: email.trim() }));
   }
 
   return (

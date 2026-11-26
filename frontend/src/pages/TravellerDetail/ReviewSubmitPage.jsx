@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { getSavedUser } from '@/services/api.js';
-import { getUser } from '@/services/session.js';
 import { selectAuthUser } from '@/features/authSlice.js';
 import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
 import {
   clearReviewSubmitState,
   fetchReviews,
+  selectLastSubmittedReview,
   selectReviewsList,
   selectReviewsLoading,
+  selectReviewSubmitError,
   selectReviewSubmitting,
   submitReview,
 } from '@/features/reviewsSlice.js';
@@ -41,6 +41,8 @@ export default function ReviewSubmitPage() {
   const rawReviews = useSelector(selectReviewsList);
   const reviewsLoading = useSelector(selectReviewsLoading);
   const submitting = useSelector(selectReviewSubmitting);
+  const reduxSubmitError = useSelector(selectReviewSubmitError);
+  const submittedReview = useSelector(selectLastSubmittedReview);
 
   const targetTypeParam = searchParams.get('targetType') || (searchParams.get('hotelId') ? 'hotel' : searchParams.get('experienceId') ? 'experience' : 'hotel');
   const targetIdParam = searchParams.get('targetId') || searchParams.get('hotelId') || searchParams.get('experienceId') || '';
@@ -58,11 +60,17 @@ export default function ReviewSubmitPage() {
   const [authorName, setAuthorName] = useState('');
   const [tripType, setTripType] = useState('Couple');
 
-  // Status & Validation
+  // Temporary UI form validation & selection state
   const [fieldErrors, setFieldErrors] = useState({});
-  const [localSubmitError, setLocalSubmitError] = useState(null);
-  const [submittedReview, setSubmittedReview] = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const [manualSelectedTripId, setManualSelectedTripId] = useState(paramTripId);
+
+  useEffect(() => {
+    dispatch(clearReviewSubmitState());
+    return () => {
+      dispatch(clearReviewSubmitState());
+    };
+  }, [dispatch]);
 
   const expectedDetailKey = targetId && (targetType === 'hotel' || targetType === 'experience')
     ? `${targetType}:${targetId}`
@@ -86,7 +94,7 @@ export default function ReviewSubmitPage() {
   // Load traveller's completed trips and reviews via Redux to validate eligibility
   useEffect(() => {
     const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
-    const saved = activeAuthUser || getUser() || getSavedUser() || {};
+    const saved = activeAuthUser || {};
     const userId = saved?.userId || saved?.id || saved?.username;
     if (userId) {
       dispatch(fetchTravellerTrips(userId));
@@ -116,11 +124,12 @@ export default function ReviewSubmitPage() {
 
   const loadingTrips = tripsLoading || reviewsLoading;
   const selectedTripId = manualSelectedTripId || eligibleTrips[0]?.id || '';
-  const submitError = localSubmitError || eligibilityError;
+  const submitError = validationError || reduxSubmitError || eligibilityError;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLocalSubmitError(null);
+    setValidationError(null);
+    dispatch(clearReviewSubmitState());
 
     // 400 Validation rules
     const errors = {};
@@ -145,15 +154,19 @@ export default function ReviewSubmitPage() {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setLocalSubmitError('Please address the form validation errors below.');
+      setValidationError('Please address the form validation errors below.');
       return;
     }
 
     setFieldErrors({});
 
     try {
-      // Conforms strictly to CreateReviewDto: { rating, comment, authorName, targetType, targetId, tripId }
+      const activeUserId = authUser && authUser.role !== 'default'
+        ? (authUser.userId || authUser.id || authUser.username)
+        : undefined;
+      // Conforms strictly to CreateReviewDto: { userId?, rating, comment, authorName, targetType, targetId, tripId }
       const payload = {
+        ...(activeUserId ? { userId: String(activeUserId) } : {}),
         rating: Number(rating),
         comment: comment.trim(),
         authorName: authorName.trim() || undefined,
@@ -162,11 +175,8 @@ export default function ReviewSubmitPage() {
         tripId: selectedTripId,
       };
 
-      const result = await dispatch(submitReview(payload)).unwrap();
-      setSubmittedReview(result || payload);
+      await dispatch(submitReview(payload)).unwrap();
     } catch (err) {
-      const message = err?.message || 'Failed to submit review. Please try again.';
-      setLocalSubmitError(message);
       if (err?.errors && typeof err.errors === 'object') {
         setFieldErrors(err.errors);
       }
@@ -211,7 +221,7 @@ export default function ReviewSubmitPage() {
   }
 
   // 3. General Error State
-  if (submitError && submitError.includes('Network') || submitError?.includes('500')) {
+  if (submitError && (submitError.includes('Network') || submitError.includes('500'))) {
     return (
       <div className="trav-page-container">
         <TravellerHeader title="Submission Error" />
@@ -220,7 +230,14 @@ export default function ReviewSubmitPage() {
             <span className="trav-error-icon">⚠️</span>
             <h2 className="trav-error-title">Unable to Save Review</h2>
             <p className="trav-error-desc">{submitError}</p>
-            <button type="button" onClick={() => setLocalSubmitError(null)} className="trav-btn trav-btn-primary">
+            <button
+              type="button"
+              onClick={() => {
+                setValidationError(null);
+                dispatch(clearReviewSubmitState());
+              }}
+              className="trav-btn trav-btn-primary"
+            >
               Try Again
             </button>
           </div>
@@ -301,9 +318,9 @@ export default function ReviewSubmitPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSubmittedReview(null);
                     setComment('');
                     setTitle('');
+                    setValidationError(null);
                     dispatch(clearReviewSubmitState());
                   }}
                   className="trav-btn trav-btn-secondary"

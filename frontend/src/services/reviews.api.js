@@ -19,3 +19,18 @@ export function getReview(id) {
 export function createReview(values) {
   return request('/reviews', { method: 'POST', body: values });
 }
+
+// GET /reviews/:id
+export function getReviewById(id) {
+  return request(`/reviews/${encodeURIComponent(id)}`);
+}
+
+// PATCH /reviews/:id
+export function updateReview(id, values) {
+  return request(`/reviews/${encodeURIComponent(id)}`, { method: 'PATCH', body: values });
+}
+
+// DELETE /reviews/:id
+export function deleteReview(id) {
+  return request(`/reviews/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

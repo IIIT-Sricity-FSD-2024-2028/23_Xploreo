@@ -3,6 +3,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
 import { createHotelBooking } from '@/features/bookingsSlice.js';
+import {
+  calculateNightCount,
+  getTodayIsoDate,
+  validateHotelRoomBooking,
+} from '@/utils/bookingValidationUtils.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
@@ -57,25 +62,28 @@ export default function RoomDetailPage() {
     loadData();
   }, [loadData]);
 
-  // Price calculations
-  const calculateNights = () => {
-    const start = new Date(checkIn);
-    const end = new Date(checkOut);
-    const diff = (end - start) / 86400000;
-    return diff > 0 ? Math.ceil(diff) : 1;
-  };
-
-  const nights = calculateNights();
+  // Price calculations (aligned with backend 12% taxes)
+  const nights = calculateNightCount(checkIn, checkOut);
   const roomPrice = room?.pricePerNight || hotel?.pricePerNight || 3500;
   const subtotal = roomPrice * nights * Number(roomsCount);
-  const taxes = hotel?.taxesAndFees ? (hotel.taxesAndFees * nights * Number(roomsCount)) : Math.round(subtotal * 0.12);
+  const taxes = Math.round(subtotal * 0.12);
   const grandTotal = subtotal + taxes;
+  const todayStr = getTodayIsoDate();
+  const roomValidation = validateHotelRoomBooking({
+    hotel,
+    room,
+    roomsCount,
+    guestsCount: guests,
+    checkIn,
+    checkOut,
+    today: todayStr,
+  });
 
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     setSubmitError(null);
 
-    // Validation (400 validation state)
+    // Validation (capacity, inventory, dates & contact fields)
     const errors = {};
     if (!guestName || guestName.trim().length < 2) {
       errors.guestName = 'Guest name is required (minimum 2 characters).';
@@ -86,22 +94,13 @@ export default function RoomDetailPage() {
     if (!phone || phone.trim().length < 8) {
       errors.phone = 'Valid phone number is required.';
     }
-    if (!checkIn) {
-      errors.checkIn = 'Check-in date is required.';
-    }
-    if (!checkOut) {
-      errors.checkOut = 'Check-out date is required.';
-    }
-    if (new Date(checkOut) <= new Date(checkIn)) {
-      errors.checkOut = 'Check-out date must be after check-in date.';
-    }
-    if (Number(guests) < 1) {
-      errors.guests = 'At least 1 guest is required.';
+    if (!roomValidation.valid) {
+      errors.booking = roomValidation.error;
     }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setSubmitError('Please correct the validation errors in the booking form.');
+      setSubmitError(errors.booking || 'Please correct the validation errors in the booking form.');
       return;
     }
 
@@ -422,7 +421,7 @@ export default function RoomDetailPage() {
               </div>
 
               {/* Rooms & Guests */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '18px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                 <div className="trav-form-group" style={{ margin: 0 }}>
                   <label className="trav-form-label" htmlFor="trav-guests">Guests</label>
                   <select
@@ -431,7 +430,10 @@ export default function RoomDetailPage() {
                     value={guests}
                     onChange={(e) => setGuests(Number(e.target.value))}
                   >
-                    {[1, 2, 3, 4, 5, 6].map((num) => (
+                    {Array.from(
+                      { length: Math.max(8, (Number(room.maxOccupancy) || 4) * Math.max(1, availableRooms)) },
+                      (_, i) => i + 1,
+                    ).map((num) => (
                       <option key={num} value={num}>
                         {num} {num === 1 ? 'Guest' : 'Guests'}
                       </option>
@@ -447,7 +449,7 @@ export default function RoomDetailPage() {
                     value={roomsCount}
                     onChange={(e) => setRoomsCount(Number(e.target.value))}
                   >
-                    {[1, 2, 3, 4].map((num) => (
+                    {Array.from({ length: Math.max(1, availableRooms) }, (_, i) => i + 1).map((num) => (
                       <option key={num} value={num} disabled={num > availableRooms}>
                         {num} {num === 1 ? 'Room' : 'Rooms'}
                       </option>
@@ -455,6 +457,16 @@ export default function RoomDetailPage() {
                   </select>
                 </div>
               </div>
+
+              <div style={{ fontSize: '0.8rem', color: 'var(--trav-text-muted)', marginBottom: '12px' }}>
+                Max {room.maxOccupancy || 2} guests/room ({(room.maxOccupancy || 2) * Math.max(1, Number(roomsCount))} total allowed for {roomsCount} room{Number(roomsCount) === 1 ? '' : 's'}) · {availableRooms} left
+              </div>
+
+              {!roomValidation.valid && (
+                <div className="trav-validation-alert" role="alert" style={{ marginBottom: '14px' }}>
+                  {roomValidation.error}
+                </div>
+              )}
 
               {/* Price Breakdown */}
               <div className="trav-price-breakdown">
@@ -475,7 +487,7 @@ export default function RoomDetailPage() {
               {/* Submit CTA */}
               <button
                 type="submit"
-                disabled={isSoldOut || submitting}
+                disabled={isSoldOut || !roomValidation.valid || submitting}
                 className="trav-btn trav-btn-primary"
                 style={{ width: '100%', marginTop: '20px', padding: '14px' }}
               >

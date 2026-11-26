@@ -2,13 +2,16 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import {
   cancelGuideRequest,
   cancelTrip,
+  createTrip,
   getTravellerTrips,
   getTripById,
+  listAvailableGuides,
   requestGuide,
   retryTripRefund,
+  updateTrip,
 } from '../services/tripGuides.api.js';
 import { mapBackendTrip, reconcileTripTracking } from '../utils/tripTrackingUtils.js';
-import { loginUser, logoutSession, logoutUser, registerUser, setAuthUser } from './authSlice.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 import { processCheckoutPayment } from './checkoutSlice.js';
 
 function reconcileTripList(prevTrips = [], incomingMapped = []) {
@@ -116,6 +119,45 @@ export const cancelGuideForTrip = createAsyncThunk(
   },
 );
 
+export const createTravellerTrip = createAsyncThunk(
+  'trips/createTravellerTrip',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const created = await createTrip(payload);
+      return created ? mapBackendTrip(created) : null;
+    } catch (error) {
+      return rejectWithValue(error?.message || 'Failed to create trip.');
+    }
+  },
+);
+
+export const updateTravellerTrip = createAsyncThunk(
+  'trips/updateTravellerTrip',
+  async ({ tripId, patch }, { rejectWithValue }) => {
+    try {
+      const updated = await updateTrip(tripId, patch);
+      return updated ? mapBackendTrip(updated) : null;
+    } catch (error) {
+      return rejectWithValue(error?.message || 'Failed to update trip.');
+    }
+  },
+);
+
+export const fetchTripAvailableGuides = createAsyncThunk(
+  'trips/fetchTripAvailableGuides',
+  async (tripId, { rejectWithValue }) => {
+    try {
+      const guides = await listAvailableGuides(tripId);
+      return { tripId, guides: Array.isArray(guides) ? guides : [] };
+    } catch (error) {
+      return rejectWithValue({
+        tripId,
+        message: error?.message || 'Could not load guides.',
+      });
+    }
+  },
+);
+
 const initialState = {
   items: [],
   loading: false,
@@ -123,9 +165,16 @@ const initialState = {
   loaded: false,
   refreshing: false,
   detailsLoading: false,
+  detailError: null,
   selectedTripId: null,
   actionLoading: false,
   actionError: null,
+  guideActionLoading: false,
+  guideActionError: null,
+  lastCancellation: null,
+  availableGuidesByTripId: {},
+  availableGuidesLoading: {},
+  availableGuidesError: {},
 };
 
 const tripsSlice = createSlice({
@@ -137,6 +186,13 @@ const tripsSlice = createSlice({
     },
     clearTripActionError(state) {
       state.actionError = null;
+      state.guideActionError = null;
+    },
+    clearTripDetailError(state) {
+      state.detailError = null;
+    },
+    clearTripCancellationResult(state) {
+      state.lastCancellation = null;
     },
     resetTripsState: () => initialState,
   },
@@ -178,9 +234,11 @@ const tripsSlice = createSlice({
       })
       .addCase(fetchTripDetail.pending, (state) => {
         state.detailsLoading = true;
+        state.detailError = null;
       })
       .addCase(fetchTripDetail.fulfilled, (state, action) => {
         state.detailsLoading = false;
+        state.detailError = null;
         const detail = action.payload;
         if (!detail) return;
         const exists = state.items.some((t) => t.id === detail.id);
@@ -188,18 +246,27 @@ const tripsSlice = createSlice({
           ? state.items.map((t) => (t.id === detail.id ? reconcileTripTracking(t, detail) : t))
           : [...state.items, detail];
       })
-      .addCase(fetchTripDetail.rejected, (state) => {
+      .addCase(fetchTripDetail.rejected, (state, action) => {
         state.detailsLoading = false;
+        state.detailError = action.payload || action.error?.message || 'Failed to load trip details';
       })
       .addCase(cancelTravellerTrip.pending, (state) => {
         state.actionLoading = true;
         state.actionError = null;
+        state.lastCancellation = null;
       })
       .addCase(cancelTravellerTrip.fulfilled, (state, action) => {
         state.actionLoading = false;
+        state.actionError = null;
         const { id, result } = action.payload;
-        const patch = result?.trip ? mapBackendTrip(result.trip) : {
+        const mappedTrip = result?.trip ? mapBackendTrip(result.trip) : null;
+        const cancellationResult = {
+          ...(result && typeof result === 'object' ? result : {}),
+          ...(result?.trip && typeof result.trip === 'object' ? result.trip : {}),
+        };
+        const patch = mappedTrip || {
           status: 'cancelled',
+          refundEligibility: result?.refundEligibility,
           refundStatus: result?.refundStatus,
           refundAmount: result?.refundAmount,
           refundReference: result?.refundReference,
@@ -208,12 +275,24 @@ const tripsSlice = createSlice({
           cancellationReason: result?.cancellationReason,
         };
         state.items = state.items.map((t) => (t.id === id ? { ...t, ...patch } : t));
+        state.lastCancellation = {
+          id,
+          bookingType: 'trip',
+          result: cancellationResult,
+        };
       })
       .addCase(cancelTravellerTrip.rejected, (state, action) => {
         state.actionLoading = false;
+        state.lastCancellation = null;
         state.actionError = action.payload || action.error.message || 'Failed to cancel trip.';
       })
+      .addCase(retryTravellerTripRefund.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
       .addCase(retryTravellerTripRefund.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = null;
         const { tripId, result } = action.payload;
         const refundStatus = result?.refund?.status || result?.refundStatus;
         state.items = state.items.map((t) =>
@@ -227,13 +306,36 @@ const tripsSlice = createSlice({
             : t,
         );
       })
+      .addCase(retryTravellerTripRefund.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload || action.error?.message || 'Failed to retry refund.';
+      })
+      .addCase(requestGuideForTrip.pending, (state) => {
+        state.guideActionLoading = true;
+        state.guideActionError = null;
+        state.actionError = null;
+      })
       .addCase(requestGuideForTrip.fulfilled, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError = null;
         const { tripId, updated } = action.payload;
         if (updated) {
           state.items = state.items.map((t) => (t.id === tripId ? reconcileTripTracking(t, updated) : t));
         }
       })
+      .addCase(requestGuideForTrip.rejected, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError =
+          action.payload || action.error?.message || 'Could not send the request.';
+      })
+      .addCase(cancelGuideForTrip.pending, (state) => {
+        state.guideActionLoading = true;
+        state.guideActionError = null;
+        state.actionError = null;
+      })
       .addCase(cancelGuideForTrip.fulfilled, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError = null;
         const { tripId, updated } = action.payload;
         state.items = state.items.map((t) =>
           t.id === tripId
@@ -241,26 +343,107 @@ const tripsSlice = createSlice({
             : t,
         );
       })
+      .addCase(cancelGuideForTrip.rejected, (state, action) => {
+        state.guideActionLoading = false;
+        state.guideActionError =
+          action.payload || action.error?.message || 'Could not cancel the request.';
+      })
+      .addCase(createTravellerTrip.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(createTravellerTrip.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = null;
+        const created = action.payload;
+        if (created?.id) {
+          state.items = [created, ...state.items.filter((t) => t.id !== created.id)];
+        }
+      })
+      .addCase(createTravellerTrip.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload || action.error?.message || 'Failed to create trip.';
+      })
+      .addCase(updateTravellerTrip.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(updateTravellerTrip.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = null;
+        const updated = action.payload;
+        if (updated?.id) {
+          state.items = state.items.map((t) =>
+            t.id === updated.id ? reconcileTripTracking(t, updated) : t,
+          );
+        }
+      })
+      .addCase(updateTravellerTrip.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload || action.error?.message || 'Failed to update trip.';
+      })
+      .addCase(fetchTripAvailableGuides.pending, (state, action) => {
+        const tripId = action.meta.arg;
+        state.availableGuidesLoading[tripId] = true;
+        state.availableGuidesError[tripId] = null;
+      })
+      .addCase(fetchTripAvailableGuides.fulfilled, (state, action) => {
+        const { tripId, guides } = action.payload;
+        state.availableGuidesLoading[tripId] = false;
+        state.availableGuidesByTripId[tripId] = guides;
+        state.availableGuidesError[tripId] = null;
+      })
+      .addCase(fetchTripAvailableGuides.rejected, (state, action) => {
+        const tripId = action.payload?.tripId || action.meta.arg;
+        state.availableGuidesLoading[tripId] = false;
+        state.availableGuidesError[tripId] =
+          action.payload?.message || action.error?.message || 'Could not load guides.';
+      })
       .addCase(processCheckoutPayment.fulfilled, (state, action) => {
         if (action.payload?.outcome === 'SUCCEEDED') {
           state.selectedTripId = null;
+          if (action.payload.createdTrip) {
+            const mapped = mapBackendTrip(action.payload.createdTrip);
+            if (mapped?.id) {
+              state.items = [mapped, ...state.items.filter((t) => t.id !== mapped.id)];
+            }
+          }
         }
       })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);
   },
 });
 
-export const { setSelectedTripId, clearTripActionError, resetTripsState } = tripsSlice.actions;
+export const {
+  setSelectedTripId,
+  clearTripActionError,
+  clearTripDetailError,
+  clearTripCancellationResult,
+  resetTripsState,
+} = tripsSlice.actions;
 
 export const selectTripsList = (state) => state.trips.items;
 export const selectTripsLoading = (state) => state.trips.loading;
 export const selectTripsError = (state) => state.trips.error;
 export const selectTripsRefreshing = (state) => state.trips.refreshing;
 export const selectTripDetailsLoading = (state) => state.trips.detailsLoading;
+export const selectTripDetailError = (state) => state.trips.detailError || null;
 export const selectSelectedTripId = (state) => state.trips.selectedTripId;
+export const selectTripActionLoading = (state) => Boolean(state.trips.actionLoading);
+export const selectTripActionError = (state) => state.trips.actionError || null;
+export const selectTripCancellationResult = (state) => state.trips.lastCancellation || null;
+export const selectTripGuideActionLoading = (state) => Boolean(state.trips.guideActionLoading);
+export const selectTripGuideActionError = (state) => state.trips.guideActionError || null;
+export const selectTripAvailableGuides = (state, tripId) =>
+  state.trips.availableGuidesByTripId?.[tripId] ?? null;
+export const selectTripGuidesLoading = (state, tripId) =>
+  Boolean(state.trips.availableGuidesLoading?.[tripId]);
+export const selectTripGuidesError = (state, tripId) =>
+  state.trips.availableGuidesError?.[tripId] || null;
 
 export default tripsSlice.reducer;

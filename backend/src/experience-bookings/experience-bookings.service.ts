@@ -20,6 +20,18 @@ import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+function isValidCalendarDate(value: unknown): value is string {
+  const str = String(value ?? '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const [y, m, d] = str.split('-').map(Number);
+  const parsed = new Date(Date.UTC(y, m - 1, d));
+  return (
+    parsed.getUTCFullYear() === y &&
+    parsed.getUTCMonth() === m - 1 &&
+    parsed.getUTCDate() === d
+  );
+}
+
 // Host: CONFIRMED -> CHECKED_IN -> END_REQUESTED -> traveller COMPLETED. A booking can only be
 // cancelled before check-in; finished and cancelled bookings are final.
 const ALLOWED_TRANSITIONS: Record<ExperienceBookingStatus, ExperienceBookingStatus[]> = {
@@ -32,13 +44,37 @@ const ALLOWED_TRANSITIONS: Record<ExperienceBookingStatus, ExperienceBookingStat
 
 @Injectable()
 export class ExperienceBookingsService {
+  private readonly baselineSlotBooked = new Map<string, number>();
+
   constructor(
     private readonly bookingsRepository: ExperienceBookingsRepository,
     private readonly experiencesRepository: ExperiencesRepository,
     private readonly guideRepository: GuideRepository,
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) {
+    this.captureSeedBaselines();
+  }
+
+  private slotKey(experienceId: string, date: string): string {
+    return `${experienceId}::${String(date).slice(0, 10)}`;
+  }
+
+  private captureSeedBaselines() {
+    for (const exp of this.experiencesRepository.findAll()) {
+      for (const slot of exp.slots ?? []) {
+        const d = String(slot.date).slice(0, 10);
+        const bookedFromRecords = this.bookingsRepository
+          .findByExperienceIds([exp.id])
+          .filter((b) => b.status !== ExperienceBookingStatus.CANCELLED && String(b.date).slice(0, 10) === d)
+          .reduce((sum, b) => sum + b.participants, 0);
+        this.baselineSlotBooked.set(
+          this.slotKey(exp.id, d),
+          Math.max(0, (slot.booked ?? 0) - bookedFromRecords),
+        );
+      }
+    }
+  }
 
   // Once a guideId is attached to a booking (the traveller legitimately picked that guide),
   // expose their contact info on the booking itself — bypasses TravellerService's stricter
@@ -66,6 +102,20 @@ export class ExperienceBookingsService {
       );
     }
 
+    if (dto.id) {
+      const existing = this.bookingsRepository.findById(dto.id);
+      if (existing) {
+        if (existing.travellerId !== travellerId || existing.experienceId !== dto.experienceId) {
+          throw new BadRequestException('Experience booking reference ID already exists.');
+        }
+        return {
+          ...existing,
+          experience: this.experiencesRepository.findById(existing.experienceId),
+          guide: this.guideContactFor(existing),
+        };
+      }
+    }
+
     const experience = this.experiencesRepository.findById(dto.experienceId);
     if (!experience) {
       throw new NotFoundException(`Experience ${dto.experienceId} not found`);
@@ -73,20 +123,31 @@ export class ExperienceBookingsService {
     if (experience.availability !== ExperienceAvailability.AVAILABLE) {
       throw new BadRequestException('Experience is not available for booking');
     }
+    if (!Number.isInteger(dto.participants) || dto.participants < 1) {
+      throw new BadRequestException('At least 1 participant is required');
+    }
 
     const date = String(dto.date).slice(0, 10);
+    if (!isValidCalendarDate(date)) {
+      throw new BadRequestException('Please choose a valid experience date');
+    }
     if (date < todayIso()) {
       throw new BadRequestException('Experiences cannot be booked for a past date');
     }
     // Capacity is per session (per date): a booking needs a scheduled session with room left,
-    // checked against that specific slot's own capacity, never the experience-wide aggregate.
+    // checked against that specific slot's own capacity and availability toggle.
     let sessionCapacity = experience.capacity;
     if (experience.slots?.length) {
       const slot = experience.slots.find((s) => String(s.date).slice(0, 10) === date);
       if (!slot) {
         throw new BadRequestException(`No session of this experience is scheduled on ${date}`);
       }
+      if (!slot.available) {
+        throw new BadRequestException(`The selected session on ${date} is no longer available`);
+      }
       sessionCapacity = slot.capacity;
+    } else if ((experience.capacity ?? 0) <= 0) {
+      throw new BadRequestException('This experience has no scheduled capacity available');
     }
     const left = sessionCapacity - this.activeParticipantsOn(experience.id, date);
     if (left <= 0) {
@@ -461,10 +522,17 @@ export class ExperienceBookingsService {
   }
 
   private activeParticipantsOn(experienceId: string, date: string): number {
-    return this.bookingsRepository
+    const active = this.bookingsRepository
       .findByExperienceIds([experienceId])
       .filter((b) => b.status !== ExperienceBookingStatus.CANCELLED && String(b.date).slice(0, 10) === date)
       .reduce((sum, b) => sum + b.participants, 0);
+    const key = this.slotKey(experienceId, date);
+    if (!this.baselineSlotBooked.has(key)) {
+      const exp = this.experiencesRepository.findById(experienceId);
+      const slot = exp?.slots?.find((s) => String(s.date).slice(0, 10) === date);
+      this.baselineSlotBooked.set(key, Math.max(0, (slot?.booked ?? 0) - active));
+    }
+    return (this.baselineSlotBooked.get(key) ?? 0) + active;
   }
 
   // Keeps each session's booked/available figures (and the headline "booked" for the next session)

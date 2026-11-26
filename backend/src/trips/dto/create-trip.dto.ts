@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsInt, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 import { StructuredItineraryDto } from '../../common/dto/itinerary.dto';
 
@@ -16,6 +16,12 @@ export class CreateTripDto {
   @ApiProperty({ example: 'plan-1' })
   @IsString()
   planId!: string;
+
+  @ApiPropertyOptional({ example: 2, minimum: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  travellers?: number;
 
   @ApiPropertyOptional({ type: StructuredItineraryDto })
   @IsOptional()

@@ -1,14 +1,16 @@
 // The real session: who is signed in, and the role/region guards and portal pages read.
 // Backed by Redux authSlice so all roles and Traveller pages share one authoritative session state.
-import { createContext, useCallback, useContext, useMemo } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { clearUser, storeUser } from '@/services/session.js';
+import { storeUser } from '@/services/session.js';
 import {
-  logoutUser,
+  logoutSession,
+  restoreAuthSession,
   selectAuthRegion,
   selectAuthRole,
   selectAuthUser,
   selectIsAuthenticated,
+  selectProfileHydrated,
   setAuthUser,
 } from '@/features/authSlice.js';
 
@@ -20,6 +22,13 @@ export function AuthProvider({ children }) {
   const role = useSelector(selectAuthRole);
   const region = useSelector(selectAuthRegion);
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const profileHydrated = useSelector(selectProfileHydrated);
+
+  useEffect(() => {
+    if (isAuthenticated && !profileHydrated && user?.token) {
+      dispatch(restoreAuthSession());
+    }
+  }, [dispatch, isAuthenticated, profileHydrated, user?.token]);
 
   const authenticate = useCallback((account) => {
     storeUser(account);
@@ -27,8 +36,7 @@ export function AuthProvider({ children }) {
   }, [dispatch]);
 
   const logout = useCallback(() => {
-    clearUser();
-    dispatch(logoutUser());
+    return dispatch(logoutSession());
   }, [dispatch]);
 
   const value = useMemo(() => ({
@@ -43,6 +51,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth() must be used inside <AuthProvider>');

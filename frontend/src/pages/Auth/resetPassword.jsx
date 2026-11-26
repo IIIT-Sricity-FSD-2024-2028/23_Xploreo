@@ -1,40 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useSearchParams } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import {
+  clearResetFeedback,
+  confirmPasswordReset,
+  selectResetError,
+  selectResetLoading,
+  selectResetMessage,
+} from "../../features/authSlice.js";
 import { AuthVisual } from "./login";
 import "./auth.css";
 
 export default function ResetPassword({ user }) {
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token") || "";
   const [form, setForm] = useState({ password: "", confirmPassword: "" });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
+  const message = useSelector(selectResetMessage) || "";
+  const resetError = useSelector(selectResetError) || "";
+  const loading = useSelector(selectResetLoading);
+  const error = localError || resetError;
+
+  useEffect(() => {
+    dispatch(clearResetFeedback());
+    return () => {
+      dispatch(clearResetFeedback());
+    };
+  }, [dispatch]);
 
   async function submitHandler(event) {
     event.preventDefault();
-    setError("");
-    setMessage("");
+    setLocalError("");
     if (!token) {
-      setError("This password-reset link is invalid or has expired.");
+      setLocalError("This password-reset link is invalid or has expired.");
       return;
     }
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setLocalError("Passwords do not match.");
       return;
     }
 
-    setLoading(true);
-    try {
-      const result = await authApi.confirmPasswordReset({ token, ...form });
-      setMessage(result.message);
+    const res = await dispatch(confirmPasswordReset({ token, ...form }));
+    if (confirmPasswordReset.fulfilled.match(res)) {
       setForm({ password: "", confirmPassword: "" });
-    } catch (requestError) {
-      setError(requestError?.message || "We could not reset your password. Please request a new link.");
-    } finally {
-      setLoading(false);
     }
   }
 

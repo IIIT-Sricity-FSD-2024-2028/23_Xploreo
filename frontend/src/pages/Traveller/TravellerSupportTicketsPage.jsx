@@ -3,10 +3,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { TicketCreateForm, TicketList } from '../../components/tickets/index.js';
-import { getSavedUser } from '../../services/api.js';
-import { getUser } from '../../services/session.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import {
+  clearCreateTicketState,
+  clearSupportTicketsError,
   createSupportTicket,
   fetchSupportTickets,
   selectSupportTickets,
@@ -39,14 +39,12 @@ function TravellerSupportTicketsCore({
   const isLoading = useSelector(selectSupportTicketsLoading);
   const error = useSelector(selectSupportTicketsError);
 
-  // Resolve authenticated traveller session
+  // Resolve authenticated traveller session from Redux
   const effectiveUser = useMemo(() => {
     const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
     return (
       user ||
-      activeAuthUser ||
-      getSavedUser() ||
-      getUser() || {
+      activeAuthUser || {
         name: 'Anjali Sharma',
         username: 'Anjali Sharma',
         role: 'traveller',
@@ -77,7 +75,11 @@ function TravellerSupportTicketsCore({
 
   useEffect(() => {
     fetchTickets();
-  }, [fetchTickets]);
+    return () => {
+      dispatch(clearCreateTicketState());
+      dispatch(clearSupportTicketsError());
+    };
+  }, [dispatch, fetchTickets]);
 
   const handleSubmitTicketRequest = useCallback(
     (payload) => dispatch(createSupportTicket(payload)).unwrap(),

@@ -1,11 +1,15 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { GuidePicker } from './TripGuidePanel.jsx';
-import { listExperienceGuides } from '../../services/tripGuides.api.js';
 import {
   cancelGuideForExperienceBooking,
+  fetchExperienceAvailableGuides,
   requestGuideForExperienceBooking,
   selectBookingsList,
+  selectExperienceAvailableGuides,
+  selectExperienceGuidesError,
+  selectExperienceGuidesLoading,
+  selectSelectedBookingDetail,
 } from '../../features/bookingsSlice.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
@@ -13,14 +17,24 @@ import './tripGuidePanel.css';
 export default function ExperienceGuidePanel({ booking: initial, askFirst = false, onChanged }) {
   const dispatch = useDispatch();
   const bookingsList = useSelector(selectBookingsList);
-  const reduxBooking = bookingsList.find((b) => b.id === initial?.id);
-  const [localPatch, setLocalPatch] = useState(null);
-  const booking = reduxBooking || (localPatch ? { ...initial, ...localPatch } : initial);
+  const selectedDetail = useSelector(selectSelectedBookingDetail);
+  const reduxBooking = bookingsList.find((b) => b.id === initial?.id)
+    || (selectedDetail?.id === initial?.id ? selectedDetail : null);
+  const booking = reduxBooking || initial;
+
+  const availableGuides = useSelector((state) => selectExperienceAvailableGuides(state, booking?.id));
+  const guidesLoading = useSelector((state) => selectExperienceGuidesLoading(state, booking?.id));
+  const guidesError = useSelector((state) => selectExperienceGuidesError(state, booking?.id));
 
   const [picking, setPicking] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const loadGuidesFromRedux = useCallback(async (id) => {
+    const res = await dispatch(fetchExperienceAvailableGuides(id)).unwrap();
+    return res?.guides || [];
+  }, [dispatch]);
 
   const status = booking.guideStatus;
   const upcoming = String(booking.date).slice(0, 10) >= new Date().toISOString().slice(0, 10);
@@ -38,7 +52,6 @@ export default function ExperienceGuidePanel({ booking: initial, askFirst = fals
     setError('');
     try {
       await dispatch(cancelGuideForExperienceBooking(booking.id)).unwrap();
-      setLocalPatch({ guideId: undefined, guideName: undefined, guideStatus: undefined, guideFee: undefined, guidePricePerPerson: undefined, guide: undefined });
       await onChanged?.();
     } catch (err) {
       setError((typeof err === 'string' ? err : err?.message) || 'Could not cancel the request.');
@@ -104,13 +117,15 @@ export default function ExperienceGuidePanel({ booking: initial, askFirst = fals
       {picking ? (
         <GuidePicker
           entityId={booking.id}
-          list={listExperienceGuides}
+          list={loadGuidesFromRedux}
+          guidesData={availableGuides}
+          loadingData={guidesLoading}
+          loadErrorData={guidesError}
           send={handleRequestGuide}
           feeLabel="Guide fee"
           onClose={() => setPicking(false)}
-          onRequested={async (updated) => {
+          onRequested={async () => {
             setPicking(false);
-            if (updated) setLocalPatch(updated);
             await onChanged?.();
           }}
         />

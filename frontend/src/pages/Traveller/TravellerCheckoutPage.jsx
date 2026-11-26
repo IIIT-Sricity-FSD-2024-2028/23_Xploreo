@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Link, useInRouterContext, useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.png';
@@ -11,21 +11,29 @@ import {
   DEFAULT_PAYMENT_METHODS,
 } from '../../components/checkout/index.js';
 import { selectAuthUser } from '../../features/authSlice.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '../../features/browseSlice.js';
 import {
   DEFAULT_DEMO_ITEM,
   initCheckoutSession,
   processCheckoutPayment,
+  resetCheckoutState,
   selectCheckoutState,
   setCheckoutError,
   setCheckoutStep,
   setGuestCount,
   setPaymentMethod,
+  setRoomCount,
   setSimulatedOutcome,
   setTravellerDetails,
 } from '../../features/checkoutSlice.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
-import { formatCurrency, formatDate, validateBookingDates } from '../../utils/checkoutUtils.js';
-import { getSavedUser } from '../../services/api.js';
+import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
+import {
+  getTodayIsoDate,
+  validateExperienceBooking,
+  validateHotelRoomBooking,
+  validatePackageBooking,
+} from '../../utils/bookingValidationUtils.js';
 import ExperienceGuidePanel from './ExperienceGuidePanel.jsx';
 import './travellerCheckout.css';
 
@@ -45,6 +53,7 @@ function TravellerCheckoutCore({
   const dispatch = useDispatch();
   const authUser = useSelector(selectAuthUser);
   const checkoutState = useSelector(selectCheckoutState);
+  const browseDetail = useSelector(selectBrowseDetail);
 
   const safeNavigate = (targetPath) => {
     if (navigate) {
@@ -55,24 +64,54 @@ function TravellerCheckoutCore({
   };
 
   const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
-  const savedUser = typeof getSavedUser === 'function' ? getSavedUser() : null;
-  const effectiveUser = user || activeAuthUser || savedUser || null;
+  const effectiveUser = user || activeAuthUser || null;
 
   const routeOrPropItem = location?.state?.item || initialItem || null;
   const reduxItem = checkoutState.selectedItem;
   const selectedItem = routeOrPropItem || reduxItem || DEFAULT_DEMO_ITEM;
+  const pricingType = (selectedItem.type || selectedItem.bookingType || 'hotel').toLowerCase();
+  const isStay = pricingType === 'hotel';
+  const isExperience = pricingType === 'experience';
+  const browseDetailType = pricingType === 'plan' || pricingType === 'package' || pricingType === 'trip'
+    ? 'package'
+    : pricingType;
+  const expectedBrowseKey = selectedItem?.id ? `${browseDetailType}:${selectedItem.id}` : null;
+  const hasLiveDetail = Boolean(expectedBrowseKey && browseDetail?.key === expectedBrowseKey && browseDetail?.item);
+  const liveItem = hasLiveDetail ? browseDetail.item : null;
+  const liveRooms = hasLiveDetail && Array.isArray(browseDetail.rooms) ? browseDetail.rooms : [];
+  const matchedLiveRoom = isStay && liveRooms.length > 0
+    ? liveRooms.find(
+        (r) =>
+          (selectedItem.roomId && r.id === selectedItem.roomId) ||
+          (selectedItem.roomType && String(r.type || '').trim().toLowerCase() === String(selectedItem.roomType).trim().toLowerCase()),
+      ) || null
+    : null;
+
+  const effectiveRoom = isStay
+    ? matchedLiveRoom || {
+        id: selectedItem.roomId,
+        type: selectedItem.roomType || 'Standard Room',
+        maxOccupancy: Number(selectedItem.maxOccupancy ?? selectedItem.item?.maxOccupancy ?? 0),
+        availableRooms: Number(
+          selectedItem.availableRooms ?? liveItem?.availableRooms ?? selectedItem.item?.availableRooms ?? 10,
+        ),
+        status: selectedItem.status || 'active',
+      }
+    : null;
+  const maxSelectableRooms = isStay
+    ? Math.max(1, Number(effectiveRoom?.availableRooms ?? 1))
+    : 1;
 
   // Guest count limits
   const minGuests = 1;
-  const maxGuests = Math.max(
-    1,
-    Number(
-      selectedItem.capacity ||
-      selectedItem.maxGuests ||
-      selectedItem.availableSeats ||
-      20
-    )
-  );
+  const maxGuests = isStay && Number(effectiveRoom?.maxOccupancy) > 0
+    ? Math.max(
+        Number(effectiveRoom.maxOccupancy) * maxSelectableRooms,
+        Number(selectedItem.guestCount ?? selectedItem.guests ?? 2) || 2,
+      )
+    : isExperience && Number(liveItem?.capacity ?? selectedItem.capacity) > 0
+      ? Math.max(1, Number(liveItem?.capacity ?? selectedItem.capacity))
+      : Math.max(1, Number(selectedItem.capacity || selectedItem.maxGuests || selectedItem.availableSeats || 20));
 
   const initialGuestCount = Math.max(
     minGuests,
@@ -126,6 +165,29 @@ function TravellerCheckoutCore({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, sourceKey]);
 
+  useEffect(() => {
+    const id = selectedItem?.id;
+    if (!id || String(id).startsWith('demo-') || !inRouter) return;
+    if (browseDetail?.key !== expectedBrowseKey && !browseDetail?.loading) {
+      dispatch(fetchBrowseItemDetail({ type: browseDetailType, id }));
+    }
+  }, [dispatch, selectedItem?.id, browseDetailType, expectedBrowseKey, browseDetail?.key, browseDetail?.loading, inRouter]);
+
+  const shouldResetOnUnmountRef = useRef(false);
+  useEffect(() => {
+    shouldResetOnUnmountRef.current = Boolean(
+      checkoutState.hasPersisted || checkoutState.currentStepIndex === 3,
+    );
+  }, [checkoutState.hasPersisted, checkoutState.currentStepIndex]);
+
+  useEffect(() => {
+    return () => {
+      if (shouldResetOnUnmountRef.current) {
+        dispatch(resetCheckoutState());
+      }
+    };
+  }, [dispatch]);
+
   const isSessionSynced = checkoutState.sourceKey === sourceKey;
   const currentStepIndex = isSessionSynced ? checkoutState.currentStepIndex : 0;
   const travellerDetails = isSessionSynced ? checkoutState.travellerDetails : defaultTravellerDetails;
@@ -148,13 +210,21 @@ function TravellerCheckoutCore({
     }
   };
 
+  const handleRoomCountChange = (newRoomCount) => {
+    const parsed = Number(newRoomCount);
+    if (!isNaN(parsed)) {
+      dispatch(setRoomCount(Math.max(1, Math.min(maxSelectableRooms, parsed))));
+    }
+  };
+
   // Pricing calculations: dynamic base fare and guest-dependent taxes/fees
   const basePrice = Number(
-    selectedItem.pricePerNight ?? selectedItem.price ?? selectedItem.basePrice ?? 5000
+    (isStay ? effectiveRoom?.pricePerNight : undefined) ??
+      selectedItem.pricePerNight ??
+      selectedItem.price ??
+      selectedItem.basePrice ??
+      5000,
   );
-  const pricingType = (selectedItem.type || selectedItem.bookingType || 'hotel').toLowerCase();
-  const isStay = pricingType === 'hotel';
-  const isExperience = pricingType === 'experience';
   const TAX_RATE = 0.12; // same rate the server applies, so what is paid is what is recorded
   // A stay is charged per night per room; an experience (and anything else) per guest.
   const stayNights = isStay && selectedItem.checkIn && selectedItem.checkOut
@@ -182,7 +252,40 @@ function TravellerCheckoutCore({
   const startDate = selectedItem.checkIn || selectedItem.date;
   const endDate = selectedItem.checkOut;
   const isSingleDay = itemType === 'experience' || !endDate || endDate === startDate;
-  const dateError = validateBookingDates({ type: itemType, checkIn: startDate, checkOut: endDate });
+  const todayIso = getTodayIsoDate();
+  const validationResult = (() => {
+    if (String(selectedItem?.id || '').startsWith('demo-')) {
+      return { valid: true, error: '' };
+    }
+    if (isStay) {
+      return validateHotelRoomBooking({
+        hotel: liveItem || selectedItem.item || selectedItem,
+        room: effectiveRoom,
+        roomsCount: roomCount,
+        guestsCount: guestCount,
+        checkIn: startDate,
+        checkOut: endDate,
+        today: todayIso,
+      });
+    }
+    if (isExperience) {
+      return validateExperienceBooking({
+        experience: liveItem || selectedItem.item || selectedItem,
+        slot: selectedItem.selectedSlot,
+        date: startDate,
+        participants: guestCount,
+        today: todayIso,
+      });
+    }
+    return validatePackageBooking({
+      plan: liveItem || selectedItem.item || selectedItem,
+      guestsCount: guestCount,
+      checkIn: startDate,
+      checkOut: endDate,
+      today: todayIso,
+    });
+  })();
+  const dateError = validationResult.valid ? '' : validationResult.error;
 
   const cardBooking = {
     title: selectedItem.title || selectedItem.name || 'Demo Reservation',
@@ -209,6 +312,11 @@ function TravellerCheckoutCore({
 
   // Step 1: Submit traveller details
   const handleDetailsSubmit = (formData) => {
+    if (dateError) {
+      dispatch(setCheckoutError(dateError));
+      dispatch(setCheckoutStep(0));
+      return;
+    }
     dispatch(setTravellerDetails(formData));
     dispatch(setCheckoutStep(2)); // Advance to Payment step
   };
@@ -438,6 +546,51 @@ function TravellerCheckoutCore({
                           </button>
                         </div>
                       </div>
+                      {isStay && (
+                        <div className="trav-review-schedule-item trav-review-guest-picker">
+                          <label htmlFor="checkout-rooms-select" className="trav-review-schedule-label">
+                            Rooms ({effectiveRoom?.type || 'Selected'})
+                          </label>
+                          <div className="trav-guest-selector-wrap">
+                            <button
+                              type="button"
+                              className="trav-guest-step-btn"
+                              onClick={() => handleRoomCountChange(roomCount - 1)}
+                              disabled={roomCount <= 1}
+                              aria-label="Decrease room count"
+                              data-testid="room-decrement-btn"
+                            >
+                              −
+                            </button>
+                            <div className="trav-guest-select-container">
+                              <select
+                                id="checkout-rooms-select"
+                                className="trav-guest-select"
+                                value={roomCount}
+                                onChange={(e) => handleRoomCountChange(Number(e.target.value))}
+                                aria-label="Select room count"
+                                data-testid="checkout-room-select"
+                              >
+                                {Array.from({ length: maxSelectableRooms }, (_, i) => i + 1).map((num) => (
+                                  <option key={num} value={num}>
+                                    {num} {num === 1 ? 'Room' : 'Rooms'}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="trav-guest-step-btn"
+                              onClick={() => handleRoomCountChange(roomCount + 1)}
+                              disabled={roomCount >= maxSelectableRooms}
+                              aria-label="Increase room count"
+                              data-testid="room-increment-btn"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="trav-review-inclusions-card">
@@ -472,8 +625,8 @@ function TravellerCheckoutCore({
                   </div>
 
                   {dateError ? (
-                    <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>
-                      ⚠️ {dateError} Go back and pick valid dates.
+                    <div role="alert" data-testid="checkout-validation-error" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                      ⚠️ {dateError}
                     </div>
                   ) : null}
 

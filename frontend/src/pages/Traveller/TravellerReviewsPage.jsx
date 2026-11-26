@@ -7,10 +7,13 @@ import ReviewSubmissionForm from './ReviewSubmissionForm.jsx';
 import { selectAuthUser } from '../../features/authSlice.js';
 import {
   addDemoReview,
+  clearReviewSubmitState,
   fetchReviews,
   selectReviewsError,
   selectReviewsList,
   selectReviewsLoading,
+  selectReviewSubmitError,
+  selectReviewSubmitting,
   submitReview,
 } from '../../features/reviewsSlice.js';
 import { fetchTravellerTrips, selectTripsList } from '../../features/tripsSlice.js';
@@ -47,6 +50,8 @@ function TravellerReviewsCore({
   const liveReviews = useSelector(selectReviewsList);
   const liveLoading = useSelector(selectReviewsLoading);
   const liveError = useSelector(selectReviewsError);
+  const reduxSubmitting = useSelector(selectReviewSubmitting);
+  const reduxSubmitError = useSelector(selectReviewSubmitError);
   const travellerTrips = useSelector(selectTripsList);
 
   const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
@@ -82,9 +87,18 @@ function TravellerReviewsCore({
   const [dismissedQueryTripId, setDismissedQueryTripId] = useState(null);
   const isModalOpen = manualModalOpen || (Boolean(queryTripId) && dismissedQueryTripId !== queryTripId);
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [localSubmitting, setLocalSubmitting] = useState(false);
+  const [localError, setLocalError] = useState(null);
   const [submitSuccessMsg, setSubmitSuccessMsg] = useState(null);
+
+  const isSubmitting = onSubmitReview ? localSubmitting : reduxSubmitting;
+  const submitError = localError || (onSubmitReview ? null : reduxSubmitError);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearReviewSubmitState());
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     if (isPreviewMode) return;
@@ -148,21 +162,23 @@ function TravellerReviewsCore({
   }, [queryTripId]);
 
   const handleOpenModal = () => {
-    setSubmitError(null);
+    setLocalError(null);
     setSubmitSuccessMsg(null);
+    dispatch(clearReviewSubmitState());
     setManualModalOpen(true);
   };
 
   const handleCloseModal = () => {
     if (!isSubmitting) {
       closeReviewModal();
-      setSubmitError(null);
+      setLocalError(null);
+      dispatch(clearReviewSubmitState());
     }
   };
 
   const handleFormSubmit = async (formData) => {
-    setSubmitError(null);
-    setIsSubmitting(true);
+    setLocalError(null);
+    dispatch(clearReviewSubmitState());
 
     try {
       const targetTripId = formData.tripId || queryTripId || eligibleTrips[0]?.id;
@@ -180,7 +196,9 @@ function TravellerReviewsCore({
       }
 
       if (onSubmitReview) {
+        setLocalSubmitting(true);
         await onSubmitReview({ ...formData, tripId: targetTripId });
+        setLocalSubmitting(false);
       } else if (formData.isDemo || isPreviewMode) {
         // Explicit Demo Mode / Mock Review Submission
         const newDemoReview = {
@@ -218,17 +236,21 @@ function TravellerReviewsCore({
         await dispatch(fetchReviews());
         setSubmitSuccessMsg('Thank you! Your review has been submitted successfully.');
       }
-      setIsSubmitting(false);
       // Close modal shortly after success message
       setTimeout(() => {
         closeReviewModal();
         setSubmitSuccessMsg(null);
+        dispatch(clearReviewSubmitState());
       }, 1500);
     } catch (err) {
-      setIsSubmitting(false);
-      setSubmitError(
-        err?.message || 'Failed to submit your review. Please try again.'
-      );
+      if (onSubmitReview) {
+        setLocalSubmitting(false);
+      }
+      if (!onSubmitReview && !reduxSubmitError && err?.message) {
+        setLocalError(err.message || 'Failed to submit your review. Please try again.');
+      } else if (onSubmitReview) {
+        setLocalError(err?.message || 'Failed to submit your review. Please try again.');
+      }
     }
   };
 

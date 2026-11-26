@@ -22,6 +22,13 @@ export function createTrip(payload) {
   });
 }
 
+export function updateTrip(tripId, patch) {
+  return apiRequest(`/trips/${enc(tripId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function listAvailableGuides(tripId) {
   const res = await apiRequest(`/trips/${enc(tripId)}/available-guides`);
   return Array.isArray(res) ? res : [];

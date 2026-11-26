@@ -4,7 +4,6 @@ import { useInRouterContext, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import { reconcileTripTracking } from '../../utils/tripTrackingUtils.js';
-import { getSavedUser } from '../../services/api.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import {
   fetchReviews,
@@ -12,6 +11,9 @@ import {
   selectReviewsList,
 } from '../../features/reviewsSlice.js';
 import {
+  clearTripActionError,
+  clearTripCancellationResult,
+  clearTripDetailError,
   fetchTravellerTrips,
   fetchTripDetail,
   pollTravellerTrips,
@@ -132,14 +134,11 @@ function TravellerTripsCore({
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Resolve effective traveller ID from props or saved session
+  // Resolve effective traveller ID from props or Redux auth state
   const effectiveTravellerId = useMemo(() => {
     if (currentTravellerId) return String(currentTravellerId).trim();
     if (user?.userId) return String(user.userId).trim();
     if (user?.id) return String(user.id).trim();
-    const saved = typeof getSavedUser === 'function' ? getSavedUser() : null;
-    if (saved?.userId) return String(saved.userId).trim();
-    if (saved?.id) return String(saved.id).trim();
     return '';
   }, [currentTravellerId, user]);
 
@@ -156,12 +155,18 @@ function TravellerTripsCore({
     }
   }, [propTrips, useFixtures, fetchLiveTrips]);
 
-  // Reset selected trip detail when entering/leaving via router or returning from another view
+  // Reset selected trip detail & transient action/cancellation state on route transition
   useEffect(() => {
     if (isControlledProps) return undefined;
     dispatch(setSelectedTripId(null));
+    dispatch(clearTripActionError());
+    dispatch(clearTripDetailError());
+    dispatch(clearTripCancellationResult());
     return () => {
       dispatch(setSelectedTripId(null));
+      dispatch(clearTripActionError());
+      dispatch(clearTripDetailError());
+      dispatch(clearTripCancellationResult());
     };
   }, [dispatch, isControlledProps, locationKey]);
 

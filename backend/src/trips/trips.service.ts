@@ -64,14 +64,16 @@ export class TripsService {
     let plan = this.plansRepository.findById(dto.planId);
     if (!plan) {
       const allPlans = this.plansRepository.findAll().data;
-      plan =
-        allPlans.find(
-          (p) =>
-            p.id === dto.planId ||
-            p.destination.toLowerCase() === dto.planId.toLowerCase(),
-        ) || allPlans[0];
+      plan = allPlans.find(
+        (p) =>
+          p.id === dto.planId ||
+          p.destination.toLowerCase() === dto.planId.toLowerCase(),
+      );
     }
     if (!plan) throw new NotFoundException(`Plan ${dto.planId} not found`);
+    if (dto.id && this.tripsRepository.findById(dto.id)) {
+      throw new BadRequestException(`Trip ${dto.id} already exists`);
+    }
 
     const planStatus = (plan.status || 'available').toLowerCase();
     if (planStatus === 'sold_out') {
@@ -96,14 +98,27 @@ export class TripsService {
       }
     }
 
-    if (!tripDateRange({ itinerary: (dto.itinerary || plan.itinerary) as StructuredItinerary }).start) {
+    const itinerary = (dto.itinerary || plan.itinerary) as StructuredItinerary;
+    const dateRange = tripDateRange({ itinerary });
+    if (!dateRange.start) {
       throw new BadRequestException('A trip needs a start date before it can be booked');
+    }
+    const startMs = Date.parse(dateRange.start);
+    const todayUtc = new Date().toISOString().slice(0, 10);
+    const todayStartMs = Date.parse(`${todayUtc}T00:00:00.000Z`);
+    if (!Number.isFinite(startMs) || startMs < todayStartMs) {
+      throw new BadRequestException('Trip start date cannot be in the past');
+    }
+    if (dateRange.end) {
+      const endMs = Date.parse(dateRange.end);
+      if (!Number.isFinite(endMs) || endMs < startMs) {
+        throw new BadRequestException('Trip end date must be on or after start date');
+      }
     }
 
     const effectiveTravellerId =
       actor?.role === 'traveller' && actor.userId ? actor.userId : dto.travellerId;
-
-    const itinerary = dto.itinerary || plan.itinerary;
+    const travellersCount = Math.max(1, Number(dto.travellers ?? 1));
 
     const trip = this.tripsRepository.create({
       id: dto.id,
@@ -111,7 +126,7 @@ export class TripsService {
       planId: plan.id,
       status: TripStatus.CONFIRMED,
       itinerary,
-      totalAmount: this.calculateTotalAmount(itinerary, plan.pricePerPerson),
+      totalAmount: this.calculateTotalAmount(itinerary, plan.pricePerPerson, travellersCount),
       currentDay: 1,
       currentStop: 'Not started',
       currentLocation: itinerary.day1?.transport?.pickupLocation || plan.originCity,
@@ -323,6 +338,9 @@ export class TripsService {
     ) {
       throw new ForbiddenException('Use the guide request flow to choose a guide');
     }
+    if (dto.guideId && dto.guideId !== trip.guideId) {
+      this.assertGuideAvailableForTrip(dto.guideId, trip);
+    }
 
     const itinerary = dto.itinerary
       ? mergeStructuredItineraryPatch(trip.itinerary, dto.itinerary)
@@ -341,12 +359,30 @@ export class TripsService {
 
   assignGuide(tripId: string, guideId: string): Trip {
     const trip = this.findOne(tripId);
+    this.assertGuideAvailableForTrip(guideId, trip);
     const updated = this.tripsRepository.update(trip.id, {
       guideId,
       status: TripStatus.CONFIRMED,
     });
     if (!updated) throw new NotFoundException(`Trip ${tripId} not found`);
     return updated;
+  }
+
+  private assertGuideAvailableForTrip(guideId: string, trip: Trip): void {
+    const guide = this.guideRepository.findById(guideId);
+    if (!guide) {
+      throw new NotFoundException(`Guide ${guideId} not found`);
+    }
+    const conflicts = findGuideConflicts(
+      trip,
+      guideId,
+      this.tripsRepository.findAll(),
+    );
+    if (conflicts.length > 0) {
+      throw new BadRequestException(
+        `Guide ${guideId} already has a conflicting assignment during ${trip.id}`,
+      );
+    }
   }
 
   updateTracking(
@@ -447,7 +483,11 @@ export class TripsService {
     return { message: `Trip ${id} deleted` };
   }
 
-  private calculateTotalAmount(itinerary: StructuredItinerary, basePrice: number): number {
+  private calculateTotalAmount(
+    itinerary: StructuredItinerary,
+    basePrice: number,
+    travellers = 1,
+  ): number {
     const flightAmount = itinerary.day1.flight ? 12000 : 0;
     const hotelAmount = itinerary.day1.hotel ? 18000 : 0;
     const experienceAmount = itinerary.days.reduce(
@@ -455,7 +495,8 @@ export class TripsService {
       0,
     );
 
-    return Math.max(basePrice, flightAmount + hotelAmount + experienceAmount);
+    const perPerson = Math.max(basePrice, flightAmount + hotelAmount + experienceAmount);
+    return perPerson * Math.max(1, Number(travellers) || 1);
   }
 
   cancel(

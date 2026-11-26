@@ -142,7 +142,12 @@ export class HotelsService {
         `Cannot set totalRooms below ${occupiedRooms} (currently occupied).`,
       );
     }
-    const updated = this.roomTypesRepository.update(roomId, dto as any);
+    const updated = this.roomTypesRepository.update(roomId, {
+      ...(dto as any),
+      ...(dto.totalRooms !== undefined
+        ? { availableRooms: Math.max(0, dto.totalRooms - occupiedRooms) }
+        : {}),
+    });
     if (!updated) throw new NotFoundException(`Room type ${roomId} not found`);
     return updated;
   }
@@ -183,9 +188,10 @@ export class HotelsService {
   }
 
   findRoomByTypeName(hotelId: string, type: string) {
+    const normalized = String(type ?? '').trim().toLowerCase();
     return this.roomTypesRepository
       .findByHotelId(hotelId)
-      .find((r) => r.type.toLowerCase() === type.toLowerCase());
+      .find((r) => r.type.trim().toLowerCase() === normalized);
   }
 
   setRating(hotelId: string, rating: number, reviewCount: number) {

@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { selectAuthUser } from '@/features/authSlice.js';
 import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
 import { createExperienceSlotBooking } from '@/features/bookingsSlice.js';
+import { getTodayIsoDate, validateExperienceBooking } from '@/utils/bookingValidationUtils.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
@@ -54,11 +55,23 @@ export default function ExperienceDetailPage() {
   const handleReserveExperience = async (e) => {
     e.preventDefault();
     setBookingError('');
+    setBookingMessage('');
     if (!effectiveSelectedSlotId) {
-      setBookingMessage('Please select an available session slot before booking.');
+      setBookingError('Please select an available session slot before booking.');
       return;
     }
     const slot = (experience.slots || []).find((s) => s.id === effectiveSelectedSlotId);
+    const expValidation = validateExperienceBooking({
+      experience,
+      slot,
+      date: slot?.date,
+      participants,
+      today: getTodayIsoDate(),
+    });
+    if (!expValidation.valid) {
+      setBookingError(expValidation.error);
+      return;
+    }
     setBooking(true);
     try {
       await dispatch(createExperienceSlotBooking({
@@ -180,9 +193,20 @@ export default function ExperienceDetailPage() {
   const expImage = experience.image || 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80';
   const slots = experience.slots || [];
   const selectedSlot = slots.find((s) => s.id === effectiveSelectedSlotId);
-  const remainingSpots = selectedSlot ? (selectedSlot.capacity - (selectedSlot.booked || 0)) : (experience.capacity || 10);
-  const isSelectedSlotFull = selectedSlot ? remainingSpots <= 0 : false;
-  const totalPrice = (experience.price || 1200) * Number(participants);
+  const expValidation = validateExperienceBooking({
+    experience,
+    slot: selectedSlot,
+    date: selectedSlot?.date,
+    participants,
+    today: getTodayIsoDate(),
+  });
+  const remainingSpots = expValidation.details?.remainingSpots ?? Math.max(0, experience.capacity || 0);
+  const isSelectedSlotFull = selectedSlot ? (selectedSlot.available === false || remainingSpots <= 0 || String(selectedSlot.date).slice(0, 10) < getTodayIsoDate()) : false;
+  const maxSelectableParticipants = Math.max(1, remainingSpots || Number(experience.capacity) || 1);
+  const unitPrice = experience.price || 1200;
+  const subtotalPrice = unitPrice * Number(participants);
+  const taxesPrice = Math.round(subtotalPrice * 0.12);
+  const totalPrice = subtotalPrice + taxesPrice;
 
   return (
     <div className="trav-page-container">
@@ -383,6 +407,12 @@ export default function ExperienceDetailPage() {
               </div>
             )}
 
+            {!bookingError && !expValidation.valid && !bookedSuccess && (
+              <div className="trav-validation-alert" role="alert" style={{ marginBottom: '16px' }}>
+                {expValidation.error}
+              </div>
+            )}
+
             <form onSubmit={handleReserveExperience}>
               <div className="trav-form-group">
                 <label className="trav-form-label" htmlFor="trav-participants">Participants / Guests</label>
@@ -392,7 +422,7 @@ export default function ExperienceDetailPage() {
                   value={participants}
                   onChange={(e) => setParticipants(Number(e.target.value))}
                 >
-                  {[1, 2, 3, 4, 5, 6].map((num) => (
+                  {Array.from({ length: maxSelectableParticipants }, (_, i) => i + 1).map((num) => (
                     <option key={num} value={num} disabled={selectedSlot && num > remainingSpots}>
                       {num} {num === 1 ? 'Participant' : 'Participants'}
                     </option>
@@ -406,15 +436,19 @@ export default function ExperienceDetailPage() {
                     Selected Session:
                   </div>
                   <strong style={{ fontSize: '0.95rem' }}>
-                    📅 {selectedSlot.date} at {selectedSlot.time || '10:00 AM'}
+                    📅 {selectedSlot.date} at {selectedSlot.time || '10:00 AM'} ({remainingSpots} spots left)
                   </strong>
                 </div>
               )}
 
               <div className="trav-price-breakdown">
                 <div className="trav-breakdown-row">
-                  <span>₹{(experience.price || 1200).toLocaleString('en-IN')} × {participants} {participants === 1 ? 'person' : 'people'}</span>
-                  <span>₹{totalPrice.toLocaleString('en-IN')}</span>
+                  <span>₹{unitPrice.toLocaleString('en-IN')} × {participants} {participants === 1 ? 'person' : 'people'}</span>
+                  <span>₹{subtotalPrice.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="trav-breakdown-row">
+                  <span>Estimated Taxes & Fees (12%)</span>
+                  <span>₹{taxesPrice.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="trav-breakdown-total">
                   <span>Total Amount</span>
@@ -424,7 +458,7 @@ export default function ExperienceDetailPage() {
 
               <button
                 type="submit"
-                disabled={isSelectedSlotFull || slots.length === 0 || bookedSuccess || booking}
+                disabled={isSelectedSlotFull || !expValidation.valid || slots.length === 0 || bookedSuccess || booking}
                 className="trav-btn trav-btn-primary"
                 style={{ width: '100%', marginTop: '20px', padding: '14px' }}
               >

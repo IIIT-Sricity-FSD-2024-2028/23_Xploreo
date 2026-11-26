@@ -26,6 +26,9 @@ import { TripsController } from '../trips/trips.controller';
 import { NotificationsController } from '../notifications/notifications.controller';
 
 describe('Booking Cancellation & Honest Refund Processing Specification', () => {
+  const futureIsoDate = (daysAhead: number) =>
+    new Date(Date.now() + daysAhead * 24 * 3600 * 1000).toISOString().slice(0, 10);
+
   let bookingsRepo: BookingsRepository;
   let hotelsRepo: HotelsRepository;
   let roomsRepo: RoomTypesRepository;
@@ -189,8 +192,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -214,8 +217,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Victim User',
         email: 'victim@example.com',
         phone: '9000000000',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -236,8 +239,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -260,8 +263,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -351,9 +354,30 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
   });
 
   describe('3. Trip Booking Cancellation & Refunds', () => {
+    const createConfirmedFutureTrip = () =>
+      tripsRepo.create({
+        travellerId: 'T001',
+        planId: 'plan-1',
+        guideId: 'G001',
+        status: TripStatus.CONFIRMED,
+        totalAmount: 47000,
+        itinerary: {
+          day1: {
+            hotel: {
+              id: 'ht-test-1',
+              hotelId: 'hotel-hp001-2',
+              name: 'Xploreo Backwater Resort',
+              checkInDate: futureIsoDate(10),
+              checkOutDate: futureIsoDate(15),
+              roomType: 'Backwater Villa',
+              status: 'confirmed',
+            },
+          },
+        },
+      });
+
     it('should cancel a trip booking, evaluate 48h policy, and process refund', () => {
-      const allTrips = tripsRepo.findAll();
-      const trip = allTrips[0]; // trip-kerala-1 (status: confirmed)
+      const trip = createConfirmedFutureTrip();
       expect(trip).toBeDefined();
 
       const cancelled = tripsService.cancel(
@@ -374,8 +398,7 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
     });
 
     it('should reject repeated cancellation of an already cancelled trip', () => {
-      const allTrips = tripsRepo.findAll();
-      const trip = allTrips[0];
+      const trip = createConfirmedFutureTrip();
 
       if (trip.status !== TripStatus.CANCELLED) {
         tripsService.cancel(trip.id, { userId: trip.travellerId, role: 'traveller' });
@@ -395,7 +418,7 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Legit User',
         email: 'legit@example.com',
         phone: '9123456780',
-        date: '2026-11-20',
+        date: futureIsoDate(10),
         participants: 2,
         totalAmount: 2000,
       });
@@ -412,7 +435,7 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Legit User',
         email: 'legit@example.com',
         phone: '9123456780',
-        date: '2026-11-20',
+        date: futureIsoDate(10),
         participants: 2,
         totalAmount: 2000,
       });
@@ -429,8 +452,14 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
     });
 
     it('should reject unauthorized cancellation of another traveller trip', () => {
-      const allTrips = tripsRepo.findAll();
-      const trip = allTrips[0];
+      const trip = tripsRepo.create({
+        travellerId: 'T001',
+        planId: 'plan-1',
+        guideId: 'G001',
+        status: TripStatus.CONFIRMED,
+        totalAmount: 47000,
+        itinerary: { day1: { hotel: { checkInDate: futureIsoDate(10), checkOutDate: futureIsoDate(15) } } },
+      });
 
       expect(() =>
         tripsService.cancel(trip.id, { userId: 'ATTACKER_USER', role: 'traveller' }),
@@ -438,8 +467,14 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
     });
 
     it('should reject unauthorized refund retry of another traveller trip', () => {
-      const allTrips = tripsRepo.findAll();
-      const trip = allTrips[0];
+      const trip = tripsRepo.create({
+        travellerId: 'T001',
+        planId: 'plan-1',
+        guideId: 'G001',
+        status: TripStatus.CONFIRMED,
+        totalAmount: 47000,
+        itinerary: { day1: { hotel: { checkInDate: futureIsoDate(10), checkOutDate: futureIsoDate(15) } } },
+      });
 
       // Owner cancels with failure
       tripsService.cancel(
@@ -476,8 +511,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -512,8 +547,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,
@@ -537,7 +572,7 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        date: '2026-11-20',
+        date: futureIsoDate(10),
         participants: 2,
         totalAmount: 2000,
       });
@@ -552,8 +587,14 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
     });
 
     it('should successfully execute TripsController endpoints', () => {
-      const allTrips = tripsRepo.findAll();
-      const trip = allTrips[0];
+      const trip = tripsRepo.create({
+        travellerId: 'T001',
+        planId: 'plan-1',
+        guideId: 'G001',
+        status: TripStatus.CONFIRMED,
+        totalAmount: 47000,
+        itinerary: { day1: { hotel: { checkInDate: futureIsoDate(10), checkOutDate: futureIsoDate(15) } } },
+      });
       const reqMock = { user: { userId: trip.travellerId, role: Role.TRAVELLER } };
 
       const res = tripsController.cancel(trip.id, reqMock, { simulatedOutcome: 'FAILURE' });
@@ -596,8 +637,8 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         guestName: 'Anjali Sharma',
         email: 'anjali@xploreo.com',
         phone: '9123456780',
-        checkIn: '2026-11-20',
-        checkOut: '2026-11-23',
+        checkIn: futureIsoDate(10),
+        checkOut: futureIsoDate(13),
         guests: 1,
         roomType: 'Standard',
         rooms: 1,

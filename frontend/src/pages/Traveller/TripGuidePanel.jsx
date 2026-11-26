@@ -1,7 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { listAvailableGuides } from '../../services/tripGuides.api.js';
-import { cancelGuideForTrip, requestGuideForTrip } from '../../features/tripsSlice.js';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  cancelGuideForTrip,
+  fetchTripAvailableGuides,
+  requestGuideForTrip,
+  selectTripAvailableGuides,
+  selectTripGuidesError,
+  selectTripGuidesLoading,
+} from '../../features/tripsSlice.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
 
@@ -13,9 +19,17 @@ const SELECTABLE = new Set(['confirmed', 'rejected_by_guide']);
  */
 export default function TripGuidePanel({ trip, onChanged }) {
   const dispatch = useDispatch();
+  const availableGuides = useSelector((state) => selectTripAvailableGuides(state, trip.id));
+  const guidesLoading = useSelector((state) => selectTripGuidesLoading(state, trip.id));
+  const guidesError = useSelector((state) => selectTripGuidesError(state, trip.id));
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const loadGuidesFromRedux = useCallback(async (id) => {
+    const res = await dispatch(fetchTripAvailableGuides(id)).unwrap();
+    return res?.guides || [];
+  }, [dispatch]);
 
   const { status, guideId } = trip;
   const declined = status === 'rejected_by_guide';
@@ -100,7 +114,10 @@ export default function TripGuidePanel({ trip, onChanged }) {
       {picking ? (
         <GuidePicker
           entityId={trip.id}
-          list={listAvailableGuides}
+          list={loadGuidesFromRedux}
+          guidesData={availableGuides}
+          loadingData={guidesLoading}
+          loadErrorData={guidesError}
           send={handleRequestGuide}
           onClose={() => setPicking(false)}
           onRequested={async () => {
@@ -113,23 +130,25 @@ export default function TripGuidePanel({ trip, onChanged }) {
   );
 }
 
-// Shared by trips and experience bookings: `list(id)` returns selectable guides, `send(id, guideId)` requests one.
-export function GuidePicker({ entityId, list, send, onClose, onRequested, feeLabel = '' }) {
-  const [guides, setGuides] = useState(null);
-  const [loadError, setLoadError] = useState('');
+// Shared by trips and experience bookings: reads Redux guide state passed down by parents and
+// triggers `list(id)` / `send(id, guideId)` Redux thunks without duplicating guide lists locally.
+export function GuidePicker({
+  entityId,
+  guidesData = null,
+  loadingData = false,
+  loadErrorData = null,
+  list,
+  send,
+  onClose,
+  onRequested,
+  feeLabel = '',
+}) {
   const [sort, setSort] = useState('rating');
   const [requesting, setRequesting] = useState('');
   const [actionError, setActionError] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    list(entityId).then(
-      (found) => !cancelled && setGuides(found),
-      (err) => !cancelled && setLoadError(err.message || 'Could not load guides.'),
-    );
-    return () => {
-      cancelled = true;
-    };
+    list(entityId).catch(() => {});
   }, [entityId, list]);
 
   useEffect(() => {
@@ -139,12 +158,12 @@ export function GuidePicker({ entityId, list, send, onClose, onRequested, feeLab
   }, [onClose, requesting]);
 
   const sorted = useMemo(() => {
-    const list = [...(guides ?? [])];
-    if (sort === 'price') list.sort((a, b) => a.pricePerPerson - b.pricePerPerson || b.rating - a.rating);
-    else if (sort === 'experience') list.sort((a, b) => (b.yearsExp || 0) - (a.yearsExp || 0));
-    else list.sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount);
-    return list;
-  }, [guides, sort]);
+    const guidesList = [...(guidesData ?? [])];
+    if (sort === 'price') guidesList.sort((a, b) => a.pricePerPerson - b.pricePerPerson || b.rating - a.rating);
+    else if (sort === 'experience') guidesList.sort((a, b) => (b.yearsExp || 0) - (a.yearsExp || 0));
+    else guidesList.sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount);
+    return guidesList;
+  }, [guidesData, sort]);
 
   async function onRequest(guide) {
     setRequesting(guide.guideId);
@@ -155,10 +174,12 @@ export function GuidePicker({ entityId, list, send, onClose, onRequested, feeLab
     } catch (err) {
       setActionError(err.message || 'Could not send the request.');
       setRequesting('');
-      // The list may be stale (e.g. the guide just got booked) — reload it.
-      list(entityId).then(setGuides, () => {});
+      // The list may be stale (e.g. the guide just got booked) — refresh Redux guide cache.
+      list(entityId).catch(() => {});
     }
   }
+
+  const isLoading = Boolean(loadingData) || (guidesData == null && !loadErrorData);
 
   return (
     <div className="trav-guide-backdrop" onMouseDown={(e) => e.target === e.currentTarget && !requesting && onClose()}>
@@ -183,9 +204,9 @@ export function GuidePicker({ entityId, list, send, onClose, onRequested, feeLab
         </div>
 
         {actionError ? <div className="trav-guide-note is-error" role="alert">{actionError}</div> : null}
-        {loadError ? <div className="trav-guide-note is-error" role="alert">{loadError}</div> : null}
-        {!guides && !loadError ? <p className="trav-guide-empty">Loading guides…</p> : null}
-        {guides && sorted.length === 0 ? (
+        {loadErrorData ? <div className="trav-guide-note is-error" role="alert">{loadErrorData}</div> : null}
+        {isLoading && !loadErrorData ? <p className="trav-guide-empty">Loading guides…</p> : null}
+        {!isLoading && guidesData && sorted.length === 0 ? (
           <p className="trav-guide-empty">
             No guides are available for your travel dates right now. Please check back later or contact support.
           </p>

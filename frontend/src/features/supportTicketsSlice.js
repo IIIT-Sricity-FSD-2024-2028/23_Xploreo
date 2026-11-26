@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { createTicket, getTickets } from '../services/tickets.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, setAuthUser } from './authSlice.js';
+import { createTicket, getTickets, resolveTicket } from '../services/tickets.api.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 
 const EMPTY_LIST = [];
 
@@ -31,6 +31,18 @@ export const createSupportTicket = createAsyncThunk(
   },
 );
 
+export const resolveSupportTicket = createAsyncThunk(
+  'supportTickets/resolveSupportTicket',
+  async ({ ticketId, resolution = '' }, { rejectWithValue }) => {
+    try {
+      const updated = await resolveTicket(ticketId, resolution);
+      return { ticketId, resolution, updated };
+    } catch (error) {
+      return rejectWithValue(error?.message || 'Failed to resolve support ticket.');
+    }
+  },
+);
+
 const initialState = {
   items: [],
   hasLoaded: false,
@@ -39,6 +51,8 @@ const initialState = {
   creating: false,
   createError: null,
   lastCreatedTicket: null,
+  resolving: false,
+  resolveError: null,
 };
 
 const supportTicketsSlice = createSlice({
@@ -47,6 +61,7 @@ const supportTicketsSlice = createSlice({
   reducers: {
     clearSupportTicketsError(state) {
       state.error = null;
+      state.resolveError = null;
     },
     clearCreateTicketState(state) {
       state.creating = false;
@@ -92,8 +107,32 @@ const supportTicketsSlice = createSlice({
           action.error?.message ||
           'An unexpected error occurred while submitting the ticket.';
       })
+      // Note: PATCH /tickets/:id is restricted to Role.TECHADMIN on the backend and is
+      // intentionally excluded from Traveller UI; lifecycle is still tracked completely here.
+      .addCase(resolveSupportTicket.pending, (state) => {
+        state.resolving = true;
+        state.resolveError = null;
+      })
+      .addCase(resolveSupportTicket.fulfilled, (state, action) => {
+        state.resolving = false;
+        state.resolveError = null;
+        const { ticketId, resolution, updated } = action.payload;
+        state.items = state.items.map((t) =>
+          t.id === ticketId
+            ? {
+              ...t,
+              ...(updated && typeof updated === 'object' ? updated : { status: 'resolved', resolution }),
+            }
+            : t,
+        );
+      })
+      .addCase(resolveSupportTicket.rejected, (state, action) => {
+        state.resolving = false;
+        state.resolveError = action.payload || action.error?.message || 'Failed to resolve support ticket.';
+      })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);
@@ -113,5 +152,7 @@ export const selectSupportTicketsError = (state) => state.supportTickets?.error 
 export const selectSupportTicketCreating = (state) => Boolean(state.supportTickets?.creating);
 export const selectSupportTicketCreateError = (state) => state.supportTickets?.createError || null;
 export const selectLastCreatedTicket = (state) => state.supportTickets?.lastCreatedTicket || null;
+export const selectSupportTicketResolving = (state) => Boolean(state.supportTickets?.resolving);
+export const selectSupportTicketResolveError = (state) => state.supportTickets?.resolveError || null;
 
 export default supportTicketsSlice.reducer;

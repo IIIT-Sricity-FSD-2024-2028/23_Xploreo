@@ -10,7 +10,7 @@ import {
   mapBackendHotel,
   mapBackendPlan,
 } from '../utils/browseUtils.js';
-import { loginUser, logoutSession, logoutUser, registerUser, setAuthUser } from './authSlice.js';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
 
 export const fetchBrowseHotels = createAsyncThunk(
   'browse/fetchHotels',
@@ -177,7 +177,12 @@ const browseSlice = createSlice({
       state.filters = { ...initialFilters, viewMode: state.filters.viewMode };
     },
     setSelectedItemPreview(state, action) {
-      state.detail.key = action.payload.key;
+      const nextKey = action.payload.key;
+      if (state.detail.key !== nextKey) {
+        state.detail.rooms = [];
+        state.detail.reviews = [];
+      }
+      state.detail.key = nextKey;
       state.detail.item = action.payload.item;
       state.detail.error = null;
     },
@@ -264,6 +269,7 @@ const browseSlice = createSlice({
       })
       .addCase(logoutUser, () => initialState)
       .addCase(logoutSession.fulfilled, () => initialState)
+      .addCase(restoreAuthSession.rejected, () => initialState)
       .addCase(setAuthUser, () => initialState)
       .addCase(loginUser.fulfilled, () => initialState)
       .addCase(registerUser.fulfilled, () => initialState);

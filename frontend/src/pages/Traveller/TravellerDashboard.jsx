@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useInRouterContext } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
-import { getSavedUser } from '../../services/api.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import {
   calculateBookingStats,
@@ -167,7 +166,7 @@ function TravellerDashboardCore({
     return reduxReviewStats;
   }, [reviews, useFixtures, reduxReviewStats]);
 
-  // Resolve all valid identifier aliases for the authenticated traveller
+  // Resolve all valid identifier aliases for the authenticated traveller from Redux/props
   const userIdentifiers = useMemo(() => {
     const ids = new Set();
     if (user?.userId) ids.add(String(user.userId).trim().toLowerCase());
@@ -175,12 +174,8 @@ function TravellerDashboardCore({
     if (user?.username) ids.add(String(user.username).trim().toLowerCase());
     if (currentTravellerId) ids.add(String(currentTravellerId).trim().toLowerCase());
 
-    const saved = typeof getSavedUser === 'function' ? getSavedUser() : null;
-    if (saved?.userId) ids.add(String(saved.userId).trim().toLowerCase());
-    if (saved?.id) ids.add(String(saved.id).trim().toLowerCase());
-
-    const userEmail = (user?.email || saved?.email || '').toLowerCase();
-    const userName = (user?.name || saved?.name || '').toLowerCase();
+    const userEmail = (user?.email || '').toLowerCase();
+    const userName = (user?.name || '').toLowerCase();
     if (
       userEmail === 'anjali@xploreo.com' ||
       userName.includes('anjali') ||
@@ -247,39 +242,48 @@ function TravellerDashboardCore({
   const [experienceErrors, setExperienceErrors] = useState({});
 
   const validateHotelSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!hotelDestination || !hotelDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!hotelCheckIn) {
       errors.checkIn = 'Please select a check-in date';
+    } else if (hotelCheckIn < todayStr) {
+      errors.checkIn = 'Check-in date cannot be in the past';
     }
     if (!hotelCheckOut) {
       errors.checkOut = 'Please select a check-out date';
-    } else if (hotelCheckIn && hotelCheckOut < hotelCheckIn) {
+    } else if (hotelCheckIn && hotelCheckOut <= hotelCheckIn) {
       errors.checkOut = 'Check-out date must be after check-in date';
     }
     return errors;
   };
 
   const validatePackageSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!packageDestination || !packageDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!packageDeparture) {
       errors.departure = 'Please select a departure date';
+    } else if (packageDeparture < todayStr) {
+      errors.departure = 'Departure date cannot be in the past';
     }
     return errors;
   };
 
   const validateExperienceSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!experienceDestination || !experienceDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!experienceDate) {
       errors.date = 'Please select an activity date';
+    } else if (experienceDate < todayStr) {
+      errors.date = 'Activity date cannot be in the past';
     }
     return errors;
   };

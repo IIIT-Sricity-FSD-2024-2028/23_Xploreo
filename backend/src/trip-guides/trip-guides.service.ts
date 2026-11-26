@@ -4,7 +4,7 @@ import { GuideRepository } from '../guide/guide.repository';
 import { ReviewsRepository } from '../reviews/reviews.repository';
 import { ReviewTargetType } from '../reviews/dto/create-review.dto';
 import { Trip, TripStatus } from '../trips/entities/trip.entity';
-import { findGuideConflicts, tripDateRange } from '../trips/trip-dates';
+import { findGuideConflicts, tripDateRange, tripEndAt } from '../trips/trip-dates';
 import { TripsRepository } from '../trips/trips.repository';
 import { ExperienceBookingsRepository } from '../experience-bookings/experience-bookings.repository';
 import { ExperienceBookingStatus } from '../experience-bookings/entities/experience-booking.entity';
@@ -77,6 +77,10 @@ export class TripGuidesService {
 
   requestGuide(tripId: string, guideId: string, actor?: Actor): Trip {
     const trip = this.tripsService.findOne(tripId, actor);
+    const endMs = tripEndAt(trip);
+    if (typeof endMs === 'number' && endMs < Date.now()) {
+      throw new BadRequestException('Cannot request a guide for a past trip');
+    }
     const selectable =
       (trip.status === TripStatus.CONFIRMED && !trip.guideId) ||
       trip.status === TripStatus.REJECTED_BY_GUIDE;
@@ -104,7 +108,14 @@ export class TripGuidesService {
       );
     }
     const guide = this.guides.findById(guideId);
-    const guideName = guide ? `${guide.fname} ${guide.lname}`.trim() : guideId;
+    if (!guide) {
+      throw new NotFoundException(`Guide ${guideId} not found`);
+    }
+    const conflicts = findGuideConflicts(trip, guideId, this.tripsRepository.findAll());
+    if (conflicts.length > 0 || this.busyOnExperience(trip, guideId)) {
+      throw new BadRequestException('Selected guide is not available on these trip dates');
+    }
+    const guideName = `${guide.fname} ${guide.lname}`.trim() || guideId;
     return this.tripsService.assignPendingGuide(trip.id, guideId, approval.guidePricePerPerson, guideName);
   }
 
