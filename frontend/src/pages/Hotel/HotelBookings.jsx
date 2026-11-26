@@ -6,6 +6,7 @@ import {
 } from '@/store/hotel/bookingsSlice.js';
 import { useHotelAction, usePartnerBookings } from '@/store/hotel/hooks.js';
 import { useHotelState } from '@/store/hotel/useHotelState.js';
+import { isPastHotelStay } from '@/lib/datetime.js';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
@@ -17,13 +18,6 @@ const TABS = [
   { key: 'CANCELLED', label: 'Cancelled' },
 ];
 
-// Local YYYY-MM-DD for "today"; a stay whose check-out date is before today is over and
-// can no longer be checked in or out.
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-const isPastStay = (b) => String(b.checkOut ?? '').slice(0, 10) < todayStr();
 const EMPTY_IDS = [];
 
 export default function HotelBookings() {
@@ -39,7 +33,9 @@ export default function HotelBookings() {
   const checkOutBooking = useHotelAction(checkOutPartnerBooking);
   const cancelBooking = useHotelAction(cancelPartnerBooking);
   const detail = bookings?.find((record) => record.id === detailId);
-  const confirmCancel = bookings?.find((record) => record.id === confirmCancelId);
+  const confirmCancel = bookings?.find((record) => (
+    record.id === confirmCancelId && record.status === 'CONFIRMED' && !isPastHotelStay(record.checkOut)
+  ));
 
   const counts = useMemo(() => {
     const list = bookings ?? [];
@@ -60,6 +56,11 @@ export default function HotelBookings() {
   }, [bookings, tab, query]);
 
   const act = async (booking, mutate, success) => {
+    if (isPastHotelStay(booking.checkOut)) {
+      setConfirmCancel(null);
+      notify('This stay has already ended.', true);
+      return;
+    }
     setBusyIds((ids) => [...ids, booking.id]);
     try {
       await mutate({ accountId, bookingId: booking.id }).unwrap();
@@ -74,17 +75,17 @@ export default function HotelBookings() {
   };
 
   const actionsFor = (b) => {
+    if (isPastHotelStay(b.checkOut)) return null;
     const busy = busyIds.includes(b.id);
-    const past = isPastStay(b);
     if (b.status === 'CONFIRMED') {
       return (
         <>
-          {past ? null : <button type="button" className="btn-green" disabled={busy} onClick={() => act(b, checkInBooking, `${b.guestName} checked in`)}>Check In</button>}
+          <button type="button" className="btn-green" disabled={busy} onClick={() => act(b, checkInBooking, `${b.guestName} checked in`)}>Check In</button>
           <button type="button" className="btn-cancel" disabled={busy} onClick={() => setConfirmCancel(b.id)}>Cancel</button>
         </>
       );
     }
-    if (b.status === 'CHECKED_IN' && !past) {
+    if (b.status === 'CHECKED_IN') {
       return <button type="button" className="btn-blue" disabled={busy} onClick={() => act(b, checkOutBooking, `${b.guestName} checked out`)}>Check Out</button>;
     }
     return null;

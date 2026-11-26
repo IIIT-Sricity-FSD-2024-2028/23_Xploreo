@@ -20,6 +20,16 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const HOTEL_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+function hotelTodayIso() {
+  const { year, month, day } = Object.fromEntries(
+    HOTEL_DATE_FORMATTER.formatToParts(new Date()).map(({ type, value }) => [type, value]),
+  );
+  return `${year}-${month}-${day}`;
+}
 
 @Injectable()
 export class BookingsService {
@@ -181,6 +191,7 @@ export class BookingsService {
           `Only CONFIRMED bookings can be cancelled by the hotel (current: ${booking.status}).`,
         );
       }
+      this.assertStayNotPast(booking.checkOut, 'cancelled');
     } else if (role === Role.TRAVELLER) {
       if (booking.travellerId !== userId) {
         throw new ForbiddenException('You can only cancel your own bookings.');
@@ -364,16 +375,17 @@ export class BookingsService {
         `Only CHECKED_IN bookings can be checked out (current: ${booking.status}).`,
       );
     }
-    this.assertStayNotPast(booking.checkOut, 'checked out');
-    this.bookingsRepository.setCheckOutDate(id, new Date().toISOString().slice(0, 10));
+    const today = hotelTodayIso();
+    this.assertStayNotPast(booking.checkOut, 'checked out', today);
+    this.bookingsRepository.setCheckOutDate(id, today);
     const updated = this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_OUT);
     this.refreshAvailability(booking.hotelId, booking.roomType);
     return updated;
   }
 
-  /** Check-in / check-out only apply to stays that end today or later. */
-  private assertStayNotPast(checkOut: string, action: string) {
-    if (String(checkOut).slice(0, 10) < new Date().toISOString().slice(0, 10)) {
+  /** Hotel partners can act on stays that end today or later. */
+  private assertStayNotPast(checkOut: string, action: string, today = hotelTodayIso()) {
+    if (String(checkOut ?? '').slice(0, 10) < today) {
       throw new BadRequestException(`Bookings whose dates have already passed cannot be ${action}.`);
     }
   }

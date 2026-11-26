@@ -10,6 +10,21 @@ export function todayIso() {
   return toIsoDate(new Date());
 }
 
+const hotelDateFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
+});
+
+export function hotelTodayIso(now = new Date()) {
+  const { year, month, day } = Object.fromEntries(
+    hotelDateFormatter.formatToParts(now).map(({ type, value }) => [type, value]),
+  );
+  return `${year}-${month}-${day}`;
+}
+
+export function isPastHotelStay(checkOut) {
+  return String(checkOut ?? '').slice(0, 10) < hotelTodayIso();
+}
+
 export function tomorrowIso() {
   const d = new Date();
   d.setDate(d.getDate() + 1);

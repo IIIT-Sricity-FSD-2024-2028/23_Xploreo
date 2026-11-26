@@ -9,13 +9,13 @@
 //   • Hotel partner A tries to edit/delete partner B's hotel → 403
 
 import { ApiError, registerMock, requireRole, requireUser, assertRegion, assertOwner, whitelist } from '@/foundation';
+import { hotelTodayIso, isPastHotelStay } from '@/lib/datetime.js';
 import {
   HOTEL_BOOKING_STATUSES,
   bookingsForHotel,
   bookingsForTraveller,
   earningsForHotel,
   earningsForPartner,
-  dayOffset,
   findHotel,
   findHotelBooking,
   findRoomType,
@@ -405,6 +405,7 @@ registerMock('PATCH', '/bookings/:id/cancel', (ctx) => {
     assertRegion(ctx, hotel?.city ?? '');
     if (hotel?.partnerId !== user.id) throw new ApiError(403, 'This booking belongs to another hotel partner.');
     if (!['CONFIRMED'].includes(booking.status)) throw new ApiError(400, `Only CONFIRMED bookings can be cancelled by the hotel (current: ${booking.status}).`);
+    if (isPastHotelStay(booking.checkOut)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be cancelled.');
   } else if (user.role === 'traveller') {
     if (booking.travellerId !== user.id) throw new ApiError(403, 'You can only cancel your own bookings.');
     if (['CHECKED_IN', 'CHECKED_OUT'].includes(booking.status)) throw new ApiError(400, `Cannot cancel a booking that is ${booking.status}.`);
@@ -431,7 +432,7 @@ registerMock('PATCH', '/bookings/:id/check-in', (ctx) => {
   assertRegion(ctx, hotel?.city ?? '');
   if (hotel?.partnerId !== user.id) throw new ApiError(403, 'This booking belongs to another hotel partner.');
   if (booking.status !== 'CONFIRMED') throw new ApiError(400, `Only CONFIRMED bookings can be checked in (current: ${booking.status}).`);
-  if (String(booking.checkOut ?? '').slice(0, 10) < dayOffset(0)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked in.');
+  if (isPastHotelStay(booking.checkOut)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked in.');
   booking.status = 'CHECKED_IN';
   booking.updatedAt = nowIso();
   return structuredClone(booking);
@@ -446,10 +447,10 @@ registerMock('PATCH', '/bookings/:id/check-out', (ctx) => {
   assertRegion(ctx, hotel?.city ?? '');
   if (hotel?.partnerId !== user.id) throw new ApiError(403, 'This booking belongs to another hotel partner.');
   if (booking.status !== 'CHECKED_IN') throw new ApiError(400, `Only CHECKED_IN bookings can be checked out (current: ${booking.status}).`);
-  if (String(booking.checkOut ?? '').slice(0, 10) < dayOffset(0)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked out.');
+  if (isPastHotelStay(booking.checkOut)) throw new ApiError(400, 'Bookings whose dates have already passed cannot be checked out.');
   booking.status = 'CHECKED_OUT';
   booking.updatedAt = nowIso();
-  booking.checkOut = dayOffset(0);
+  booking.checkOut = hotelTodayIso();
   const rt = roomTypes.find((r) => r.hotelId === booking.hotelId && r.type === booking.roomType);
   if (rt) refreshRoomType(rt);
   if (hotel) refreshHotel(hotel);

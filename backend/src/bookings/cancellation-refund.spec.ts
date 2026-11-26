@@ -98,6 +98,34 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
 
 
   describe('1. Hotel Booking Cancellation & Refunds', () => {
+    it.each([
+      ['2026-11-14', false],
+      ['2026-11-25', false],
+      ['2026-11-26', true],
+      ['2026-11-27', true],
+    ])('handles hotel cancellation for checkout on %s at the India date boundary', (checkOut, canCancel) => {
+      // The hotel calendar is already on November 26 while UTC is still on November 25.
+      jest.useFakeTimers().setSystemTime(new Date('2026-11-25T18:35:00Z'));
+      try {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1', travellerId: 'T001', guestName: 'Test Guest',
+          email: 'guest@example.test', phone: '9000000000', checkIn: '2026-11-10',
+          checkOut, guests: 1, roomType: 'Standard Room', totalAmount: 4000,
+        });
+        const cancel = () => bookingsService.cancel(booking.id, 'HP001', Role.HOTEL);
+
+        if (canCancel) {
+          expect(cancel().status).toBe(BookingStatus.CANCELLED);
+        } else {
+          expect(cancel).toThrow('Bookings whose dates have already passed cannot be cancelled.');
+          expect(bookingsRepo.findRawById(booking.id)?.status).toBe(BookingStatus.CONFIRMED);
+          expect(notificationsService.findByUser('T001')).toEqual([]);
+        }
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     it('should successfully cancel an eligible hotel booking, process simulated refund, and generate two notifications', () => {
       // Future date booking (eligible for free cancellation)
       const futureCheckIn = new Date(Date.now() + 10 * 24 * 3600 * 1000).toISOString().slice(0, 10);
