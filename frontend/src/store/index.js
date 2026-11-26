@@ -1,7 +1,2 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { hotelApi } from './hotel/hotelApi.js';
-
-export const store = configureStore({
-  reducer: { [hotelApi.reducerPath]: hotelApi.reducer },
-  middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(hotelApi.middleware),
-});
+// Re-exports the single central store so existing imports from store/index.js stay compatible.
+export { store } from '../app/store.js';

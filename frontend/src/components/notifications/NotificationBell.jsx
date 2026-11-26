@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
-  getNotifications,
-  getUnreadNotificationCount,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-} from '../../services/notifications.api.js';
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  selectNotificationsList,
+  selectUnreadNotificationCount,
+} from '../../features/notificationsSlice.js';
 import './notifications.css';
 
 function formatRelativeTime(dateInput) {
@@ -33,24 +35,15 @@ function getNotificationIcon(type, refundStatus) {
 }
 
 export default function NotificationBell({ userId }) {
+  const dispatch = useDispatch();
+  const notifications = useSelector(selectNotificationsList);
+  const unreadCount = useSelector(selectUnreadNotificationCount);
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const containerRef = useRef(null);
 
-  const fetchNotificationData = useCallback(async () => {
-    try {
-      const [list, count] = await Promise.all([
-        getNotifications(),
-        getUnreadNotificationCount(),
-      ]);
-      setNotifications(Array.isArray(list) ? list : []);
-      setUnreadCount(typeof count === 'number' ? count : 0);
-    } catch {
-      // Ignore background fetch failure
-    }
-  }, []);
+  const fetchNotificationData = useCallback(() => {
+    dispatch(fetchNotifications(userId || null));
+  }, [dispatch, userId]);
 
   // Poll for notifications every 10 seconds or on window focus
   useEffect(() => {
@@ -89,11 +82,7 @@ export default function NotificationBell({ userId }) {
   const handleItemClick = async (notif) => {
     if (!notif.read) {
       try {
-        await markNotificationAsRead(notif.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)),
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        await dispatch(markNotificationRead(notif.id)).unwrap();
       } catch {
         // Silently continue
       }
@@ -102,9 +91,7 @@ export default function NotificationBell({ userId }) {
 
   const handleMarkAllRead = async () => {
     try {
-      await markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
+      await dispatch(markAllNotificationsRead()).unwrap();
     } catch {
       // Silently continue
     }

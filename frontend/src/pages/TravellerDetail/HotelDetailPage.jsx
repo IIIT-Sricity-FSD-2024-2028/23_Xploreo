@@ -1,56 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
-import { getHotel, listRooms, getHotelReviews } from '@/services/hotels.api.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
 export default function HotelDetailPage() {
   const { id } = useParams();
+  const dispatch = useDispatch();
+  const detail = useSelector(selectBrowseDetail);
 
-  const [hotel, setHotel] = useState(null);
-  const [rooms, setRooms] = useState([]);
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const expectedKey = `hotel:${id}`;
+  const isCurrent = detail.key === expectedKey;
+  const hotel = isCurrent ? detail.item : null;
+  const rooms = isCurrent ? detail.rooms : [];
+  const reviews = isCurrent ? detail.reviews : [];
+  const loading = isCurrent ? detail.loading : Boolean(id && id.trim() !== '');
+  const error = !id || id.trim() === ''
+    ? { status: 400, message: 'Invalid hotel identifier provided.' }
+    : (isCurrent ? detail.error : null);
+
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
-  const loadHotelData = async () => {
-    if (!id || id.trim() === '') {
-      setError({ status: 400, message: 'Invalid hotel identifier provided.' });
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [hotelData, roomsData, reviewsData] = await Promise.all([
-        getHotel(id),
-        listRooms(id).catch(() => []),
-        getHotelReviews(id).catch(() => []),
-      ]);
-
-      setHotel(hotelData);
-      setRooms(roomsData || []);
-      setReviews(reviewsData || []);
-      if (hotelData?.images?.length) {
-        setSelectedPhoto(hotelData.images[0]);
-      } else if (hotelData?.image) {
-        setSelectedPhoto(hotelData.image);
-      }
-    } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
-      const message = err?.message || 'Failed to load hotel details. Please try again later.';
-      setError({ status, message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadHotelData = useCallback(() => {
+    if (!id || id.trim() === '') return;
+    dispatch(fetchBrowseItemDetail({ type: 'hotel', id }));
+  }, [dispatch, id]);
 
   useEffect(() => {
     loadHotelData();
-  }, [id]);
+  }, [loadHotelData]);
 
   // 1. Loading State
   if (loading) {

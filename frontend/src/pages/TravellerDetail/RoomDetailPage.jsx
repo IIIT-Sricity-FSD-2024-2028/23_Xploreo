@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getHotel, listRooms, createBooking } from '@/services/hotels.api.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
+import { createHotelBooking } from '@/features/bookingsSlice.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
@@ -13,11 +15,17 @@ function formatDateInput(date) {
 export default function RoomDetailPage() {
   const { id: hotelId, roomId } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const detail = useSelector(selectBrowseDetail);
 
-  const [hotel, setHotel] = useState(null);
-  const [room, setRoom] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const expectedKey = `hotel:${hotelId}`;
+  const isCurrent = detail.key === expectedKey;
+  const hotel = isCurrent ? detail.item : null;
+  const room = isCurrent ? (detail.rooms || []).find((r) => String(r.id) === String(roomId)) || null : null;
+  const loading = isCurrent ? detail.loading : Boolean(hotelId && roomId);
+  const fetchError = !hotelId || !roomId
+    ? { status: 400, message: 'Invalid hotel or room parameter provided.' }
+    : (isCurrent ? detail.error : null);
 
   // Form booking state
   const today = new Date();
@@ -40,41 +48,14 @@ export default function RoomDetailPage() {
   const [submitError, setSubmitError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const loadData = async () => {
-    if (!hotelId || !roomId) {
-      setFetchError({ status: 400, message: 'Invalid hotel or room parameter provided.' });
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setFetchError(null);
-
-    try {
-      const [hotelData, roomsData] = await Promise.all([
-        getHotel(hotelId),
-        listRooms(hotelId),
-      ]);
-
-      setHotel(hotelData);
-      const found = (roomsData || []).find((r) => String(r.id) === String(roomId));
-      if (!found) {
-        setRoom(null);
-      } else {
-        setRoom(found);
-      }
-    } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
-      const message = err?.message || 'Failed to load room details.';
-      setFetchError({ status, message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadData = useCallback(() => {
+    if (!hotelId || !roomId) return;
+    dispatch(fetchBrowseItemDetail({ type: 'hotel', id: hotelId }));
+  }, [dispatch, hotelId, roomId]);
 
   useEffect(() => {
     loadData();
-  }, [hotelId, roomId]);
+  }, [loadData]);
 
   // Price calculations
   const calculateNights = () => {
@@ -142,15 +123,14 @@ export default function RoomDetailPage() {
         totalAmount: grandTotal,
       };
 
-      const booking = await createBooking(payload);
+      const booking = await dispatch(createHotelBooking(payload)).unwrap();
       // On success, navigate to confirmation page
       navigate(`/bookings/confirmation/${booking.id}`, { state: { booking } });
     } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
       const message = err?.message || 'Failed to complete booking. Please review your details.';
       setSubmitError(message);
-      if (err?.errors && typeof err.errors === 'object') {
-        setFieldErrors(err.errors);
+      if (err?.fieldErrors && typeof err.fieldErrors === 'object') {
+        setFieldErrors(err.fieldErrors);
       }
     } finally {
       setSubmitting(false);

@@ -1,10 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import TravellerReviewsList from './TravellerReviewsList.jsx';
 import ReviewSubmissionForm from './ReviewSubmissionForm.jsx';
-import { apiRequest } from '../../services/api.js';
-import { identityHeaders } from '../../services/session.js';
+import { selectAuthUser } from '../../features/authSlice.js';
+import {
+  addDemoReview,
+  fetchReviews,
+  selectReviewsError,
+  selectReviewsList,
+  selectReviewsLoading,
+  submitReview,
+} from '../../features/reviewsSlice.js';
+import { fetchTravellerTrips, selectTripsList } from '../../features/tripsSlice.js';
 import './travellerReviews.css';
 
 /**
@@ -15,10 +24,10 @@ import './travellerReviews.css';
  * - Overall Rating Summary and Rating Distribution (5★ to 1★)
  * - Review list with category filtering, ratings filter, and states (loading, empty, error)
  * - Modal dialog for writing reviews with validation and demo transparency
- * - Connects to GET /api/reviews and POST /api/reviews in live mode
+ * - Connects to reviewsSlice (GET/POST /reviews) and tripsSlice in live mode
  * - Restricts review submission exclusively to completed trips
  */
-export default function TravellerReviewsPage({
+function TravellerReviewsCore({
   user,
   showNavbar = true,
   reviews: initialReviews = [],
@@ -30,10 +39,18 @@ export default function TravellerReviewsPage({
   defaultTargetType = 'guide',
   defaultTargetId = '',
   useFixtures = false,
+  location = null,
+  inRouter = false,
 }) {
-  const inRouter = useInRouterContext();
-  const location = inRouter ? useLocation() : null;
-  const effectiveUser = user || {
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const liveReviews = useSelector(selectReviewsList);
+  const liveLoading = useSelector(selectReviewsLoading);
+  const liveError = useSelector(selectReviewsError);
+  const travellerTrips = useSelector(selectTripsList);
+
+  const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
+  const effectiveUser = user || activeAuthUser || {
     name: 'Anjali Sharma',
     username: 'Anjali Sharma',
     role: 'traveller',
@@ -44,51 +61,40 @@ export default function TravellerReviewsPage({
   const isControlled = initialLoading || !!initialError;
   const shouldAutoFetch = !isPreviewMode && !isControlled;
 
-  const [liveReviews, setLiveReviews] = useState([]);
-  const [liveLoading, setLiveLoading] = useState(shouldAutoFetch);
-  const [liveError, setLiveError] = useState(null);
+  const [previewDemoReviews, setPreviewDemoReviews] = useState([]);
+  const reviews = useMemo(() => {
+    if (isPreviewMode) {
+      return [...previewDemoReviews, ...(initialReviews || [])];
+    }
+    return isControlled ? initialReviews : liveReviews;
+  }, [isPreviewMode, isControlled, previewDemoReviews, initialReviews, liveReviews]);
 
-  const reviews = isPreviewMode || isControlled ? initialReviews : liveReviews;
   const isLoading = isControlled ? initialLoading : (isPreviewMode ? false : liveLoading);
   const error = isControlled ? initialError : (isPreviewMode ? null : liveError);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const locationSearch = location?.search || '';
+  const queryTripId = useMemo(() => {
+    if (!locationSearch) return null;
+    return new URLSearchParams(locationSearch).get('tripId');
+  }, [locationSearch]);
+
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [dismissedQueryTripId, setDismissedQueryTripId] = useState(null);
+  const isModalOpen = manualModalOpen || (Boolean(queryTripId) && dismissedQueryTripId !== queryTripId);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [submitSuccessMsg, setSubmitSuccessMsg] = useState(null);
 
-  // Trips loading to enforce completed trip eligibility
-  const [travellerTrips, setTravellerTrips] = useState([]);
-
-  const queryTripId = useMemo(() => {
-    if (!location?.search) return null;
-    return new URLSearchParams(location.search).get('tripId');
-  }, [location?.search]);
-
   useEffect(() => {
     if (isPreviewMode) return;
-    let isCancelled = false;
-    async function loadTrips() {
-      try {
-        const tId = effectiveUser?.userId || '20001';
-        const data = await apiRequest(`/trips/traveller/${encodeURIComponent(tId)}`);
-        const list = Array.isArray(data) ? data : data?.data || [];
-        if (!isCancelled) {
-          setTravellerTrips(list);
-        }
-      } catch {
-        // ignore error silently
-      }
-    }
-    loadTrips();
-    return () => {
-      isCancelled = true;
-    };
-  }, [isPreviewMode, effectiveUser?.userId]);
+    const tId = effectiveUser?.userId || '20001';
+    dispatch(fetchTravellerTrips(tId));
+  }, [isPreviewMode, effectiveUser?.userId, dispatch]);
 
   // Trips whose persisted status is completed
   const completedTrips = useMemo(() => {
-    return travellerTrips.filter(
+    return (travellerTrips || []).filter(
       (t) => (t.status || '').toLowerCase() === 'completed' || (t.trackingStatus || '').toLowerCase() === 'completed'
     );
   }, [travellerTrips]);
@@ -100,13 +106,6 @@ export default function TravellerReviewsPage({
   const eligibleTrips = useMemo(() => {
     return completedTrips.filter((t) => !reviewedTripIds.has(t.id));
   }, [completedTrips, reviewedTripIds]);
-
-  // Auto-open modal if queryTripId is present in URL
-  useEffect(() => {
-    if (queryTripId) {
-      setIsModalOpen(true);
-    }
-  }, [queryTripId]);
 
   // Overall rating summary calculations
   const totalCount = reviews.length;
@@ -131,44 +130,32 @@ export default function TravellerReviewsPage({
     ? Math.round(((ratingCounts[5] + ratingCounts[4]) / totalCount) * 100)
     : 100;
 
-  const fetchLiveReviews = useCallback(async () => {
-    setLiveLoading(true);
-    setLiveError(null);
-    try {
-      const data = await apiRequest('/reviews');
-      const list = Array.isArray(data) ? data : data?.data || [];
-      setLiveReviews(list);
-    } catch (err) {
-      setLiveError(err?.message || 'Failed to load reviews from server.');
-      setLiveReviews([]);
-    } finally {
-      setLiveLoading(false);
-    }
-  }, []);
+  const fetchLiveReviews = useCallback(() => {
+    return dispatch(fetchReviews());
+  }, [dispatch]);
 
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      await Promise.resolve();
-      if (!isCancelled && shouldAutoFetch) {
-        await fetchLiveReviews();
-      }
-    };
-    load();
-    return () => {
-      isCancelled = true;
-    };
+    if (shouldAutoFetch) {
+      fetchLiveReviews();
+    }
   }, [shouldAutoFetch, fetchLiveReviews]);
+
+  const closeReviewModal = useCallback(() => {
+    setManualModalOpen(false);
+    if (queryTripId) {
+      setDismissedQueryTripId(queryTripId);
+    }
+  }, [queryTripId]);
 
   const handleOpenModal = () => {
     setSubmitError(null);
     setSubmitSuccessMsg(null);
-    setIsModalOpen(true);
+    setManualModalOpen(true);
   };
 
   const handleCloseModal = () => {
     if (!isSubmitting) {
-      setIsModalOpen(false);
+      closeReviewModal();
       setSubmitError(null);
     }
   };
@@ -208,17 +195,17 @@ export default function TravellerReviewsPage({
           isDemo: true,
           source: 'mock',
         };
-        setLiveReviews((prev) => [newDemoReview, ...prev]);
+        if (isPreviewMode) {
+          setPreviewDemoReviews((prev) => [newDemoReview, ...prev]);
+        } else {
+          dispatch(addDemoReview(newDemoReview));
+        }
         setSubmitSuccessMsg('Review submitted in Demo Mode!');
       } else {
         const activeUserId = String(formData.userId || effectiveUser?.userId || '').trim();
 
-        await apiRequest('/reviews', {
-          method: 'POST',
-          headers: {
-            ...identityHeaders(),
-          },
-          body: JSON.stringify({
+        await dispatch(
+          submitReview({
             userId: activeUserId,
             targetType: formData.targetType,
             targetId: String(formData.targetId).trim(),
@@ -226,14 +213,15 @@ export default function TravellerReviewsPage({
             rating: Number(formData.rating),
             comment: formData.comment.trim(),
           }),
-        });
-        await fetchLiveReviews();
+        ).unwrap();
+
+        await dispatch(fetchReviews());
         setSubmitSuccessMsg('Thank you! Your review has been submitted successfully.');
       }
       setIsSubmitting(false);
       // Close modal shortly after success message
       setTimeout(() => {
-        setIsModalOpen(false);
+        closeReviewModal();
         setSubmitSuccessMsg(null);
       }, 1500);
     } catch (err) {
@@ -432,5 +420,19 @@ export default function TravellerReviewsPage({
         )}
       </main>
     </div>
+  );
+}
+
+function TravellerReviewsWithRouter(props) {
+  const location = useLocation();
+  return <TravellerReviewsCore {...props} location={location} inRouter />;
+}
+
+export default function TravellerReviewsPage(props) {
+  const inRouter = useInRouterContext();
+  return inRouter ? (
+    <TravellerReviewsWithRouter {...props} />
+  ) : (
+    <TravellerReviewsCore {...props} location={null} inRouter={false} />
   );
 }

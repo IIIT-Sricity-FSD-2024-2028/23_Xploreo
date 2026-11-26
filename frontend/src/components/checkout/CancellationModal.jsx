@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { cancelBooking } from '../../services/hotels.api.js';
-import { cancelExperienceBooking } from '../../services/partners.api.js';
-import { cancelTrip } from '../../services/tripGuides.api.js';
+import { useDispatch } from 'react-redux';
+import { cancelTravellerBooking } from '../../features/bookingsSlice.js';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
+import { cancelTravellerTrip } from '../../features/tripsSlice.js';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 
 const REASON_OPTIONS = [
@@ -20,6 +21,7 @@ export default function CancellationModal({
   onClose,
   onSuccess,
 }) {
+  const dispatch = useDispatch();
   const [reason, setReason] = useState(REASON_OPTIONS[0]);
   const [customReason, setCustomReason] = useState('');
   const [loading, setLoading] = useState(false);
@@ -47,21 +49,24 @@ export default function CancellationModal({
     const selectedReason = reason === 'Other reasons' && customReason.trim() ? customReason.trim() : reason;
 
     try {
-      let result;
-      if (isHotel) {
-        result = await cancelBooking(booking.id, { reason: selectedReason });
-      } else if (isExperience) {
-        result = await cancelExperienceBooking(booking.id, { reason: selectedReason });
-      } else {
-        result = await cancelTrip(booking.id, { reason: selectedReason });
-      }
+      const actionResult = isTrip
+        ? await dispatch(cancelTravellerTrip({ id: booking.id, reason: selectedReason })).unwrap()
+        : await dispatch(
+            cancelTravellerBooking({
+              id: booking.id,
+              bookingType: isHotel ? 'hotel' : 'experience',
+              reason: selectedReason,
+            }),
+          ).unwrap();
 
+      const result = actionResult?.result ?? actionResult;
       setCancellationResult(result);
+      dispatch(fetchNotifications());
       if (onSuccess) {
         onSuccess(result);
       }
     } catch (err) {
-      setError(err?.message || 'Failed to cancel booking. Please try again.');
+      setError((typeof err === 'string' ? err : err?.message) || 'Failed to cancel booking. Please try again.');
     } finally {
       setLoading(false);
     }

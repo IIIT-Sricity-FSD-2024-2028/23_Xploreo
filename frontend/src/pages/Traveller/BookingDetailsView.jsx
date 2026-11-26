@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { BookingSummaryCard } from '../../components/checkout/index.js';
 import { formatDate } from '../../utils/checkoutUtils.js';
-import { retryHotelRefund } from '../../services/hotels.api.js';
-import { retryExperienceRefund } from '../../services/partners.api.js';
+import { retryBookingRefund } from '../../features/bookingsSlice.js';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
 import './travellerBookings.css';
 
 /**
@@ -17,6 +18,7 @@ export default function BookingDetailsView({
   onCancelClick,
   onBookingUpdated,
 }) {
+  const dispatch = useDispatch();
   const [retrying, setRetrying] = useState(false);
   const [retryMessage, setRetryMessage] = useState(null);
 
@@ -92,18 +94,23 @@ export default function BookingDetailsView({
     setRetrying(true);
     setRetryMessage(null);
     try {
-      let res;
-      if (isHotel) {
-        res = await retryHotelRefund(id);
-      } else {
-        res = await retryExperienceRefund(id);
-      }
-      setRetryMessage({ type: 'success', text: `Refund retried: ${res.refund?.status || res.refundStatus || 'Success'}` });
+      const res = await dispatch(
+        retryBookingRefund({ id, bookingType: isHotel ? 'hotel' : 'experience' }),
+      ).unwrap();
+      const result = res?.result;
+      setRetryMessage({
+        type: 'success',
+        text: `Refund retried: ${result?.refund?.status || result?.refundStatus || 'Success'}`,
+      });
+      dispatch(fetchNotifications());
       if (onBookingUpdated) {
         onBookingUpdated();
       }
     } catch (err) {
-      setRetryMessage({ type: 'error', text: err?.message || 'Failed to retry refund.' });
+      setRetryMessage({
+        type: 'error',
+        text: (typeof err === 'string' ? err : err?.message) || 'Failed to retry refund.',
+      });
     } finally {
       setRetrying(false);
     }

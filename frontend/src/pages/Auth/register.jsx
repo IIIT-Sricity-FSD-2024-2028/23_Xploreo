@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import {
+  clearAuthError,
+  registerUser,
+  selectAuthError,
+  selectAuthLoading,
+} from "../../features/authSlice.js";
 import { AuthVisual } from "./login";
 import "./auth.css";
 
@@ -30,52 +36,56 @@ const PARTNER_ROLES = ["guide", "hotel", "experience"];
 
 export default function Register({ user, onAuthenticated }) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const loading = useSelector(selectAuthLoading);
+  const authError = useSelector(selectAuthError);
   const [form, setForm] = useState(initialForm);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState("");
 
-  const change = (event) =>
+  useEffect(() => {
+    dispatch(clearAuthError());
+  }, [dispatch]);
+
+  const change = (event) => {
+    setValidationError("");
     setForm({ ...form, [event.target.name]: event.target.value });
+  };
 
   const isPartnerRole = PARTNER_ROLES.includes(form.role);
 
   async function submitHandler(event) {
     event.preventDefault();
-    setError("");
+    setValidationError("");
+    dispatch(clearAuthError());
 
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setValidationError("Passwords do not match.");
       return;
     }
 
     if (isPartnerRole && !form.location.trim()) {
-      setError("Please enter the region/city you'll be operating in.");
+      setValidationError("Please enter the region/city you'll be operating in.");
       return;
     }
 
-    setLoading(true);
-    try {
-      const details = { ...form };
-      delete details.confirmPassword;
-      details.username = details.username.trim();
-      details.email = details.email.trim();
-      details.name = details.name.trim();
-      details.phone = details.phone.trim();
-      details.location = details.location.trim();
-      if (!isPartnerRole || !details.location) delete details.location;
-      const result = await authApi.register(details);
-      const authenticatedUser = result?.user || result;
-      if (result?.token && !authenticatedUser.token) {
-        authenticatedUser.token = result.token;
-      }
+    const details = { ...form };
+    delete details.confirmPassword;
+    details.username = details.username.trim();
+    details.email = details.email.trim();
+    details.name = details.name.trim();
+    details.phone = details.phone.trim();
+    details.location = details.location.trim();
+    if (!isPartnerRole || !details.location) delete details.location;
+
+    const action = await dispatch(registerUser(details));
+    if (registerUser.fulfilled.match(action)) {
+      const authenticatedUser = action.payload;
       onAuthenticated?.(authenticatedUser);
       navigate(destinationForRole[authenticatedUser.role] || "/");
-    } catch (requestError) {
-      setError(requestError?.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
     }
   }
+
+  const displayError = validationError || authError;
 
   return (
     <div className="auth-page">
@@ -190,9 +200,9 @@ export default function Register({ user, onAuthenticated }) {
               />
             </label>
 
-            {error && (
+            {displayError && (
               <p className="form-message error" role="alert">
-                {error}
+                {displayError}
               </p>
             )}
 

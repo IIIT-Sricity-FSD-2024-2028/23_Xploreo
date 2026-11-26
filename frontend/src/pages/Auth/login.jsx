@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import {
+  clearAuthError,
+  loginUser,
+  selectAuthError,
+  selectAuthLoading,
+} from "../../features/authSlice.js";
 import "./auth.css";
 
 const destinationForRole = {
@@ -16,32 +22,29 @@ const destinationForRole = {
 
 export default function Login({ user, onAuthenticated }) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const loading = useSelector(selectAuthLoading);
+  const authError = useSelector(selectAuthError);
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    dispatch(clearAuthError());
+  }, [dispatch]);
 
   async function submitHandler(event) {
     event.preventDefault();
-    setError("");
-    setLoading(true);
+    dispatch(clearAuthError());
 
-    try {
-      const payload = {
-        username: form.username.trim(),
-        password: form.password,
-      };
-      const result = await authApi.login(payload);
-      const authenticatedUser = result?.user || result;
-      if (result?.token && !authenticatedUser.token) {
-        authenticatedUser.token = result.token;
-      }
+    const payload = {
+      username: form.username.trim(),
+      password: form.password,
+    };
+    const action = await dispatch(loginUser(payload));
+    if (loginUser.fulfilled.match(action)) {
+      const authenticatedUser = action.payload;
       onAuthenticated?.(authenticatedUser);
       navigate(destinationForRole[authenticatedUser.role] || "/");
-    } catch (requestError) {
-      setError(requestError?.message || "Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -95,7 +98,7 @@ export default function Login({ user, onAuthenticated }) {
               </label>
               <Link className="text-button" to="/Auth/forgot-password">Forgot password?</Link>
             </div>
-            {error && <p className="form-message error" role="alert">{error}</p>}
+            {authError && <p className="form-message error" role="alert">{authError}</p>}
             <button className="auth-submit" type="submit" disabled={loading}>
               {loading ? "Signing in…" : "Sign in →"}
             </button>

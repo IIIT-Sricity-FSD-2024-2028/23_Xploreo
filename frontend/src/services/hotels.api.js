@@ -105,7 +105,7 @@ export function retryHotelRefund(id) {
 
 // ── Bookings (traveller side) ─────────────────────────────────────────────────
 const BOOKING_CREATE_FIELDS = [
-  'hotelId', 'guestName', 'email', 'phone', 'checkIn', 'checkOut',
+  'id', 'hotelId', 'guestName', 'email', 'phone', 'checkIn', 'checkOut',
   'guests', 'roomType', 'notes', 'rooms',
 ];
 function pickBooking(values) {
@@ -124,9 +124,16 @@ export function getPartnerEarnings(hotelId) {
 }
 
 // ── Reviews ───────────────────────────────────────────────────────────────────
-// GET /hotels/:id/reviews
+// GET /reviews?hotelId=:id
 export async function getHotelReviews(hotelId) {
-  return listOf(await request(`/hotels/${enc(hotelId)}/reviews`));
+  const items = listOf(await request('/reviews', { params: { hotelId } }));
+  return items.filter((r) => {
+    const type = r?.targetType ? String(r.targetType).toLowerCase() : null;
+    const target = r?.targetId ?? r?.hotelId ?? null;
+    if (type && type !== 'hotel') return false;
+    if (target != null && String(target) !== String(hotelId)) return false;
+    return true;
+  });
 }
 
 // GET /reviews — reviews across all of the partner's hotels (server scopes this to the

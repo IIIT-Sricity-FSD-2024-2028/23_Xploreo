@@ -1,19 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
-import { useAuth } from '@/foundation';
-import { createExperienceBooking, getExperience } from '@/services/partners.api.js';
-import { listReviews } from '@/services/reviews.api.js';
+import { selectAuthUser } from '@/features/authSlice.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
+import { createExperienceSlotBooking } from '@/features/bookingsSlice.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
 export default function ExperienceDetailPage() {
   const { id } = useParams();
-  const { user } = useAuth();
+  const dispatch = useDispatch();
+  const user = useSelector(selectAuthUser);
+  const detail = useSelector(selectBrowseDetail);
 
-  const [experience, setExperience] = useState(null);
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const expectedKey = `experience:${id}`;
+  const isCurrent = detail.key === expectedKey;
+  const experience = isCurrent ? detail.item : null;
+  const reviews = isCurrent ? detail.reviews : [];
+  const loading = isCurrent ? detail.loading : Boolean(id && id.trim() !== '');
+  const error = !id || id.trim() === ''
+    ? { status: 400, message: 'Invalid experience ID provided.' }
+    : (isCurrent ? detail.error : null);
 
   // Booking drawer state
   const [selectedSlotId, setSelectedSlotId] = useState(null);
@@ -23,71 +30,49 @@ export default function ExperienceDetailPage() {
   const [bookingMessage, setBookingMessage] = useState('');
   const [bookingError, setBookingError] = useState('');
 
-  const loadExperienceData = async () => {
-    if (!id || id.trim() === '') {
-      setError({ status: 400, message: 'Invalid experience ID provided.' });
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [expData, reviewsData] = await Promise.all([
-        getExperience(id),
-        listReviews({ experienceId: id }).catch(() => []),
-      ]);
-
-      setExperience(expData);
-      setReviews(reviewsData || []);
-
-      // Auto-select first available slot if present
-      if (expData?.slots?.length) {
-        const today = new Date().toISOString().slice(0, 10);
-        const firstAvailable = expData.slots.find((s) => s.available && String(s.date).slice(0, 10) >= today && (s.capacity - (s.booked || 0)) > 0);
-        if (firstAvailable) {
-          setSelectedSlotId(firstAvailable.id);
-        } else {
-          setSelectedSlotId(expData.slots[0].id);
-        }
-      }
-    } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
-      const message = err?.message || 'Failed to load experience details.';
-      setError({ status, message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadExperienceData = useCallback(() => {
+    if (!id || id.trim() === '') return;
+    dispatch(fetchBrowseItemDetail({ type: 'experience', id }));
+  }, [dispatch, id]);
 
   useEffect(() => {
     loadExperienceData();
-  }, [id]);
+  }, [loadExperienceData]);
+
+  const effectiveSelectedSlotId = useMemo(() => {
+    if (selectedSlotId) return selectedSlotId;
+    const expSlots = experience?.slots;
+    if (!expSlots?.length) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const firstAvailable = expSlots.find(
+      (s) => s.available && String(s.date).slice(0, 10) >= today && (s.capacity - (s.booked || 0)) > 0,
+    );
+    return firstAvailable ? firstAvailable.id : expSlots[0].id;
+  }, [selectedSlotId, experience]);
 
   // Handle slot reservation
   const handleReserveExperience = async (e) => {
     e.preventDefault();
     setBookingError('');
-    if (!selectedSlotId) {
+    if (!effectiveSelectedSlotId) {
       setBookingMessage('Please select an available session slot before booking.');
       return;
     }
-    const slot = (experience.slots || []).find((s) => s.id === selectedSlotId);
+    const slot = (experience.slots || []).find((s) => s.id === effectiveSelectedSlotId);
     setBooking(true);
     try {
-      await createExperienceBooking({
+      await dispatch(createExperienceSlotBooking({
         experienceId: experience.id,
         guestName: user?.name || 'Traveller',
         email: user?.email || '',
         phone: user?.phone || '',
         date: slot?.date,
         participants,
-      });
+      })).unwrap();
       setBookedSuccess(true);
       setBookingMessage(`🎉 Experience session booked successfully for ${participants} guest(s)! Confirmation details sent to your registered email.`);
     } catch (err) {
-      setBookingError(err?.message || 'Failed to book this experience. Please try again.');
+      setBookingError((typeof err === 'string' ? err : err?.message) || 'Failed to book this experience. Please try again.');
     } finally {
       setBooking(false);
     }
@@ -194,7 +179,7 @@ export default function ExperienceDetailPage() {
 
   const expImage = experience.image || 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=1200&q=80';
   const slots = experience.slots || [];
-  const selectedSlot = slots.find((s) => s.id === selectedSlotId);
+  const selectedSlot = slots.find((s) => s.id === effectiveSelectedSlotId);
   const remainingSpots = selectedSlot ? (selectedSlot.capacity - (selectedSlot.booked || 0)) : (experience.capacity || 10);
   const isSelectedSlotFull = selectedSlot ? remainingSpots <= 0 : false;
   const totalPrice = (experience.price || 1200) * Number(participants);
@@ -288,7 +273,7 @@ export default function ExperienceDetailPage() {
                     const spotsLeft = slot.capacity - (slot.booked || 0);
                     const isPast = String(slot.date).slice(0, 10) < new Date().toISOString().slice(0, 10);
                     const isFull = spotsLeft <= 0 || !slot.available || isPast;
-                    const isSelected = slot.id === selectedSlotId;
+                    const isSelected = slot.id === effectiveSelectedSlotId;
 
                     return (
                       <button

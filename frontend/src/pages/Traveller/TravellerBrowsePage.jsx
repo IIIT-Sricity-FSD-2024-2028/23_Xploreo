@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   BROWSE_CATEGORIES,
   SORT_OPTIONS,
@@ -10,30 +11,37 @@ import {
   DEFAULT_HOTEL_FIXTURES,
   DEFAULT_EXPERIENCE_FIXTURES,
   DEFAULT_PLAN_FIXTURES,
-  mapBackendHotel,
-  mapBackendExperience,
-  mapBackendPlan,
 } from '../../utils/browseUtils.js';
-import { apiRequest } from '../../services/api.js';
 import { useNavigate, useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import BrowseHotelCard from './BrowseHotelCard.jsx';
 import BrowseExperienceCard from './BrowseExperienceCard.jsx';
 import BrowsePlanCard from './BrowsePlanCard.jsx';
-import BrowseItemDetailModal from './BrowseItemDetailModal.jsx';
+import { selectAuthUser } from '../../features/authSlice.js';
+import {
+  fetchBrowseExperiences,
+  fetchBrowseHotels,
+  fetchBrowsePlans,
+  resetBrowseFilters,
+  selectBrowseActiveCategory,
+  selectBrowseExperiences,
+  selectBrowseFilters,
+  selectBrowseHotels,
+  selectBrowsePlans,
+  setBrowseCategory,
+  setBrowseFilters,
+  setSelectedItemPreview,
+  toggleBrowseAmenity,
+} from '../../features/browseSlice.js';
 import './travellerBrowse.css';
 
 /**
  * TravellerBrowsePage
  * Complete, accessible browse & search hub for travellers.
- * Fully integrated with live backend APIs (/hotels, /experiences, /plans).
- * Follows the approved Xploreo Traveller Dashboard visual design:
- * - White/slate backgrounds, teal-to-blue gradients
- * - Desktop-first layout optimized for 1440 × 900 screens (290px sticky sidebar + cards grid)
- * - Flights are explicitly excluded per project requirements.
+ * Powered by Redux Toolkit browseSlice (/hotels, /experiences, /plans).
  */
-export default function TravellerBrowsePage({
-  user,
+function TravellerBrowseCore({
+  user: propUser,
   showNavbar = true,
   initialCategory = BROWSE_CATEGORIES.HOTELS,
   hotels: propHotels,
@@ -43,154 +51,166 @@ export default function TravellerBrowsePage({
   error: propError,
   onRetry: propOnRetry,
   onSelectItem,
-  onBookItem,
   useFixtures = false,
+  inRouter = false,
+  navigate = null,
+  location = null,
 }) {
-  const inRouter = useInRouterContext();
-  const navigate = inRouter ? useNavigate() : null;
-  const location = inRouter ? useLocation() : null;
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const reduxCategory = useSelector(selectBrowseActiveCategory);
+  const filters = useSelector(selectBrowseFilters);
+  const hotelsState = useSelector(selectBrowseHotels);
+  const experiencesState = useSelector(selectBrowseExperiences);
+  const plansState = useSelector(selectBrowsePlans);
 
-  const effectiveUser = user || {
+  const resolvedUser = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
+  const effectiveUser = resolvedUser || {
     name: 'Anjali Sharma',
     username: 'Anjali Sharma',
     role: 'traveller',
     userId: 'T001',
   };
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchQueryError, setSearchQueryError] = useState('');
-  const [locationQuery, setLocationQuery] = useState('');
-  const [checkInDate, setCheckInDate] = useState('');
-  const [checkOutDate, setCheckOutDate] = useState('');
-  const [checkInDateError, setCheckInDateError] = useState('');
-  const [guestCount, setGuestCount] = useState('2');
-  const [roomCount, setRoomCount] = useState('1');
 
+  const urlCategory = useMemo(() => {
+    if (!location?.search) return null;
+    const cat = new URLSearchParams(location.search).get('category');
+    if (!cat) return null;
+    const lower = cat.toLowerCase();
+    if (lower === 'packages' || lower === 'plans') return BROWSE_CATEGORIES.PLANS;
+    if (lower === 'experiences') return BROWSE_CATEGORIES.EXPERIENCES;
+    if (lower === 'hotels') return BROWSE_CATEGORIES.HOTELS;
+    return null;
+  }, [location]);
+
+  const [localCategory, setLocalCategory] = useState(null);
+  const activeCategory = useFixtures ? (localCategory || urlCategory || initialCategory) : reduxCategory;
+
+  const {
+    searchQuery,
+    locationQuery,
+    checkInDate,
+    guestCount,
+    roomCount,
+    minStars,
+    expCategory,
+    maxPrice,
+    selectedAmenities,
+    sortBy,
+    viewMode,
+  } = filters;
+
+  const [searchQueryError, setSearchQueryError] = useState('');
+  const [checkInDateError, setCheckInDateError] = useState('');
+
+  // Sync URL query params into Redux browse state when navigated from Dashboard search
   useEffect(() => {
     if (!location?.search) return;
     const params = new URLSearchParams(location.search);
-    const cat = params.get('category');
-    if (cat) {
-      const lower = cat.toLowerCase();
-      if (lower === 'packages' || lower === 'plans') {
-        setActiveCategory(BROWSE_CATEGORIES.PLANS);
-      } else if (lower === 'hotels') {
-        setActiveCategory(BROWSE_CATEGORIES.HOTELS);
-      } else if (lower === 'experiences') {
-        setActiveCategory(BROWSE_CATEGORIES.EXPERIENCES);
-      }
+    if (!useFixtures && urlCategory) {
+      dispatch(setBrowseCategory(urlCategory));
     }
+
+    const filterPatch = {};
     const search = params.get('search') || params.get('destination');
     if (search != null) {
-      setSearchQuery(search);
-      setLocationQuery(search);
+      filterPatch.searchQuery = search;
+      filterPatch.locationQuery = search;
     }
     const loc = params.get('location') || params.get('from');
     if (loc != null) {
-      setLocationQuery(loc);
-      if (!search) setSearchQuery(loc);
+      filterPatch.locationQuery = loc;
+      if (!search) filterPatch.searchQuery = loc;
     }
     const checkIn = params.get('checkIn') || params.get('departure') || params.get('date');
     if (checkIn != null) {
       const validation = validateDateInput(checkIn);
-      setCheckInDate(validation.sanitized);
-      setCheckInDateError(validation.isValid ? '' : validation.error);
+      filterPatch.checkInDate = validation.sanitized;
     }
     const checkOut = params.get('checkOut');
-    if (checkOut != null) setCheckOutDate(validateDateInput(checkOut).sanitized);
-    const guests = params.get('guests');
-    if (guests != null) setGuestCount(guests);
-    const rooms = params.get('rooms');
-    if (rooms != null) setRoomCount(rooms);
-  }, [location?.search]);
-
-  // Filter states
-  const [minStars, setMinStars] = useState(0);
-  const [expCategory, setExpCategory] = useState('all');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [selectedAmenities, setSelectedAmenities] = useState([]);
-
-  // Sorting and View mode
-  const [sortBy, setSortBy] = useState(SORT_OPTIONS.DEFAULT);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
-  const [selectedDetailItem, setSelectedDetailItem] = useState(null);
-
-  // Live state per resource category
-  const [resourceData, setResourceData] = useState({
-    [BROWSE_CATEGORIES.HOTELS]: propHotels ?? [],
-    [BROWSE_CATEGORIES.EXPERIENCES]: propExperiences ?? [],
-    [BROWSE_CATEGORIES.PLANS]: propPlans ?? [],
-  });
-  const [resourceLoading, setResourceLoading] = useState({
-    [BROWSE_CATEGORIES.HOTELS]: false,
-    [BROWSE_CATEGORIES.EXPERIENCES]: false,
-    [BROWSE_CATEGORIES.PLANS]: false,
-  });
-  const [resourceErrors, setResourceErrors] = useState({
-    [BROWSE_CATEGORIES.HOTELS]: null,
-    [BROWSE_CATEGORIES.EXPERIENCES]: null,
-    [BROWSE_CATEGORIES.PLANS]: null,
-  });
-
-  const fetchCategory = useCallback(async (category) => {
-    setResourceLoading((prev) => ({ ...prev, [category]: true }));
-    setResourceErrors((prev) => ({ ...prev, [category]: null }));
-
-    try {
-      let mapped = [];
-      if (category === BROWSE_CATEGORIES.HOTELS) {
-        const raw = await apiRequest('/hotels');
-        mapped = Array.isArray(raw) ? raw.map(mapBackendHotel).filter(Boolean) : [];
-      } else if (category === BROWSE_CATEGORIES.EXPERIENCES) {
-        const raw = await apiRequest('/experiences');
-        mapped = Array.isArray(raw) ? raw.map(mapBackendExperience).filter(Boolean) : [];
-      } else if (category === BROWSE_CATEGORIES.PLANS) {
-        const res = await apiRequest('/plans');
-        const items = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
-        mapped = items.map(mapBackendPlan).filter(Boolean);
-      }
-
-      setResourceData((prev) => ({ ...prev, [category]: mapped }));
-      setResourceErrors((prev) => ({ ...prev, [category]: null }));
-    } catch (err) {
-      setResourceErrors((prev) => ({
-        ...prev,
-        [category]: err.message || `Failed to load ${category}. Please try again.`,
-      }));
-      // Strict requirement: Never silently present fixture data after an API failure
-      setResourceData((prev) => ({ ...prev, [category]: [] }));
-    } finally {
-      setResourceLoading((prev) => ({ ...prev, [category]: false }));
+    if (checkOut != null) {
+      filterPatch.checkOutDate = validateDateInput(checkOut).sanitized;
     }
-  }, []);
+    const guests = params.get('guests');
+    if (guests != null) filterPatch.guestCount = guests;
+    const rooms = params.get('rooms');
+    if (rooms != null) filterPatch.roomCount = rooms;
+
+    if (Object.keys(filterPatch).length > 0) {
+      dispatch(setBrowseFilters(filterPatch));
+    }
+  }, [location, urlCategory, dispatch, useFixtures]);
+
+  const fetchCategory = useCallback((category) => {
+    if (category === BROWSE_CATEGORIES.HOTELS) {
+      dispatch(fetchBrowseHotels());
+    } else if (category === BROWSE_CATEGORIES.EXPERIENCES) {
+      dispatch(fetchBrowseExperiences());
+    } else if (category === BROWSE_CATEGORIES.PLANS) {
+      dispatch(fetchBrowsePlans({ limit: 50 }));
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     if (useFixtures) return;
 
-    if (propHotels === undefined) fetchCategory(BROWSE_CATEGORIES.HOTELS);
-    if (propExperiences === undefined) fetchCategory(BROWSE_CATEGORIES.EXPERIENCES);
-    if (propPlans === undefined) fetchCategory(BROWSE_CATEGORIES.PLANS);
-  }, [useFixtures, propHotels, propExperiences, propPlans, fetchCategory]);
+    if (propHotels === undefined && !hotelsState.loaded && !hotelsState.loading) {
+      dispatch(fetchBrowseHotels());
+    }
+    if (propExperiences === undefined && !experiencesState.loaded && !experiencesState.loading) {
+      dispatch(fetchBrowseExperiences());
+    }
+    if (propPlans === undefined && !plansState.loaded && !plansState.loading) {
+      dispatch(fetchBrowsePlans({ limit: 50 }));
+    }
+  }, [
+    useFixtures,
+    propHotels,
+    propExperiences,
+    propPlans,
+    hotelsState.loaded,
+    hotelsState.loading,
+    experiencesState.loaded,
+    experiencesState.loading,
+    plansState.loaded,
+    plansState.loading,
+    dispatch,
+  ]);
 
   const hotels = useFixtures
     ? (propHotels ?? DEFAULT_HOTEL_FIXTURES)
-    : (propHotels ?? resourceData[BROWSE_CATEGORIES.HOTELS]);
+    : (propHotels ?? hotelsState.items);
 
   const experiences = useFixtures
     ? (propExperiences ?? DEFAULT_EXPERIENCE_FIXTURES)
-    : (propExperiences ?? resourceData[BROWSE_CATEGORIES.EXPERIENCES]);
+    : (propExperiences ?? experiencesState.items);
 
   const plans = useFixtures
     ? (propPlans ?? DEFAULT_PLAN_FIXTURES)
-    : (propPlans ?? resourceData[BROWSE_CATEGORIES.PLANS]);
+    : (propPlans ?? plansState.items);
+
+  const activeCategoryState =
+    activeCategory === BROWSE_CATEGORIES.HOTELS
+      ? hotelsState
+      : activeCategory === BROWSE_CATEGORIES.EXPERIENCES
+        ? experiencesState
+        : plansState;
 
   const activeLoading = propIsLoading !== undefined
     ? propIsLoading
-    : (useFixtures ? false : Boolean(resourceLoading[activeCategory]));
+    : (useFixtures ? false : Boolean(activeCategoryState.loading));
 
   const activeError = propError !== undefined
     ? propError
-    : (useFixtures ? null : resourceErrors[activeCategory]);
+    : (useFixtures ? null : activeCategoryState.error);
+
+  const handleCategoryChange = (cat) => {
+    if (useFixtures) {
+      setLocalCategory(cat);
+    } else {
+      dispatch(setBrowseCategory(cat));
+    }
+  };
 
   const handleRetryActive = () => {
     if (typeof propOnRetry === 'function') {
@@ -200,10 +220,9 @@ export default function TravellerBrowsePage({
     }
   };
 
-  // Validate search input query on change
   const handleQueryChange = (e) => {
     const val = e.target.value;
-    setSearchQuery(val);
+    dispatch(setBrowseFilters({ searchQuery: val }));
     const validation = validateSearchInput(val);
     if (!validation.isValid) {
       setSearchQueryError(validation.error || 'Invalid search query');
@@ -215,32 +234,20 @@ export default function TravellerBrowsePage({
   const handleDateChange = (e) => {
     const val = e.target.value;
     const validation = validateDateInput(val);
-    setCheckInDate(validation.sanitized);
+    dispatch(setBrowseFilters({ checkInDate: validation.sanitized }));
     setCheckInDateError(validation.isValid ? '' : validation.error);
   };
 
   const handleResetFilters = () => {
-    setSearchQuery('');
+    dispatch(resetBrowseFilters());
     setSearchQueryError('');
-    setLocationQuery('');
-    setCheckInDate('');
-    setCheckOutDate('');
-    setMinStars(0);
-    setExpCategory('all');
-    setMaxPrice('');
-    setSelectedAmenities([]);
-    setSortBy(SORT_OPTIONS.DEFAULT);
+    setCheckInDateError('');
   };
 
   const handleToggleAmenity = (amenity) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(amenity)
-        ? prev.filter((a) => a !== amenity)
-        : [...prev, amenity]
-    );
+    dispatch(toggleBrowseAmenity(amenity));
   };
 
-  // Filter and sort items based on active category
   const filteredHotels = useMemo(() => {
     let result = filterHotels(hotels, {
       query: searchQuery,
@@ -296,7 +303,6 @@ export default function TravellerBrowsePage({
     }
   }, [activeCategory, filteredHotels, filteredExperiences, filteredPlans]);
 
-  // Active filter count for sidebar header badge
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (searchQuery) count++;
@@ -316,12 +322,14 @@ export default function TravellerBrowsePage({
       activeCategory === BROWSE_CATEGORIES.HOTELS
         ? 'hotel'
         : activeCategory === BROWSE_CATEGORIES.EXPERIENCES
-        ? 'experience'
-        : 'package';
+          ? 'experience'
+          : 'package';
+
+    dispatch(setSelectedItemPreview({ key: `${typeKey}:${item.id}`, item }));
 
     const searchParams = new URLSearchParams();
     if (checkInDate) searchParams.set('checkIn', checkInDate);
-    if (checkOutDate) searchParams.set('checkOut', checkOutDate);
+    if (filters.checkOutDate) searchParams.set('checkOut', filters.checkOutDate);
     if (guestCount) searchParams.set('guests', guestCount);
     if (roomCount) searchParams.set('rooms', roomCount);
     const searchStr = searchParams.toString();
@@ -334,7 +342,7 @@ export default function TravellerBrowsePage({
             item,
             category: activeCategory,
             checkInDate,
-            checkOutDate,
+            checkOutDate: filters.checkOutDate,
             guestCount,
             roomCount,
           },
@@ -343,44 +351,15 @@ export default function TravellerBrowsePage({
     }
   };
 
-  const handleCardBook = (item) => {
-    if (onBookItem) {
-      onBookItem(item, activeCategory);
-    } else if (navigate) {
-      const checkIn = checkInDate || item.date || item.checkIn || '2026-11-10';
-      const checkOut = checkOutDate || item.checkOut || '2026-11-14';
-      const guests = Number(guestCount) || 2;
-      const basePrice = item.pricePerNight ?? item.price ?? item.pricePerPerson ?? 5000;
-      const taxesAndFees = item.taxesAndFees ?? 1200;
-      const total = item.total || (basePrice * guests + taxesAndFees);
-
-      const checkoutItem = {
-        id: item.id || `item-${Date.now()}`,
-        title: item.name || item.title || 'Selected Reservation',
-        type: activeCategory === BROWSE_CATEGORIES.HOTELS ? 'hotel' : activeCategory === BROWSE_CATEGORIES.EXPERIENCES ? 'experience' : 'plan',
-        location: item.location || item.city || item.destination || 'India',
-        date: checkIn,
-        checkIn: checkIn,
-        checkOut: checkOut,
-        guestCount: guests,
-        basePrice: basePrice,
-        taxesAndFees: taxesAndFees,
-        total: total,
-        imageUrl: item.image || item.imageUrl || null,
-      };
-
-      navigate('/Traveller/checkout', { state: { item: checkoutItem } });
-    }
-  };
-
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  // Keeps the native date picker's spinner/typed input within a sane travel-booking window
-  // (see validateDateInput in browseUtils.js for why this is needed, not just cosmetic).
   const maxDateStr = useMemo(() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() + 2);
     return d.toISOString().split('T')[0];
   }, []);
+
+  const displayName = effectiveUser.name || effectiveUser.username || 'Traveller';
+  const avatarInitials = (effectiveUser.userId || displayName || 'T').slice(0, 2).toUpperCase();
 
   return (
     <div className="trav-browse-page-wrapper">
@@ -403,8 +382,8 @@ export default function TravellerBrowsePage({
         </div>
 
         <div className="trav-browse-user-chip">
-          <div className="trav-browse-user-avatar">T1</div>
-          <span>Anjali Sharma</span>
+          <div className="trav-browse-user-avatar">{avatarInitials}</div>
+          <span>{displayName}</span>
           <span className="trav-browse-user-role-badge">Traveller</span>
         </div>
       </header>
@@ -417,7 +396,7 @@ export default function TravellerBrowsePage({
             role="tab"
             aria-selected={activeCategory === BROWSE_CATEGORIES.HOTELS}
             className={`trav-browse-tab ${activeCategory === BROWSE_CATEGORIES.HOTELS ? 'active' : ''}`}
-            onClick={() => setActiveCategory(BROWSE_CATEGORIES.HOTELS)}
+            onClick={() => handleCategoryChange(BROWSE_CATEGORIES.HOTELS)}
           >
             🏨 Hotels ({hotels.length})
           </button>
@@ -426,7 +405,7 @@ export default function TravellerBrowsePage({
             role="tab"
             aria-selected={activeCategory === BROWSE_CATEGORIES.EXPERIENCES}
             className={`trav-browse-tab ${activeCategory === BROWSE_CATEGORIES.EXPERIENCES ? 'active' : ''}`}
-            onClick={() => setActiveCategory(BROWSE_CATEGORIES.EXPERIENCES)}
+            onClick={() => handleCategoryChange(BROWSE_CATEGORIES.EXPERIENCES)}
           >
             🧭 Experiences ({experiences.length})
           </button>
@@ -435,7 +414,7 @@ export default function TravellerBrowsePage({
             role="tab"
             aria-selected={activeCategory === BROWSE_CATEGORIES.PLANS}
             className={`trav-browse-tab ${activeCategory === BROWSE_CATEGORIES.PLANS ? 'active' : ''}`}
-            onClick={() => setActiveCategory(BROWSE_CATEGORIES.PLANS)}
+            onClick={() => handleCategoryChange(BROWSE_CATEGORIES.PLANS)}
           >
             🗺 Tour Packages ({plans.length})
           </button>
@@ -477,7 +456,7 @@ export default function TravellerBrowsePage({
                 className="trav-browse-input"
                 placeholder="City, region or destination..."
                 value={locationQuery}
-                onChange={(e) => setLocationQuery(e.target.value)}
+                onChange={(e) => dispatch(setBrowseFilters({ locationQuery: e.target.value }))}
                 aria-label="Filter by location or destination"
               />
             </div>
@@ -522,8 +501,7 @@ export default function TravellerBrowsePage({
                 value={`${guestCount}-${roomCount}`}
                 onChange={(e) => {
                   const [g, r] = e.target.value.split('-');
-                  setGuestCount(g);
-                  setRoomCount(r);
+                  dispatch(setBrowseFilters({ guestCount: g, roomCount: r }));
                 }}
               >
                 <option value="1-1">1 Guest, 1 Room</option>
@@ -546,8 +524,8 @@ export default function TravellerBrowsePage({
               {activeCategory === BROWSE_CATEGORIES.HOTELS
                 ? 'Search Stays'
                 : activeCategory === BROWSE_CATEGORIES.EXPERIENCES
-                ? 'Search Experiences'
-                : 'Search Packages'}
+                  ? 'Search Experiences'
+                  : 'Search Packages'}
             </span>
           </button>
         </div>
@@ -598,7 +576,7 @@ export default function TravellerBrowsePage({
               max="50000"
               step="1000"
               value={maxPrice || 50000}
-              onChange={(e) => setMaxPrice(e.target.value === '50000' ? '' : e.target.value)}
+              onChange={(e) => dispatch(setBrowseFilters({ maxPrice: e.target.value === '50000' ? '' : e.target.value }))}
               aria-label="Max budget range slider"
             />
             <div className="trav-browse-range-limits">
@@ -613,7 +591,7 @@ export default function TravellerBrowsePage({
                 className="trav-browse-input"
                 placeholder="Custom max price"
                 value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
+                onChange={(e) => dispatch(setBrowseFilters({ maxPrice: e.target.value }))}
                 min="0"
                 style={{ fontSize: '0.85rem' }}
               />
@@ -631,7 +609,7 @@ export default function TravellerBrowsePage({
                       key={stars}
                       type="button"
                       className={`trav-browse-filter-chip ${minStars === stars ? 'active' : ''}`}
-                      onClick={() => setMinStars(stars)}
+                      onClick={() => dispatch(setBrowseFilters({ minStars: stars }))}
                     >
                       {stars === 0 ? 'All Stays' : `${stars}★ & above`}
                     </button>
@@ -668,7 +646,7 @@ export default function TravellerBrowsePage({
                     key={cat}
                     type="button"
                     className={`trav-browse-filter-chip ${expCategory === cat ? 'active' : ''}`}
-                    onClick={() => setExpCategory(cat)}
+                    onClick={() => dispatch(setBrowseFilters({ expCategory: cat }))}
                   >
                     {cat === 'all' ? 'All Activities' : cat.charAt(0).toUpperCase() + cat.slice(1)}
                   </button>
@@ -676,7 +654,6 @@ export default function TravellerBrowsePage({
               </div>
             </div>
           )}
-
 
           {/* Category-Specific Filter: Plans */}
           {activeCategory === BROWSE_CATEGORIES.PLANS && (
@@ -706,7 +683,7 @@ export default function TravellerBrowsePage({
                   id="browse-sort-select"
                   className="trav-browse-sort-select"
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => dispatch(setBrowseFilters({ sortBy: e.target.value }))}
                 >
                   <option value={SORT_OPTIONS.DEFAULT}>Recommended</option>
                   <option value={SORT_OPTIONS.PRICE_LOW}>Price: Low to High</option>
@@ -720,7 +697,7 @@ export default function TravellerBrowsePage({
                 <button
                   type="button"
                   className={`trav-browse-view-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => dispatch(setBrowseFilters({ viewMode: 'grid' }))}
                   title="Grid view"
                   aria-label="Grid view"
                 >
@@ -734,7 +711,7 @@ export default function TravellerBrowsePage({
                 <button
                   type="button"
                   className={`trav-browse-view-btn ${viewMode === 'list' ? 'active' : ''}`}
-                  onClick={() => setViewMode('list')}
+                  onClick={() => dispatch(setBrowseFilters({ viewMode: 'list' }))}
                   title="List view"
                   aria-label="List view"
                 >
@@ -761,7 +738,7 @@ export default function TravellerBrowsePage({
                     type="button"
                     className="trav-browse-pill-remove"
                     onClick={() => {
-                      setSearchQuery('');
+                      dispatch(setBrowseFilters({ searchQuery: '' }));
                       setSearchQueryError('');
                     }}
                     aria-label="Remove search filter"
@@ -776,7 +753,7 @@ export default function TravellerBrowsePage({
                   <button
                     type="button"
                     className="trav-browse-pill-remove"
-                    onClick={() => setLocationQuery('')}
+                    onClick={() => dispatch(setBrowseFilters({ locationQuery: '' }))}
                     aria-label="Remove location filter"
                   >
                     ✕
@@ -789,7 +766,7 @@ export default function TravellerBrowsePage({
                   <button
                     type="button"
                     className="trav-browse-pill-remove"
-                    onClick={() => setMinStars(0)}
+                    onClick={() => dispatch(setBrowseFilters({ minStars: 0 }))}
                     aria-label="Remove star filter"
                   >
                     ✕
@@ -802,7 +779,7 @@ export default function TravellerBrowsePage({
                   <button
                     type="button"
                     className="trav-browse-pill-remove"
-                    onClick={() => setExpCategory('all')}
+                    onClick={() => dispatch(setBrowseFilters({ expCategory: 'all' }))}
                     aria-label="Remove activity category filter"
                   >
                     ✕
@@ -815,7 +792,7 @@ export default function TravellerBrowsePage({
                   <button
                     type="button"
                     className="trav-browse-pill-remove"
-                    onClick={() => setMaxPrice('')}
+                    onClick={() => dispatch(setBrowseFilters({ maxPrice: '' }))}
                     aria-label="Remove price filter"
                   >
                     ✕
@@ -920,8 +897,6 @@ export default function TravellerBrowsePage({
                     onSelect={handleCardSelect}
                   />
                 ))}
-
-
             </div>
           )}
         </main>
@@ -929,4 +904,17 @@ export default function TravellerBrowsePage({
       </div>
     </div>
   );
+}
+
+function TravellerBrowseWithRouter(props) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return <TravellerBrowseCore {...props} inRouter={true} navigate={navigate} location={location} />;
+}
+
+export default function TravellerBrowsePage(props) {
+  const inRouter = useInRouterContext();
+  return inRouter
+    ? <TravellerBrowseWithRouter {...props} />
+    : <TravellerBrowseCore {...props} inRouter={false} navigate={null} location={null} />;
 }

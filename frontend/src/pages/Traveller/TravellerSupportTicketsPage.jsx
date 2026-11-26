@@ -1,10 +1,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { TicketCreateForm, TicketList } from '../../components/tickets/index.js';
-import { getTickets } from '../../services/tickets.api.js';
 import { getSavedUser } from '../../services/api.js';
 import { getUser } from '../../services/session.js';
+import { selectAuthUser } from '../../features/authSlice.js';
+import {
+  createSupportTicket,
+  fetchSupportTickets,
+  selectSupportTickets,
+  selectSupportTicketsError,
+  selectSupportTicketsLoading,
+} from '../../features/supportTicketsSlice.js';
 import './travellerSupportTickets.css';
 
 /**
@@ -16,19 +24,27 @@ import './travellerSupportTickets.css';
  * - Scoped to the authenticated Traveller using shared identityHeaders() via tickets.api.js
  * - Handles loading, empty, success, and error states gracefully
  */
-export default function TravellerSupportTicketsPage({
+function TravellerSupportTicketsCore({
   user,
   currentTravellerId,
   showNavbar = true,
   onSubmitTicket,
   initialTab = 'list',
+  location = null,
+  inRouter = false,
 }) {
-  const location = useLocation();
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const tickets = useSelector(selectSupportTickets);
+  const isLoading = useSelector(selectSupportTicketsLoading);
+  const error = useSelector(selectSupportTicketsError);
 
   // Resolve authenticated traveller session
   const effectiveUser = useMemo(() => {
+    const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
     return (
       user ||
+      activeAuthUser ||
       getSavedUser() ||
       getUser() || {
         name: 'Anjali Sharma',
@@ -37,42 +53,36 @@ export default function TravellerSupportTicketsPage({
         userId: currentTravellerId || 'T001',
       }
     );
-  }, [user, currentTravellerId]);
+  }, [user, authUser, currentTravellerId]);
 
   // Tab state: 'list' (My Tickets) or 'create' (Submit a Ticket)
+  const locationSearch = location?.search || '';
   const defaultTab = useMemo(() => {
-    if (location?.search) {
-      const params = new URLSearchParams(location.search);
+    if (locationSearch) {
+      const params = new URLSearchParams(locationSearch);
       if (params.get('tab') === 'create' || params.get('new') === '1') {
         return 'create';
       }
     }
     return initialTab;
-  }, [location?.search, initialTab]);
+  }, [locationSearch, initialTab]);
 
   const [activeTab, setActiveTab] = useState(defaultTab);
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  // Load caller's tickets from backend API
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getTickets();
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || 'Failed to load your support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Load caller's tickets via Redux supportTicketsSlice
+  const fetchTickets = useCallback(() => {
+    dispatch(fetchSupportTickets());
+  }, [dispatch]);
 
   useEffect(() => {
     fetchTickets();
   }, [fetchTickets]);
+
+  const handleSubmitTicketRequest = useCallback(
+    (payload) => dispatch(createSupportTicket(payload)).unwrap(),
+    [dispatch],
+  );
 
   // Handler invoked when a new ticket is submitted in TicketCreateForm
   const handleTicketSubmitted = (createdTicket) => {
@@ -90,16 +100,12 @@ export default function TravellerSupportTicketsPage({
     setActiveTab('list');
   };
 
-  const openCount = tickets.filter(
-    (t) => String(t.status || '').toUpperCase() === 'OPEN'
-  ).length;
-
   return (
     <div
       className="trav-tickets-page-wrapper"
       data-testid="traveller-support-tickets-page"
     >
-      {showNavbar && <Navbar user={effectiveUser} />}
+      {showNavbar && inRouter && <Navbar user={effectiveUser} />}
 
       <main className="trav-tickets-page">
         {/* Page Header */}
@@ -215,6 +221,7 @@ export default function TravellerSupportTicketsPage({
         {activeTab === 'create' && (
           <section aria-labelledby="heading-create-ticket">
             <TicketCreateForm
+              submitTicket={handleSubmitTicketRequest}
               currentUser={effectiveUser}
               onSubmitSuccess={handleTicketSubmitted}
             />
@@ -222,5 +229,19 @@ export default function TravellerSupportTicketsPage({
         )}
       </main>
     </div>
+  );
+}
+
+function TravellerSupportTicketsWithRouter(props) {
+  const location = useLocation();
+  return <TravellerSupportTicketsCore {...props} location={location} inRouter />;
+}
+
+export default function TravellerSupportTicketsPage(props) {
+  const inRouter = useInRouterContext();
+  return inRouter ? (
+    <TravellerSupportTicketsWithRouter {...props} />
+  ) : (
+    <TravellerSupportTicketsCore {...props} location={null} inRouter={false} />
   );
 }

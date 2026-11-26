@@ -1,41 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { getHotel, listRooms } from '../../services/hotels.api.js';
-import { getExperience } from '../../services/partners.api.js';
-import { getPlanById } from '../../services/plans.api.js';
-import { apiRequest } from '../../services/api.js';
+import { selectAuthUser } from '../../features/authSlice.js';
 import {
-  DEFAULT_HOTEL_FIXTURES,
-  DEFAULT_EXPERIENCE_FIXTURES,
-  DEFAULT_PLAN_FIXTURES,
-  mapBackendHotel,
-  mapBackendExperience,
-  mapBackendPlan,
-} from '../../utils/browseUtils.js';
-import { formatCurrency, formatDate, validateBookingDates } from '../../utils/checkoutUtils.js';
+  fetchBrowseItemDetail,
+  selectBrowseDetail,
+  setSelectedItemPreview,
+} from '../../features/browseSlice.js';
+import { setCheckoutItem } from '../../features/checkoutSlice.js';
+import { formatCurrency, validateBookingDates } from '../../utils/checkoutUtils.js';
 import './travellerDetail.css';
 
-/**
- * TravellerItemDetailPage
- * Dedicated full page for inspecting Hotel, Experience, or Holiday Package details.
- * Supports:
- * - Dynamic data retrieval by item ID & category with browser refresh persistence
- * - Multiple images in an interactive gallery carousel with graceful missing image fallbacks
- * - Comprehensive item specifics (amenities, schedule slots, package tags & itinerary)
- * - Clear "Book Slot" CTA transitioning into the existing /Traveller/checkout flow
- * - Preservation of user selections (guests, rooms, dates, destination)
- */
 export default function TravellerItemDetailPage({ user: propUser, defaultType }) {
-  let authUser = null;
-  try {
-    const auth = useAuth();
-    authUser = auth?.user;
-  } catch {
-    authUser = null;
-  }
-  const user = propUser || authUser;
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const detail = useSelector(selectBrowseDetail);
+  const user = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
   const { type: paramType, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,15 +37,19 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const initialGuests = searchParams.get('guests') || location.state?.guestCount || location.state?.guests || '2';
   const initialRooms = searchParams.get('rooms') || location.state?.roomCount || location.state?.rooms || '1';
 
-  // State management
-  const [item, setItem] = useState(() => {
-    if (location.state?.item && String(location.state.item.id) === String(id)) {
-      return location.state.item;
-    }
-    return null;
-  });
-  const [loading, setLoading] = useState(!item);
-  const [error, setError] = useState(null);
+  const expectedKey = `${effectiveType}:${id}`;
+  const statePreview = location.state?.item && String(location.state.item.id) === String(id)
+    ? location.state.item
+    : null;
+  const item = detail.key === expectedKey ? (detail.item || statePreview) : statePreview;
+  const rooms = useMemo(
+    () => (detail.key === expectedKey ? (detail.rooms || []).filter((r) => r.status !== 'inactive') : []),
+    [detail.key, detail.rooms, expectedKey],
+  );
+  const loading = detail.key === expectedKey ? detail.loading : !item;
+  const error = detail.key === expectedKey
+    ? (typeof detail.error === 'string' ? detail.error : detail.error?.message || null)
+    : null;
 
   // Gallery carousel state
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -81,110 +66,61 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const [selectedGuests, setSelectedGuests] = useState(initialGuests);
   const [selectedRooms, setSelectedRooms] = useState(initialRooms);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
-  const [rooms, setRooms] = useState([]);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [bookError, setBookError] = useState('');
 
-  // Fetch item data on mount or when id/type changes
   useEffect(() => {
-    let isCancelled = false;
-
-    async function loadItem() {
-      if (!id) {
-        setError('Invalid item identifier provided.');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        let loaded = null;
-
-        if (effectiveType === 'hotel') {
-          const raw = await getHotel(id);
-          if (raw) loaded = mapBackendHotel(raw);
-        } else if (effectiveType === 'experience') {
-          const raw = await getExperience(id);
-          if (raw) loaded = mapBackendExperience(raw);
-        } else if (effectiveType === 'package') {
-          const raw = await getPlanById(id);
-          if (raw) loaded = mapBackendPlan(raw);
-        }
-
-        if (!isCancelled) {
-          if (loaded) {
-            setItem(loaded);
-            if (Array.isArray(loaded.slots) && loaded.slots.length > 0) {
-              const today = new Date().toISOString().slice(0, 10);
-              const available = loaded.slots.find((s) => s.available && String(s.date).slice(0, 10) >= today && (s.capacity - (s.booked || 0)) > 0);
-              setSelectedSlotId(available ? available.id : null);
-            }
-          } else if (!item) {
-            setError(`The requested ${effectiveType} (#${id}) could not be found.`);
-          }
-        }
-      } catch (err) {
-        if (!isCancelled && !item) {
-          setError(err.message || `Failed to load ${effectiveType} details.`);
-        }
-      } finally {
-        if (!isCancelled) setLoading(false);
-      }
+    if (statePreview && detail.key !== expectedKey) {
+      dispatch(setSelectedItemPreview({ key: expectedKey, item: statePreview }));
     }
+    if (id) {
+      dispatch(fetchBrowseItemDetail({ type: effectiveType, id }));
+    }
+  }, [dispatch, effectiveType, id, expectedKey, statePreview, detail.key]);
 
-    loadItem();
+  const effectiveSelectedSlotId = useMemo(() => {
+    if (selectedSlotId) return selectedSlotId;
+    const slots = item?.slots;
+    if (Array.isArray(slots) && slots.length > 0) {
+      const available = slots.find(
+        (s) => s.available && String(s.date).slice(0, 10) >= todayStr && (s.capacity - (s.booked || 0)) > 0,
+      );
+      return available ? available.id : null;
+    }
+    return null;
+  }, [selectedSlotId, item, todayStr]);
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [id, effectiveType]);
+  const effectiveSelectedRoomId = useMemo(() => {
+    if (rooms.some((r) => r.id === selectedRoomId)) return selectedRoomId;
+    return (rooms.find((r) => r.availableRooms > 0) || rooms[0])?.id ?? null;
+  }, [rooms, selectedRoomId]);
 
-  // Room types the hotel partner added to this property (active ones only)
-  useEffect(() => {
-    if (effectiveType !== 'hotel' || !id) return undefined;
-    let cancelled = false;
-    listRooms(id)
-      .then((list) => {
-        if (cancelled) return;
-        const active = (list || []).filter((r) => r.status !== 'inactive');
-        setRooms(active);
-        setSelectedRoomId((prev) => (active.some((r) => r.id === prev) ? prev : (active.find((r) => r.availableRooms > 0) || active[0])?.id ?? null));
-      })
-      .catch(() => { if (!cancelled) setRooms([]); });
-    return () => { cancelled = true; };
-  }, [id, effectiveType]);
-
-  const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || null;
+  const selectedRoom = rooms.find((r) => r.id === effectiveSelectedRoomId) || null;
 
   // For a hotel with a chosen room type, the room count is capped at what is left of that type.
-  // No hardcoded ceiling — the list always goes exactly as far as real inventory allows.
   const roomOptions = useMemo(() => {
     if (effectiveType !== 'hotel' || !selectedRoom) return null;
     const max = Math.max(1, Number(selectedRoom.availableRooms) || 0);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [effectiveType, selectedRoom]);
 
-  useEffect(() => {
-    if (roomOptions && Number(selectedRooms) > roomOptions.length) setSelectedRooms(String(roomOptions.length));
-  }, [roomOptions, selectedRooms]);
+  const clampedSelectedRooms = roomOptions && Number(selectedRooms) > roomOptions.length
+    ? String(roomOptions.length)
+    : selectedRooms;
 
-  // Guest count is capped at real spots left (the chosen session's own slot capacity for an
-  // experience, or the item's own capacity otherwise) — never a fixed "5+" sentinel that silently
-  // misreports how many guests are actually being booked.
+  // Guest count is capped at real spots left
   const guestOptions = useMemo(() => {
     let max = Number(item?.capacity) || 10;
     if (effectiveType === 'experience' && Array.isArray(item?.slots)) {
-      const slot = item.slots.find((s) => s.id === selectedSlotId);
+      const slot = item.slots.find((s) => s.id === effectiveSelectedSlotId);
       if (slot) max = Math.max(1, (Number(slot.capacity) || 0) - (Number(slot.booked) || 0));
     }
     return Array.from({ length: Math.max(1, max) }, (_, i) => i + 1);
-  }, [item, effectiveType, selectedSlotId]);
+  }, [item, effectiveType, effectiveSelectedSlotId]);
 
-  useEffect(() => {
-    if (Number(selectedGuests) > guestOptions.length) setSelectedGuests(String(guestOptions.length));
-  }, [guestOptions, selectedGuests]);
+  const clampedSelectedGuests = Number(selectedGuests) > guestOptions.length
+    ? String(guestOptions.length)
+    : selectedGuests;
 
   // Photo gallery calculation (safe, no invented URLs)
   const images = useMemo(() => {
@@ -226,8 +162,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   };
 
   const nights = calculateNights();
-  const guestCountNum = Math.max(1, Number(selectedGuests) || 2);
-  const roomCountNum = Math.max(1, Number(selectedRooms) || 1);
+  const guestCountNum = Math.max(1, Number(clampedSelectedGuests) || 2);
+  const roomCountNum = Math.max(1, Number(clampedSelectedRooms) || 1);
   const startingRate = Number(
     (effectiveType === 'hotel' ? selectedRoom?.pricePerNight : undefined) ?? item?.pricePerNight ?? item?.price ?? item?.pricePerPerson ?? 5000,
   );
@@ -235,8 +171,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     effectiveType === 'hotel'
       ? startingRate * nights * roomCountNum
       : effectiveType === 'package'
-      ? startingRate * guestCountNum
-      : startingRate * guestCountNum;
+        ? startingRate * guestCountNum
+        : startingRate * guestCountNum;
   // Stays and experiences carry 12% taxes & fees (same rate as the server); packages keep their own figure.
   const taxes = effectiveType === 'package' ? Number(item?.taxesAndFees ?? 1200) : Math.round(subtotal * 0.12);
   const totalAmount = subtotal + taxes;
@@ -251,11 +187,9 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     }
 
     const selectedSlotObj = Array.isArray(item.slots)
-      ? item.slots.find((s) => s.id === selectedSlotId)
+      ? item.slots.find((s) => s.id === effectiveSelectedSlotId)
       : null;
 
-    // Dates come from the thing being booked: a hotel's chosen stay, an experience's chosen session,
-    // a package's fixed itinerary — never from a stray search-bar date.
     let bookingCheckIn = selectedCheckIn;
     let bookingCheckOut = selectedCheckOut;
     if (effectiveType === 'experience') {
@@ -300,7 +234,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     setBookError('');
 
     const checkoutItem = {
-      id: item.id || `item-${Date.now()}`,
+      id: item.id || id,
       title: item.name || item.title || 'Selected Reservation',
       type: effectiveType === 'hotel' ? 'hotel' : effectiveType === 'experience' ? 'experience' : 'plan',
       location: item.location || item.city || item.destination || 'India',
@@ -318,6 +252,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       selectedSlot: selectedSlotObj,
       item,
     };
+
+    dispatch(setCheckoutItem(checkoutItem));
 
     navigate('/Traveller/checkout', {
       state: {
@@ -369,7 +305,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
               <button
                 type="button"
                 className="trav-btn trav-btn-secondary"
-                onClick={() => window.location.reload()}
+                onClick={() => dispatch(fetchBrowseItemDetail({ type: effectiveType, id }))}
               >
                 Retry
               </button>
@@ -657,7 +593,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {rooms.map((room) => {
                         const soldOut = room.availableRooms <= 0;
-                        const chosen = room.id === selectedRoomId;
+                        const chosen = room.id === effectiveSelectedRoomId;
                         return (
                           <button
                             key={room.id}
@@ -738,7 +674,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                       {item.slots.map((slot) => {
                         const isPast = String(slot.date).slice(0, 10) < todayStr;
                         const spotsLeft = isPast ? 0 : Math.max(0, (slot.capacity || 10) - (slot.booked || 0));
-                        const isSelected = selectedSlotId === slot.id && !isPast;
+                        const isSelected = effectiveSelectedSlotId === slot.id && !isPast;
                         return (
                           <div
                             key={slot.id}
@@ -1150,7 +1086,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 </label>
                 <select
                   id="detail-guests"
-                  value={selectedGuests}
+                  value={clampedSelectedGuests}
                   onChange={(e) => setSelectedGuests(e.target.value)}
                   style={{
                     width: '100%',
@@ -1176,7 +1112,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                   </label>
                   <select
                     id="detail-rooms"
-                    value={selectedRooms}
+                    value={clampedSelectedRooms}
                     onChange={(e) => setSelectedRooms(e.target.value)}
                     style={{
                       width: '100%',

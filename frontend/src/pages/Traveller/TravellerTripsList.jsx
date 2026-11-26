@@ -1,8 +1,28 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useInRouterContext, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
-import { reconcileTripTracking, mapBackendTrip } from '../../utils/tripTrackingUtils.js';
-import { apiRequest, getSavedUser } from '../../services/api.js';
+import { reconcileTripTracking } from '../../utils/tripTrackingUtils.js';
+import { getSavedUser } from '../../services/api.js';
+import { selectAuthUser } from '../../features/authSlice.js';
+import {
+  fetchReviews,
+  selectReviewsHasLoaded,
+  selectReviewsList,
+} from '../../features/reviewsSlice.js';
+import {
+  fetchTravellerTrips,
+  fetchTripDetail,
+  pollTravellerTrips,
+  selectSelectedTripId,
+  selectTripDetailsLoading,
+  selectTripsError,
+  selectTripsList,
+  selectTripsLoading,
+  selectTripsRefreshing,
+  setSelectedTripId,
+} from '../../features/tripsSlice.js';
 // Production-safe fixture fallback when useFixtures is enabled without preview bundle
 const sampleTripsList = [];
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
@@ -41,8 +61,8 @@ function getTripImage(trip) {
  * - Rich trip cards with destination thumbnail, live pulse tracker, and details trigger
  * - Preserves live REST polling, monotonic tracking reconciliation, and auth isolation.
  */
-export default function TravellerTripsList({
-  user,
+function TravellerTripsCore({
+  user: propUser,
   showNavbar = true,
   trips: propTrips,
   isLoading: propIsLoading,
@@ -52,7 +72,22 @@ export default function TravellerTripsList({
   pollIntervalMs = 10000,
   currentTravellerId,
   useFixtures = false,
+  navigate = null,
+  inRouter = false,
+  locationKey = null,
 }) {
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const liveTrips = useSelector(selectTripsList);
+  const liveLoading = useSelector(selectTripsLoading);
+  const liveError = useSelector(selectTripsError);
+  const isRefreshing = useSelector(selectTripsRefreshing);
+  const detailsLoading = useSelector(selectTripDetailsLoading);
+  const reduxSelectedTripId = useSelector(selectSelectedTripId);
+  const reviewsList = useSelector(selectReviewsList);
+  const reviewsLoaded = useSelector(selectReviewsHasLoaded);
+
+  const user = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
   const effectiveUser = user || {
     name: 'Anjali Sharma',
     username: 'Anjali Sharma',
@@ -60,41 +95,36 @@ export default function TravellerTripsList({
     userId: currentTravellerId || 'T001',
   };
 
-  const [liveTrips, setLiveTrips] = useState([]);
-  const [liveLoading, setLiveLoading] = useState(false);
-  const [liveError, setLiveError] = useState(null);
-  const [selectedTripId, setSelectedTripId] = useState(null);
+  const [localSelectedTripId, setLocalSelectedTripId] = useState(null);
   const [cancellingTrip, setCancellingTrip] = useState(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [detailsLoading, setDetailsLoading] = useState(false);
-  const [reviewedTripIds, setReviewedTripIds] = useState(new Set());
 
-
-  // Load reviews to track which completed trips already have a review
-  useEffect(() => {
-    if (useFixtures) return;
-    let isCancelled = false;
-    async function loadReviewed() {
-      try {
-        const data = await apiRequest('/reviews');
-        const list = Array.isArray(data) ? data : data?.data || [];
-        if (!isCancelled) {
-          const ids = new Set(list.map((r) => r.tripId).filter(Boolean));
-          setReviewedTripIds(ids);
-        }
-      } catch {
-        // ignore error silently
-      }
+  const isControlledProps = propTrips !== undefined || useFixtures;
+  const selectedTripId = isControlledProps ? localSelectedTripId : reduxSelectedTripId;
+  const updateSelectedTripId = useCallback((id) => {
+    if (isControlledProps) {
+      setLocalSelectedTripId(id);
+    } else {
+      dispatch(setSelectedTripId(id));
     }
-    loadReviewed();
-    return () => {
-      isCancelled = true;
-    };
-  }, [useFixtures]);
+  }, [isControlledProps, dispatch]);
+
+  // Load reviews via Redux to track which completed trips already have a review
+  useEffect(() => {
+    if (useFixtures || reviewsLoaded) return;
+    dispatch(fetchReviews());
+  }, [useFixtures, reviewsLoaded, dispatch]);
+
+  const reviewedTripIds = useMemo(
+    () => new Set((reviewsList || []).map((r) => r.tripId).filter(Boolean)),
+    [reviewsList],
+  );
 
   const handleWriteReview = (trip) => {
-    if (typeof window !== 'undefined') {
-      window.location.href = `/Traveller/reviews?tripId=${encodeURIComponent(trip.id)}`;
+    const targetUrl = `/Traveller/reviews?tripId=${encodeURIComponent(trip.id)}`;
+    if (navigate) {
+      navigate(targetUrl);
+    } else if (typeof window !== 'undefined') {
+      window.location.href = targetUrl;
     }
   };
 
@@ -113,57 +143,27 @@ export default function TravellerTripsList({
     return '';
   }, [currentTravellerId, user]);
 
-  // Fetch all trips for traveller via GET /trips/traveller/:travellerId
+  // Fetch all trips for traveller via Redux thunk
   const fetchLiveTrips = useCallback(async () => {
     if (propTrips !== undefined || useFixtures) return;
-
-    if (!effectiveTravellerId) {
-      setLiveError('Authentication required. Missing or invalid saved session.');
-      setLiveTrips([]);
-      return;
-    }
-
-    setLiveLoading(true);
-    setLiveError(null);
-
-    try {
-      const rawData = await apiRequest(`/trips/traveller/${encodeURIComponent(effectiveTravellerId)}`);
-      const mapped = Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
-
-      setLiveTrips((prevTrips) => {
-        const prevMap = new Map((prevTrips || []).map((t) => [t.id, t]));
-        return mapped.map((incoming) => {
-          const existing = prevMap.get(incoming.id);
-          return existing ? reconcileTripTracking(existing, incoming) : incoming;
-        });
-      });
-      setLiveError(null);
-    } catch (err) {
-      setLiveError(err.message || 'Failed to load trips');
-      // Strictly do not fall back to fixtures on error
-      setLiveTrips([]);
-    } finally {
-      setLiveLoading(false);
-    }
-  }, [propTrips, useFixtures, effectiveTravellerId]);
+    await dispatch(fetchTravellerTrips(effectiveTravellerId));
+  }, [dispatch, propTrips, useFixtures, effectiveTravellerId]);
 
   // Initial load when in live mode
   useEffect(() => {
-    let isCancelled = false;
-
-    const load = async () => {
-      await Promise.resolve();
-      if (!isCancelled && propTrips === undefined && !useFixtures) {
-        await fetchLiveTrips();
-      }
-    };
-
-    load();
-
-    return () => {
-      isCancelled = true;
-    };
+    if (propTrips === undefined && !useFixtures) {
+      fetchLiveTrips();
+    }
   }, [propTrips, useFixtures, fetchLiveTrips]);
+
+  // Reset selected trip detail when entering/leaving via router or returning from another view
+  useEffect(() => {
+    if (isControlledProps) return undefined;
+    dispatch(setSelectedTripId(null));
+    return () => {
+      dispatch(setSelectedTripId(null));
+    };
+  }, [dispatch, isControlledProps, locationKey]);
 
   // Refresh function used by periodic polling and manual refresh button
   const refreshLiveTrips = useCallback(async () => {
@@ -175,36 +175,8 @@ export default function TravellerTripsList({
     if (propTrips !== undefined || useFixtures) return;
     if (!effectiveTravellerId) return;
 
-    try {
-      if (selectedTripId) {
-        // Detail view is open: fetch specific trip to avoid duplicate polling
-        const rawDetail = await apiRequest(`/trips/${encodeURIComponent(selectedTripId)}`);
-        if (rawDetail) {
-          const mappedDetail = mapBackendTrip(rawDetail);
-          setLiveTrips((prevTrips) =>
-            prevTrips.map((t) =>
-              t.id === selectedTripId ? reconcileTripTracking(t, mappedDetail) : t
-            )
-          );
-        }
-      } else {
-        // List view is open: poll all trips for traveller
-        const rawData = await apiRequest(`/trips/traveller/${encodeURIComponent(effectiveTravellerId)}`);
-        const mapped = Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
-
-        setLiveTrips((prevTrips) => {
-          const prevMap = new Map((prevTrips || []).map((t) => [t.id, t]));
-          return mapped.map((incoming) => {
-            const existing = prevMap.get(incoming.id);
-            return existing ? reconcileTripTracking(existing, incoming) : incoming;
-          });
-        });
-      }
-    } catch (err) {
-      // Background poll failure preserves current state without regressions
-      void err;
-    }
-  }, [propOnPollRefresh, propTrips, useFixtures, effectiveTravellerId, selectedTripId]);
+    await dispatch(pollTravellerTrips({ travellerId: effectiveTravellerId, selectedTripId }));
+  }, [propOnPollRefresh, propTrips, useFixtures, effectiveTravellerId, selectedTripId, dispatch]);
 
   // Active trips dataset
   const activeTrips = propTrips !== undefined
@@ -240,12 +212,7 @@ export default function TravellerTripsList({
 
     const triggerRefresh = async () => {
       if (isRefreshing) return;
-      setIsRefreshing(true);
-      try {
-        await refreshLiveTrips();
-      } finally {
-        setIsRefreshing(false);
-      }
+      await refreshLiveTrips();
     };
 
     // Periodic polling only if an ongoing trip exists
@@ -279,32 +246,12 @@ export default function TravellerTripsList({
 
   // Drill down to detail view & fetch single trip details if in live mode
   const handleSelectTrip = useCallback(async (tripId) => {
-    setSelectedTripId(tripId);
+    updateSelectedTripId(tripId);
 
     if (propTrips === undefined && !useFixtures && tripId) {
-      setDetailsLoading(true);
-      try {
-        const rawDetail = await apiRequest(`/trips/${encodeURIComponent(tripId)}`);
-        if (rawDetail) {
-          const mappedDetail = mapBackendTrip(rawDetail);
-          setLiveTrips((prevTrips) => {
-            const exists = prevTrips.some((t) => t.id === tripId);
-            if (exists) {
-              return prevTrips.map((t) =>
-                t.id === tripId ? reconcileTripTracking(t, mappedDetail) : t
-              );
-            }
-            return [...prevTrips, mappedDetail];
-          });
-        }
-      } catch (err) {
-        // Fall back cleanly to the trip already in list
-        void err;
-      } finally {
-        setDetailsLoading(false);
-      }
+      await dispatch(fetchTripDetail(tripId));
     }
-  }, [propTrips, useFixtures]);
+  }, [propTrips, useFixtures, dispatch, updateSelectedTripId]);
 
   const handleRetry = () => {
     if (typeof propOnRetry === 'function') {
@@ -315,12 +262,7 @@ export default function TravellerTripsList({
   };
 
   const handleManualRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refreshLiveTrips();
-    } finally {
-      setIsRefreshing(false);
-    }
+    await refreshLiveTrips();
   };
 
   // Filter tabs logic
@@ -355,13 +297,13 @@ export default function TravellerTripsList({
   if (selectedTrip) {
     return (
       <div className="trav-trips-page-wrapper">
-        {showNavbar && (
+        {showNavbar && inRouter && (
           <Navbar user={effectiveUser} />
         )}
         <div className="trav-trips-page" data-testid="traveller-trip-details-page">
           <TravellerTripDetailsView
             trip={selectedTrip}
-            onBack={() => setSelectedTripId(null)}
+            onBack={() => updateSelectedTripId(null)}
             onManualRefresh={handleManualRefresh}
             isRefreshing={isRefreshing || detailsLoading}
             onCancelClick={(t) => setCancellingTrip(t)}
@@ -386,7 +328,7 @@ export default function TravellerTripsList({
 
   return (
     <div className="trav-trips-page-wrapper">
-      {showNavbar && (
+      {showNavbar && inRouter && (
         <Navbar user={effectiveUser} />
       )}
 
@@ -734,6 +676,17 @@ export default function TravellerTripsList({
       </div>
     </div>
   );
+}
+
+function TravellerTripsWithRouter(props) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return <TravellerTripsCore {...props} navigate={navigate} inRouter locationKey={location?.key || 'router'} />;
+}
+
+export default function TravellerTripsList(props) {
+  const inRouter = useInRouterContext();
+  return inRouter ? <TravellerTripsWithRouter {...props} /> : <TravellerTripsCore {...props} navigate={null} inRouter={false} locationKey={null} />;
 }
 
 

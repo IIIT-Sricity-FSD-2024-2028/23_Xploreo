@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { cancelGuideRequest, listAvailableGuides, requestGuide } from '../../services/tripGuides.api.js';
+import { useDispatch } from 'react-redux';
+import { listAvailableGuides } from '../../services/tripGuides.api.js';
+import { cancelGuideForTrip, requestGuideForTrip } from '../../features/tripsSlice.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
 
@@ -8,14 +10,9 @@ const SELECTABLE = new Set(['confirmed', 'rejected_by_guide']);
 
 /**
  * Guide status + selection for one booked trip.
- *  - no guide yet         -> "Choose a guide"
- *  - request pending      -> waiting note + "Cancel request"
- *  - guide confirmed      -> confirmed note
- *  - guide declined       -> red "guide not confirmed" note + "Choose another guide"
- * Guides come from the server already filtered (NTA-approved for the plan, free on the trip's
- * dates, not previously declined for this trip).
  */
 export default function TripGuidePanel({ trip, onChanged }) {
+  const dispatch = useDispatch();
   const [picking, setPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -34,14 +31,19 @@ export default function TripGuidePanel({ trip, onChanged }) {
     setBusy(true);
     setError('');
     try {
-      await cancelGuideRequest(trip.id);
+      await dispatch(cancelGuideForTrip(trip.id)).unwrap();
       await onChanged?.();
     } catch (err) {
-      setError(err.message || 'Could not cancel the request.');
+      setError((typeof err === 'string' ? err : err?.message) || 'Could not cancel the request.');
     } finally {
       setBusy(false);
     }
   }
+
+  const handleRequestGuide = async (entityId, nextGuideId) => {
+    const res = await dispatch(requestGuideForTrip({ tripId: entityId, guideId: nextGuideId })).unwrap();
+    return res?.updated;
+  };
 
   return (
     <div className="trav-guide-panel" data-testid={`trip-guide-panel-${trip.id}`}>
@@ -99,7 +101,7 @@ export default function TripGuidePanel({ trip, onChanged }) {
         <GuidePicker
           entityId={trip.id}
           list={listAvailableGuides}
-          send={requestGuide}
+          send={handleRequestGuide}
           onClose={() => setPicking(false)}
           onRequested={async () => {
             setPicking(false);

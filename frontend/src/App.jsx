@@ -2,7 +2,7 @@ import { Provider } from "react-redux";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
-import { store } from "./store/index.js";
+import { store } from "./app/store.js";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Login from "./pages/Auth/login";
 import Register from "./pages/Auth/register";
