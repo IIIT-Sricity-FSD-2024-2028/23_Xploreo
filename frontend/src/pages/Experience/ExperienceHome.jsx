@@ -2,15 +2,17 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/foundation';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { listExperienceBookings, listMyExperiences } from '@/services/partners.api.js';
+import { listExperienceBookings } from '@/services/partners.api.js';
 import { listReviews } from '@/services/schedule.api.js';
+import { useExperienceCatalog } from '@/store/experience/useExperienceCatalog.js';
 import { compareSlots, formatDate, slotState, timeToMinutes, todayIso } from '@/lib/datetime.js';
 import { ui } from '@/lib/assets.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
 import { ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
 import './experienceShared.css';
 
-const loadHome = () => Promise.all([listMyExperiences(), listExperienceBookings(), listReviews()]);
+const loadHome = () => Promise.all([listExperienceBookings(), listReviews()]);
+const EMPTY = [];
 
 function alertFor(slot) {
   const percent = slot.capacity ? (slot.booked / slot.capacity) * 100 : 0;
@@ -34,8 +36,17 @@ const SCHEDULE_PILL = {
 export default function ExperienceHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data, error, loading, reload } = useAsyncData(loadHome);
-  const [experiences, bookings, reviews] = data ?? [[], [], []];
+  const home = useAsyncData(loadHome);
+  const catalog = useExperienceCatalog();
+  const experiences = catalog.data ?? EMPTY;
+  const [bookings = EMPTY, reviews = EMPTY] = home.data ?? EMPTY;
+  const ready = catalog.data !== null && home.data !== null;
+  const error = catalog.error ?? home.error;
+  const loading = !error && (catalog.loading || home.loading);
+  function reload() {
+    catalog.reload();
+    home.reload();
+  }
   const today = todayIso();
 
   const view = useMemo(() => {
@@ -70,11 +81,10 @@ export default function ExperienceHome() {
             <span className="gd-header-badge">{user?.name} · Experience Partner</span>
           </header>
 
-          {!data && loading ? <LoadingBlock label="Loading your dashboard…" /> : null}
-          {!data && error ? <ErrorNotice error={error} onRetry={reload} /> : null}
-          {data ? <ErrorNotice error={error} onRetry={reload} /> : null}
+          {!ready && loading ? <LoadingBlock label="Loading your dashboard…" /> : null}
+          <ErrorNotice error={error} onRetry={reload} />
 
-          {data ? (
+          {ready ? (
             <>
               <section className="gd-kpi-row" aria-label="Dashboard Overview">
                 <div className="gd-kpi-card">

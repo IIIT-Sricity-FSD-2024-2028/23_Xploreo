@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { saveExperienceSlots } from '@/services/schedule.api.js';
+import { useDispatch, useSelector } from 'react-redux';
+import { changeExperienceSlots, selectExperienceWriting } from '@/store/experience/experiencesSlice.js';
 import { compareSlots, formatDate, slotState } from '@/lib/datetime.js';
 import ModalFrame, { CloseButton } from './ModalFrame.jsx';
 import { EmptyState, ErrorNotice } from './Feedback.jsx';
 import SlotModal from './SlotModal.jsx';
 
-const newSlotId = (experienceId) => `${experienceId}-s-${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
 const dayLabel = (date) => formatDate(date, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 const FILL = { red: 'red', warning: 'warning', green: 'green' };
 
@@ -19,12 +19,15 @@ function pillFor(slot) {
 
 // The old "Manage Slots" view (#slotsManagerView). Every change is saved through the server, and the
 // server's answer (booked counts, availability) replaces what is on screen.
-export default function SlotManager({ experience, onUpdated }) {
+export default function SlotManager({ experience }) {
+  const dispatch = useDispatch();
+  const busy = useSelector((state) => selectExperienceWriting(state, experience.id));
   const [dateFilter, setDateFilter] = useState('all');
-  const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', slot }
-  const [removing, setRemoving] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [modal, setModal] = useState(null); // { mode: 'add' } | { mode: 'edit', slotId }
+  const [removingId, setRemovingId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const editing = experience.slots.find((slot) => slot.id === modal?.slotId);
+  const removing = experience.slots.find((slot) => slot.id === removingId);
 
   const slots = useMemo(() => [...experience.slots].sort(compareSlots), [experience.slots]);
   const dates = useMemo(() => [...new Set(slots.map((s) => s.date))], [slots]);
@@ -40,39 +43,32 @@ export default function SlotManager({ experience, onUpdated }) {
     return [...byDate.entries()];
   }, [slots, activeFilter]);
 
-  async function persist(next) {
-    const updated = await saveExperienceSlots(experience.id, next);
-    onUpdated(updated);
-  }
+  const persist = (change) => dispatch(changeExperienceSlots(experience.id, change));
 
-  async function inline(next) {
-    setBusy(true);
+  async function inline(change) {
     setActionError(null);
     try {
-      await persist(next);
+      await persist(change);
     } catch (err) {
       setActionError(err);
-    } finally {
-      setBusy(false);
     }
   }
 
-  const change = (slotId, patch) => inline(experience.slots.map((s) => (s.id === slotId ? { ...s, ...patch } : s)));
+  const change = (slotId, values) => inline({ operation: 'update', slotId, values });
 
   async function submitSlot(values) {
     if (modal.mode === 'edit') {
-      await persist(experience.slots.map((s) => (s.id === modal.slot.id ? { ...s, ...values } : s)));
+      await persist({ operation: 'update', slotId: modal.slotId, values });
     } else {
-      await persist([...experience.slots, { id: newSlotId(experience.id), ...values, booked: 0, available: true }]);
+      await persist({ operation: 'create', values });
       setDateFilter(values.date);
     }
     setModal(null);
   }
 
-  async function confirmRemove() {
-    const target = removing;
-    setRemoving(null);
-    await inline(experience.slots.filter((s) => s.id !== target.id));
+  function confirmRemove() {
+    setRemovingId(null);
+    inline({ operation: 'delete', slotId: removingId });
   }
 
   return (
@@ -86,7 +82,7 @@ export default function SlotManager({ experience, onUpdated }) {
           </div>
 
           <div className="slots-manager-toolbar">
-            <button className="primary-btn" id="openAddSlotBtn" type="button" onClick={() => setModal({ mode: 'add' })}>
+            <button className="primary-btn" id="openAddSlotBtn" type="button" disabled={busy} onClick={() => setModal({ mode: 'add' })}>
               + Add Slot
             </button>
             <label className="experience-select-shell" htmlFor="slotsDateFilter">
@@ -131,13 +127,13 @@ export default function SlotManager({ experience, onUpdated }) {
                           <div className={`progress-fill ${pill.fill}`} style={{ width: `${pill.percent}%` }} />
                         </div>
                         <div className="slot-card-actions">
-                          <button type="button" disabled={busy} onClick={() => setModal({ mode: 'edit', slot })}>Edit Slot</button>
+                          <button type="button" disabled={busy} onClick={() => setModal({ mode: 'edit', slotId: slot.id })}>Edit Slot</button>
                           <button
                             type="button"
                             className="danger-ghost-btn"
                             disabled={busy || slot.booked > 0}
                             title={slot.booked > 0 ? 'Sessions with bookings cannot be removed' : undefined}
-                            onClick={() => setRemoving(slot)}
+                            onClick={() => setRemovingId(slot.id)}
                           >
                             Delete
                           </button>
@@ -180,22 +176,22 @@ export default function SlotManager({ experience, onUpdated }) {
         </section>
       </section>
 
-      {modal ? (
-        <SlotModal mode={modal.mode} slot={modal.slot} defaultCapacity={experience.capacity} onClose={() => setModal(null)} onSubmit={submitSlot} />
+      {modal && (modal.mode === 'add' || editing) ? (
+        <SlotModal mode={modal.mode} slot={editing} defaultCapacity={experience.capacity} onClose={() => setModal(null)} onSubmit={submitSlot} />
       ) : null}
 
       {removing ? (
-        <ModalFrame id="removeSlotModal" labelledBy="removeSlotTitle" onClose={() => setRemoving(null)}>
+        <ModalFrame id="removeSlotModal" labelledBy="removeSlotTitle" onClose={() => setRemovingId(null)}>
           <div className="modal-header">
             <h2 id="removeSlotTitle">Delete this slot?</h2>
-            <CloseButton label="Close" onClick={() => setRemoving(null)} />
+            <CloseButton label="Close" onClick={() => setRemovingId(null)} />
           </div>
           <p>
             {dayLabel(removing.date)} at {removing.time} will be removed from <strong>{experience.title}</strong>.
           </p>
           <div className="experience-form">
             <div className="modal-actions">
-              <button type="button" onClick={() => setRemoving(null)}>Keep it</button>
+              <button type="button" onClick={() => setRemovingId(null)}>Keep it</button>
               <button type="button" className="primary-btn" onClick={confirmRemove}>Delete Slot</button>
             </div>
           </div>

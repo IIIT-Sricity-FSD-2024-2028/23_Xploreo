@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/foundation';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { deleteExperience, listMyExperiences } from '@/services/partners.api.js';
+import { removeExperience } from '@/store/experience/experiencesSlice.js';
+import { useExperienceCatalog } from '@/store/experience/useExperienceCatalog.js';
 import { compareSlots, formatCurrency, todayIso } from '@/lib/datetime.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
 import ModalFrame, { CloseButton } from '@/components/experience/ModalFrame.jsx';
@@ -20,11 +21,12 @@ function nextSession(exp, today) {
 
 export default function ExperienceCatalog() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [params] = useSearchParams();
   const { region } = useAuth();
-  const { data, error, loading, reload, mutate } = useAsyncData(listMyExperiences);
-  const [form, setForm] = useState(null); // { experience? }
-  const [removing, setRemoving] = useState(null);
+  const { data, error, loading, reload } = useExperienceCatalog();
+  const [form, setForm] = useState(null); // { experienceId? }
+  const [removingId, setRemovingId] = useState(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [removeError, setRemoveError] = useState(null);
 
@@ -32,21 +34,16 @@ export default function ExperienceCatalog() {
   const manageId = params.get('manage');
   const today = todayIso();
   const managed = manageId ? experiences.find((e) => e.id === manageId) : null;
-
-  const replace = (updated) => mutate((list) => list.map((e) => (e.id === updated.id ? updated : e)));
-
-  function saved(experience, mode) {
-    mutate((list) => (mode === 'add' ? [...list, experience] : list.map((e) => (e.id === experience.id ? experience : e))));
-    setForm(null);
-  }
+  const editing = form?.experienceId ? experiences.find((e) => e.id === form.experienceId) : null;
+  const removing = experiences.find((e) => e.id === removingId);
+  const closeForm = () => setForm(null);
 
   async function confirmRemove() {
     setRemoveBusy(true);
     setRemoveError(null);
     try {
-      await deleteExperience(removing.id);
-      mutate((list) => list.filter((e) => e.id !== removing.id));
-      setRemoving(null);
+      await dispatch(removeExperience(removingId));
+      setRemovingId(null);
     } catch (err) {
       setRemoveError(err);
     } finally {
@@ -57,7 +54,7 @@ export default function ExperienceCatalog() {
   return (
     <ExperiencePage pageClass="experience-catalog-page" title="Experiences">
       {managed ? (
-        <SlotManager key={managed.id} experience={managed} onUpdated={replace} />
+        <SlotManager key={managed.id} experience={managed} />
       ) : (
         <div className="gd-page-wrapper">
           <main className="gd-page">
@@ -75,8 +72,7 @@ export default function ExperienceCatalog() {
             </header>
 
             {!data && loading ? <LoadingBlock label="Loading your catalog…" /> : null}
-            {!data && error ? <ErrorNotice error={error} onRetry={reload} /> : null}
-            {data ? <ErrorNotice error={error} onRetry={reload} /> : null}
+            <ErrorNotice error={error} onRetry={reload} />
             {manageId && data && !managed ? (
               <ErrorNotice error={{ status: 404, message: 'That experience is not in your catalog.' }} />
             ) : null}
@@ -118,8 +114,8 @@ export default function ExperienceCatalog() {
                       <div className="ep-catalog-next">{next.text}</div>
                       <div className="ep-catalog-actions">
                         <button className="gd-btn gd-btn-primary gd-btn-sm" type="button" onClick={() => navigate(`/experience/catalog?manage=${encodeURIComponent(exp.id)}`)}>Manage Slots</button>
-                        <button className="gd-btn gd-btn-secondary gd-btn-sm" type="button" onClick={() => setForm({ experience: exp })}>Edit</button>
-                        <button className="gd-btn gd-btn-danger gd-btn-sm" type="button" onClick={() => { setRemoveError(null); setRemoving(exp); }}>Delete</button>
+                        <button className="gd-btn gd-btn-secondary gd-btn-sm" type="button" onClick={() => setForm({ experienceId: exp.id })}>Edit</button>
+                        <button className="gd-btn gd-btn-danger gd-btn-sm" type="button" onClick={() => { setRemoveError(null); setRemovingId(exp.id); }}>Delete</button>
                         <button className="gd-btn gd-btn-secondary gd-btn-sm" type="button" onClick={() => navigate(`/experience/bookings?experience=${encodeURIComponent(exp.id)}`)}>View Bookings</button>
                       </div>
                     </div>
@@ -131,15 +127,15 @@ export default function ExperienceCatalog() {
         </div>
       )}
 
-      {form ? (
-        <ExperienceFormModal key={form.experience?.id ?? 'new'} experience={form.experience} onClose={() => setForm(null)} onSaved={saved} />
+      {form && (!form.experienceId || editing) ? (
+        <ExperienceFormModal key={editing?.id ?? 'new'} experience={editing} onClose={closeForm} onSaved={closeForm} />
       ) : null}
 
       {removing ? (
-        <ModalFrame id="deleteExperienceModal" labelledBy="deleteExperienceTitle" onClose={removeBusy ? undefined : () => setRemoving(null)}>
+        <ModalFrame id="deleteExperienceModal" labelledBy="deleteExperienceTitle" onClose={removeBusy ? undefined : () => setRemovingId(null)}>
           <div className="modal-header">
             <h2 id="deleteExperienceTitle">Delete this experience?</h2>
-            <CloseButton label="Close" onClick={removeBusy ? undefined : () => setRemoving(null)} />
+            <CloseButton label="Close" onClick={removeBusy ? undefined : () => setRemovingId(null)} />
           </div>
           <p>
             <strong>{removing.title}</strong> and all of its sessions will be removed. Guests with upcoming bookings will no longer see it. This cannot be undone.
@@ -147,7 +143,7 @@ export default function ExperienceCatalog() {
           <ErrorNotice error={removeError} />
           <div className="experience-form">
             <div className="modal-actions">
-              <button type="button" onClick={() => setRemoving(null)} disabled={removeBusy}>Cancel</button>
+              <button type="button" onClick={() => setRemovingId(null)} disabled={removeBusy}>Cancel</button>
               <button type="button" className="primary-btn" onClick={confirmRemove} disabled={removeBusy}>
                 {removeBusy ? 'Deleting…' : 'Delete Experience'}
               </button>

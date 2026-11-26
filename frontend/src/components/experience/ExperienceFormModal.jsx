@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useAuth } from '@/foundation';
-import { createExperience, updateExperience } from '@/services/partners.api.js';
+import { addExperience, editExperience } from '@/store/experience/experiencesSlice.js';
 import ModalFrame, { CloseButton } from './ModalFrame.jsx';
 import ImageDropzone from './ImageDropzone.jsx';
 import { FieldError, FormMessage } from './Feedback.jsx';
@@ -41,6 +42,7 @@ function validate(v) {
 // Add and Edit are two different modals in the old UI (ids addModal / editModal, each with its own CSS),
 // so they keep their own markup here. The region is the signed-in partner's own and is never editable.
 export default function ExperienceFormModal({ experience, onClose, onSaved }) {
+  const dispatch = useDispatch();
   const { region, user } = useAuth();
   const assignedLocation =
     region ||
@@ -79,8 +81,8 @@ export default function ExperienceFormModal({ experience, onClose, onSaved }) {
     if (values.image) payload.image = values.image;
     setSaving(true);
     try {
-      const saved = editing ? await updateExperience(experience.id, payload) : await createExperience(payload);
-      onSaved(saved, editing ? 'edit' : 'add');
+      await dispatch(editing ? editExperience(experience.id, payload) : addExperience(payload));
+      onSaved();
     } catch (err) {
       if (err.status === 400 && err.fieldErrors) {
         const mapped = {};
