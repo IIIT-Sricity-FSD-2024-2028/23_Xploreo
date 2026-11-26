@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { SAMetricCard, SATable, SABadge } from '../../components/superadmin';
 import {
-  listStaff,
-  createStaffAccount,
-  setStaffStatus,
-  setStaffRegion,
-} from '../../services/adminManagement.api.js';
+  clearSuperAdminError,
+  createStaffThunk,
+  fetchStaffThunk,
+  selectStaffList,
+  selectStaffMetrics,
+  selectSuperAdminError,
+  selectSuperAdminLoading,
+  updateStaffRegionThunk,
+  updateStaffStatusThunk,
+} from '@/store/superadmin/index.js';
 import '../../components/superadmin/superadmin.css';
 
 const ROLE_TABS = [
@@ -19,10 +25,13 @@ const ROLE_TABS = [
  * listed, created, or edited here (see backend/src/auth/auth.service.ts for why).
  */
 export default function SuperAdminAdminsPage() {
+  const dispatch = useDispatch();
+  const staffList = useSelector(selectStaffList);
+  const metrics = useSelector(selectStaffMetrics);
+  const isLoading = useSelector(selectSuperAdminLoading);
+  const errorMessage = useSelector(selectSuperAdminError);
+
   const [activeTab, setActiveTab] = useState('nontechadmin');
-  const [staffList, setStaffList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -39,21 +48,11 @@ export default function SuperAdminAdminsPage() {
     username: '', name: '', email: '', phone: '', password: '', region: '',
   });
 
-  const loadStaff = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await listStaff();
-      setStaffList(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load admin accounts.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const loadStaff = useCallback(() => {
+    dispatch(fetchStaffThunk());
+  }, [dispatch]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadStaff();
   }, [loadStaff]);
 
@@ -73,16 +72,6 @@ export default function SuperAdminAdminsPage() {
         .some((field) => String(field || '').toLowerCase().includes(q));
     });
   }, [currentTabStaff, statusFilter, searchQuery]);
-
-  const metrics = useMemo(() => {
-    const regional = staffList.filter((u) => u.role === 'nontechadmin').length;
-    const tech = staffList.filter((u) => u.role === 'techadmin').length;
-    const restricted = staffList.filter((u) => u.status === 'inactive').length;
-    const regionsCovered = new Set(
-      staffList.filter((u) => u.role === 'nontechadmin' && u.region).map((u) => u.region),
-    ).size;
-    return { total: staffList.length, regional, tech, restricted, regionsCovered };
-  }, [staffList]);
 
   // ── Create ──
   const handleOpenCreate = () => {
@@ -114,20 +103,21 @@ export default function SuperAdminAdminsPage() {
 
     setModalSubmitting(true);
     try {
-      await createStaffAccount({
-        username: username.trim(),
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        password,
-        role: activeTab,
-        region: activeTab === 'nontechadmin' ? region.trim() : undefined,
-      });
+      await dispatch(
+        createStaffThunk({
+          username: username.trim(),
+          name: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+          role: activeTab,
+          region: activeTab === 'nontechadmin' ? region.trim() : undefined,
+        })
+      ).unwrap();
       setSuccessMessage(`New ${currentTabLabel.slice(0, -1)} "${name}" created successfully.`);
       setIsCreateModalOpen(false);
-      await loadStaff();
     } catch (err) {
-      setModalError(err.message || 'Failed to create admin account.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to create admin account.');
     } finally {
       setModalSubmitting(false);
     }
@@ -144,12 +134,16 @@ export default function SuperAdminAdminsPage() {
     const { user: targetUser, nextStatus } = confirmStatusUser;
     setModalSubmitting(true);
     try {
-      await setStaffStatus(targetUser.userId || targetUser.username, nextStatus);
+      await dispatch(
+        updateStaffStatusThunk({
+          userId: targetUser.userId || targetUser.username,
+          nextStatus,
+        })
+      ).unwrap();
       setSuccessMessage(`Account "${targetUser.name}" has been ${nextStatus === 'active' ? 'reactivated' : 'restricted'}.`);
       setConfirmStatusUser(null);
-      await loadStaff();
     } catch (err) {
-      setModalError(err.message || 'Failed to update account status.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to update account status.');
     } finally {
       setModalSubmitting(false);
     }
@@ -171,12 +165,16 @@ export default function SuperAdminAdminsPage() {
     }
     setModalSubmitting(true);
     try {
-      await setStaffRegion(regionTarget.userId || regionTarget.username, regionInput.trim());
+      await dispatch(
+        updateStaffRegionThunk({
+          userId: regionTarget.userId || regionTarget.username,
+          region: regionInput.trim(),
+        })
+      ).unwrap();
       setSuccessMessage(`${regionTarget.name}'s region was changed to "${regionInput.trim()}".`);
       setRegionTarget(null);
-      await loadStaff();
     } catch (err) {
-      setModalError(err.message || 'Failed to change region.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to change region.');
     } finally {
       setModalSubmitting(false);
     }
@@ -287,7 +285,7 @@ export default function SuperAdminAdminsPage() {
       {errorMessage && (
         <div className="sa-users-alert sa-users-alert-error" role="alert">
           <span>⚠️ {errorMessage}</span>
-          <button type="button" className="sa-users-alert-close" onClick={() => setErrorMessage(null)}>✕</button>
+          <button type="button" className="sa-users-alert-close" onClick={() => dispatch(clearSuperAdminError())}>✕</button>
         </div>
       )}
 

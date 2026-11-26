@@ -1,25 +1,45 @@
 import { useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { selectUser } from '@/store/sessionSlice.js';
-import { registerAccount, signIn, signOut } from '@/store/sessionThunks.js';
+import {
+  clearAuthError,
+  loginThunk,
+  logoutThunk,
+  registerThunk,
+  selectAuthError,
+  selectAuthLoading,
+  selectAuthRegion,
+  selectAuthRole,
+  selectAuthUser,
+  selectIsAuthenticated,
+} from '@/store/auth/index.js';
 
 export function useAuth() {
-  const user = useSelector(selectUser);
+  const user = useSelector(selectAuthUser);
+  const role = useSelector(selectAuthRole);
+  const region = useSelector(selectAuthRegion);
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const loading = useSelector(selectAuthLoading);
+  const error = useSelector(selectAuthError);
   const dispatch = useDispatch();
-  const login = useCallback((values) => dispatch(signIn(values)), [dispatch]);
-  const register = useCallback((values) => dispatch(registerAccount(values)), [dispatch]);
-  const logout = useCallback(() => dispatch(signOut()), [dispatch]);
 
-  return useMemo(() => {
-    const isAuthenticated = Boolean(user.role && user.role !== 'default');
-    return {
+  const login = useCallback((values) => dispatch(loginThunk(values)).unwrap(), [dispatch]);
+  const register = useCallback((values) => dispatch(registerThunk(values)).unwrap(), [dispatch]);
+  const logout = useCallback(() => dispatch(logoutThunk()), [dispatch]);
+  const clearError = useCallback(() => dispatch(clearAuthError()), [dispatch]);
+
+  return useMemo(
+    () => ({
       user,
-      role: isAuthenticated ? user.role : null,
-      region: user.region ?? user.location ?? user.destination ?? null,
+      role,
+      region,
       isAuthenticated,
+      loading,
+      error,
       login,
       register,
       logout,
-    };
-  }, [user, login, register, logout]);
+      clearError,
+    }),
+    [user, role, region, isAuthenticated, loading, error, login, register, logout, clearError]
+  );
 }

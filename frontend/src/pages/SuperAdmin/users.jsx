@@ -1,17 +1,27 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   SAMetricCard,
   SATable,
   SABadge,
 } from '../../components/superadmin';
 import {
-  getUsersAndPartners,
-  updateUserStatus,
-  updateUserProfile,
-  createUserOrPartner,
-} from '../../services/superadmin.api.js';
-import { getUser } from '../../services/session.js';
+  clearSuperAdminError,
+  createUserThunk,
+  deleteUserThunk,
+  fetchUsersThunk,
+  selectSuperAdminError,
+  selectSuperAdminLoading,
+  selectUsersList,
+  selectUsersMetrics,
+  updateUserStatusThunk,
+  updateUserThunk,
+} from '@/store/superadmin/index.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import '../../components/superadmin/superadmin.css';
+
+const PHONE_PATTERN = /^(?:\+?91[\s-]?|0)?[6-9]\d{9}$/;
+const PAGE_SIZE = 10;
 
 const ROLE_TABS = [
   { id: 'guide', label: 'Guides', role: 'guide' },
@@ -27,30 +37,33 @@ const ROLE_TABS = [
  * @param {Object} [props.user] - Optional user identity from router
  */
 export default function SuperAdminUsersPage({ user = null }) {
-  // No `user` prop is ever passed down through the route table (the routes are built once at
-  // module load, before any session exists) — fall back to the real signed-in session instead of
-  // a hardcoded Super Admin stand-in, so this page actually authenticates against the real
-  // backend, whoever (Super Admin or, via Tech Admin's reuse of this page, Tech Admin) is signed in.
-  const session = useMemo(() => user || getUser(), [user]);
+  const dispatch = useDispatch();
+  const { user: authUser } = useAuth();
+  const session = useMemo(() => user || authUser, [user, authUser]);
   // Tech Admin shares this page (see techadmin.routes.jsx) but only to view and suspend/restore
   // an account — creating and editing stay Super Admin-only. The server enforces this too; these
   // just keep the UI honest about what Tech Admin can actually do.
-  const isSuperAdmin = session.role === 'superadmin';
+  const isSuperAdmin = session?.role === 'superadmin';
+
+  const usersList = useSelector(selectUsersList);
+  const metrics = useSelector(selectUsersMetrics);
+  const isLoading = useSelector(selectSuperAdminLoading);
+  const errorMessage = useSelector(selectSuperAdminError);
 
   const [activeTab, setActiveTab] = useState('guide');
-  const [usersList, setUsersList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
-  // Search & Filter state
+  // Search, Filter & Pagination state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'active' | 'inactive'
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modals state
+  const [viewingUser, setViewingUser] = useState(null);
   const [editingUser, setEditingUser] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [confirmStatusUser, setConfirmStatusUser] = useState(null); // { user, nextStatus }
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState(null);
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
 
@@ -70,46 +83,12 @@ export default function SuperAdminUsersPage({ user = null }) {
     email: '',
     phone: '',
     location: '',
+    role: 'traveller',
   });
 
-  // Load users from service
-  const loadUsers = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await getUsersAndPartners('all', session);
-      setUsersList(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load users and partners.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session]);
-
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchInitialUsers() {
-      try {
-        const data = await getUsersAndPartners('all', session);
-        if (isMounted) {
-          setUsersList(Array.isArray(data) ? data : []);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setErrorMessage(err.message || 'Failed to load users and partners.');
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchInitialUsers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [session]);
+    dispatch(fetchUsersThunk({ roleFilter: 'all', session }));
+  }, [dispatch, session]);
 
   // Tab counts (reflects active statusFilter so counts match visible filtered records)
   const tabCounts = useMemo(() => {
@@ -141,23 +120,6 @@ export default function SuperAdminUsersPage({ user = null }) {
     return counts;
   }, [usersList]);
 
-  // High-level Metric Counts
-  const metrics = useMemo(() => {
-    const total = usersList.length;
-    // Active Guides: Count only guides whose status is active
-    const guides = usersList.filter(
-      (u) => (u.role || '').toLowerCase() === 'guide' && u.status === 'active'
-    ).length;
-    const properties = usersList.filter(
-      (u) => {
-        const r = (u.role || '').toLowerCase();
-        return r === 'hotel' || r === 'experience';
-      }
-    ).length;
-    const restricted = usersList.filter((u) => u.status === 'inactive').length;
-    return { total, guides, properties, restricted };
-  }, [usersList]);
-
   // Filtered rows for active tab
   const currentTabUsers = useMemo(() => {
     return usersList.filter((u) => {
@@ -187,6 +149,13 @@ export default function SuperAdminUsersPage({ user = null }) {
     });
   }, [currentTabUsers, statusFilter, searchQuery]);
 
+  const totalPages = Math.max(1, Math.ceil(displayedUsers.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedUsers = useMemo(() => {
+    const start = (safePage - 1) * PAGE_SIZE;
+    return displayedUsers.slice(start, start + PAGE_SIZE);
+  }, [displayedUsers, safePage]);
+
   // Handlers for Edit
   const handleOpenEdit = (userItem) => {
     setEditingUser(userItem);
@@ -195,17 +164,19 @@ export default function SuperAdminUsersPage({ user = null }) {
       email: userItem.email || '',
       phone: userItem.phone || '',
       location: userItem.location || '',
+      role: (userItem.role || activeTab).toLowerCase(),
     });
     setModalError(null);
   };
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
-    if (!editingUser) return;
+    if (!editingUser || modalSubmitting) return;
     setModalError(null);
 
     const trimmedName = editForm.name.trim();
     const trimmedEmail = editForm.email.trim();
+    const trimmedPhone = editForm.phone.trim();
     if (!trimmedName) {
       setModalError('Full name is required.');
       return;
@@ -214,25 +185,31 @@ export default function SuperAdminUsersPage({ user = null }) {
       setModalError('A valid email address is required.');
       return;
     }
+    if (trimmedPhone && !PHONE_PATTERN.test(trimmedPhone.replace(/[\s()-]/g, ''))) {
+      setModalError('Phone must be a valid 10-digit mobile number.');
+      return;
+    }
 
     setModalSubmitting(true);
     try {
-      await updateUserProfile(
-        editingUser.userId || editingUser.username,
-        {
-          name: trimmedName,
-          email: trimmedEmail,
-          phone: editForm.phone.trim(),
-          location: editForm.location.trim(),
-        },
-        session
-      );
+      await dispatch(
+        updateUserThunk({
+          userId: editingUser.userId || editingUser.username,
+          data: {
+            name: trimmedName,
+            email: trimmedEmail,
+            phone: trimmedPhone ? trimmedPhone.replace(/[\s()-]/g, '') : '',
+            location: editForm.location.trim(),
+            ...(isSuperAdmin && editForm.role ? { role: editForm.role } : {}),
+          },
+          session,
+        })
+      ).unwrap();
 
       setSuccessMessage(`Account "${trimmedName}" updated successfully.`);
       setEditingUser(null);
-      await loadUsers();
     } catch (err) {
-      setModalError(err.message || 'Failed to update profile.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to update profile.');
     } finally {
       setModalSubmitting(false);
     }
@@ -254,6 +231,7 @@ export default function SuperAdminUsersPage({ user = null }) {
 
   const handleSaveCreate = async (e) => {
     e.preventDefault();
+    if (modalSubmitting) return;
     setModalError(null);
 
     const { username, name, email, phone, password, location } = createForm;
@@ -269,27 +247,33 @@ export default function SuperAdminUsersPage({ user = null }) {
       setModalError('Please enter a valid email address.');
       return;
     }
+    const normalizedPhone = (phone.trim() || '9000000000').replace(/[\s()-]/g, '');
+    if (!PHONE_PATTERN.test(normalizedPhone)) {
+      setModalError('Phone must be a valid 10-digit mobile number.');
+      return;
+    }
 
     setModalSubmitting(true);
     try {
-      await createUserOrPartner(
-        {
-          username: username.trim(),
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || '9000000000',
-          password,
-          role: activeTab,
-          location: location.trim() || 'India',
-        },
-        session
-      );
+      await dispatch(
+        createUserThunk({
+          payload: {
+            username: username.trim(),
+            name: name.trim(),
+            email: email.trim(),
+            phone: normalizedPhone,
+            password,
+            role: activeTab,
+            location: location.trim() || 'India',
+          },
+          session,
+        })
+      ).unwrap();
 
       setSuccessMessage(`New ${ROLE_TABS.find((t) => t.id === activeTab)?.label.slice(0, -1)} "${name}" registered successfully.`);
       setIsCreateModalOpen(false);
-      await loadUsers();
     } catch (err) {
-      setModalError(err.message || 'Failed to create user account.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to create user account.');
     } finally {
       setModalSubmitting(false);
     }
@@ -303,22 +287,43 @@ export default function SuperAdminUsersPage({ user = null }) {
   };
 
   const handleConfirmStatusChange = async () => {
-    if (!confirmStatusUser) return;
+    if (!confirmStatusUser || modalSubmitting) return;
     const { user: targetUser, nextStatus } = confirmStatusUser;
     setModalSubmitting(true);
     try {
-      await updateUserStatus(
-        targetUser.userId || targetUser.username,
-        nextStatus,
-        session
-      );
+      await dispatch(
+        updateUserStatusThunk({
+          userId: targetUser.userId || targetUser.username,
+          nextStatus,
+          session,
+        })
+      ).unwrap();
 
       const actionWord = nextStatus === 'active' ? 'reactivated' : 'restricted';
       setSuccessMessage(`Account "${targetUser.name}" has been ${actionWord}.`);
       setConfirmStatusUser(null);
-      await loadUsers();
     } catch (err) {
-      setModalError(err.message || 'Failed to update account status.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to update account status.');
+    } finally {
+      setModalSubmitting(false);
+    }
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!confirmDeleteUser || modalSubmitting) return;
+    setModalSubmitting(true);
+    setModalError(null);
+    try {
+      await dispatch(
+        deleteUserThunk({
+          userId: confirmDeleteUser.userId || confirmDeleteUser.username,
+          session,
+        })
+      ).unwrap();
+      setSuccessMessage(`Account "${confirmDeleteUser.name}" has been deleted.`);
+      setConfirmDeleteUser(null);
+    } catch (err) {
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to delete account.');
     } finally {
       setModalSubmitting(false);
     }
@@ -490,7 +495,7 @@ export default function SuperAdminUsersPage({ user = null }) {
           <button
             type="button"
             className="sa-users-alert-close"
-            onClick={() => setErrorMessage(null)}
+            onClick={() => dispatch(clearSuperAdminError())}
           >
             ✕
           </button>
@@ -513,6 +518,7 @@ export default function SuperAdminUsersPage({ user = null }) {
                 setActiveTab(tab.id);
                 setSearchQuery('');
                 setStatusFilter('all');
+                setCurrentPage(1);
               }}
             >
               <span>{tab.label}</span>
@@ -539,14 +545,20 @@ export default function SuperAdminUsersPage({ user = null }) {
               className="sa-users-search-input"
               placeholder={`Search ${currentTabLabel.toLowerCase()} by name, email, phone...`}
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
               aria-label={`Search ${currentTabLabel}`}
             />
             {searchQuery && (
               <button
                 type="button"
                 className="sa-users-search-clear"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
                 aria-label="Clear search"
               >
                 ✕
@@ -557,7 +569,10 @@ export default function SuperAdminUsersPage({ user = null }) {
           <select
             className="sa-users-status-select"
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             aria-label="Filter by status"
           >
             <option value="all">All Statuses</option>
@@ -586,7 +601,7 @@ export default function SuperAdminUsersPage({ user = null }) {
       {/* Data Table */}
       <SATable
         columns={tableColumns}
-        data={displayedUsers}
+        data={paginatedUsers}
         keyField="userId"
         isLoading={isLoading}
         emptyTitle={`No ${currentTabLabel} Found`}
@@ -597,6 +612,15 @@ export default function SuperAdminUsersPage({ user = null }) {
         }
         actions={(row) => (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+            <button
+              type="button"
+              className="sa-table-btn-action"
+              onClick={() => setViewingUser(row)}
+              title="View user details"
+            >
+              View
+            </button>
+
             {isSuperAdmin && (
               <button
                 type="button"
@@ -628,9 +652,86 @@ export default function SuperAdminUsersPage({ user = null }) {
                 Reactivate
               </button>
             )}
+
+            {isSuperAdmin && (row.role || '').toLowerCase() !== 'superadmin' && (
+              <button
+                type="button"
+                className="sa-table-btn-action"
+                style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+                onClick={() => {
+                  setModalError(null);
+                  setConfirmDeleteUser(row);
+                }}
+                title="Delete user account"
+              >
+                Delete
+              </button>
+            )}
           </div>
         )}
       />
+
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, flexWrap: 'wrap', gap: 10 }}>
+          <span className="sa-users-table-meta">
+            Page <strong>{safePage}</strong> of <strong>{totalPages}</strong> ({displayedUsers.length} total)
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className="sa-btn-secondary"
+              disabled={safePage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              className="sa-btn-secondary"
+              disabled={safePage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DETAILS MODAL */}
+      {viewingUser && (
+        <div className="sa-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sa-view-title">
+          <div className="sa-modal-card" style={{ maxWidth: 480 }}>
+            <div className="sa-modal-header">
+              <h3 id="sa-view-title" className="sa-modal-title">
+                Account Details — {viewingUser.name}
+              </h3>
+              <button
+                type="button"
+                className="sa-modal-close-btn"
+                onClick={() => setViewingUser(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="sa-modal-body" style={{ display: 'grid', gap: 10, fontSize: 14 }}>
+              <div><strong>User ID:</strong> #{viewingUser.userId || viewingUser.username}</div>
+              <div><strong>Username:</strong> {viewingUser.username}</div>
+              <div><strong>Full Name:</strong> {viewingUser.name}</div>
+              <div><strong>Email:</strong> {viewingUser.email}</div>
+              <div><strong>Phone:</strong> {viewingUser.phone || '—'}</div>
+              <div><strong>Role:</strong> {viewingUser.role}</div>
+              <div><strong>Location / Region:</strong> {viewingUser.location || viewingUser.region || '—'}</div>
+              <div><strong>Status:</strong> {viewingUser.status === 'active' ? 'Active' : 'Restricted (Inactive)'}</div>
+              <div><strong>Joined:</strong> {viewingUser.joinedAt || '—'}</div>
+            </div>
+            <div className="sa-modal-footer">
+              <button type="button" className="sa-btn-secondary" onClick={() => setViewingUser(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EDIT MODAL */}
       {editingUser && (
@@ -729,6 +830,26 @@ export default function SuperAdminUsersPage({ user = null }) {
                     placeholder="e.g. Jaipur, Delhi, Mumbai"
                   />
                 </div>
+
+                {isSuperAdmin && (
+                  <div className="sa-form-group">
+                    <label className="sa-form-label" htmlFor="edit-role">
+                      <span>Role</span>
+                    </label>
+                    <select
+                      id="edit-role"
+                      className="sa-form-input"
+                      value={editForm.role}
+                      onChange={(e) => setEditForm((prev) => ({ ...prev, role: e.target.value }))}
+                      disabled={modalSubmitting}
+                    >
+                      <option value="traveller">Traveller</option>
+                      <option value="guide">Guide</option>
+                      <option value="hotel">Hotel Partner</option>
+                      <option value="experience">Experience Partner</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div className="sa-modal-footer">
@@ -970,8 +1091,59 @@ export default function SuperAdminUsersPage({ user = null }) {
                 {modalSubmitting
                   ? 'Updating...'
                   : confirmStatusUser.nextStatus === 'inactive'
-                  ? 'Yes, Restrict Account'
-                  : 'Yes, Reactivate Account'}
+                    ? 'Yes, Restrict Account'
+                    : 'Yes, Reactivate Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* DELETE CONFIRMATION DIALOG */}
+      {confirmDeleteUser && (
+        <div className="sa-modal-overlay" role="dialog" aria-modal="true" aria-labelledby="sa-delete-title">
+          <div className="sa-modal-card" style={{ maxWidth: 440 }}>
+            <div className="sa-modal-header">
+              <h3 id="sa-delete-title" className="sa-modal-title">
+                Delete User Account
+              </h3>
+              <button
+                type="button"
+                className="sa-modal-close-btn"
+                onClick={() => setConfirmDeleteUser(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="sa-modal-body">
+              {modalError && (
+                <div className="sa-form-error" role="alert">
+                  ⚠️ {modalError}
+                </div>
+              )}
+              <p style={{ margin: 0, fontSize: 14, color: '#334155', lineHeight: 1.5 }}>
+                Are you sure you want to permanently delete{' '}
+                <strong>{confirmDeleteUser.name}</strong> (#{confirmDeleteUser.userId || confirmDeleteUser.username})?
+                This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="sa-modal-footer">
+              <button
+                type="button"
+                className="sa-btn-secondary"
+                onClick={() => setConfirmDeleteUser(null)}
+                disabled={modalSubmitting}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="sa-btn-danger"
+                onClick={handleConfirmDeleteUser}
+                disabled={modalSubmitting}
+              >
+                {modalSubmitting ? 'Deleting...' : 'Yes, Delete Account'}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   SAMetricCard,
   SAChart,
@@ -6,11 +7,17 @@ import {
   SABadge,
 } from '../../components/superadmin';
 import {
-  getDashboardMetrics,
-  getBookingVelocity,
-  getRecentBookings,
-} from '../../services/superadmin.api.js';
-import { getUser } from '../../services/session.js';
+  clearSuperAdminError,
+  fetchBookingVelocityThunk,
+  fetchDashboardDataThunk,
+  selectDashboardMetrics,
+  selectRecentBookings,
+  selectSuperAdminError,
+  selectSuperAdminLoading,
+  selectVelocityData,
+  selectVelocityLoading,
+} from '@/store/superadmin/index.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import '../../components/superadmin/superadmin.css';
 
 /**
@@ -22,89 +29,37 @@ import '../../components/superadmin/superadmin.css';
  * @param {Object} [props.user] - Optional user session object
  */
 export default function SuperAdminDashboardPage({ user = null }) {
-  const session = useMemo(() => {
-    const active = user || getUser();
-    return active && active.role !== 'default' ? active : { userId: 'SA001', role: 'superadmin' };
-  }, [user]);
+  const dispatch = useDispatch();
+  const { user: authUser } = useAuth();
+  const session = useMemo(() => user || authUser, [user, authUser]);
 
-  // Dashboard Data State
-  const [metrics, setMetrics] = useState(null);
-  const [velocityData, setVelocityData] = useState([]);
+  // Dashboard Data State from Redux
+  const metrics = useSelector(selectDashboardMetrics);
+  const velocityData = useSelector(selectVelocityData);
+  const recentBookings = useSelector(selectRecentBookings);
+  const isLoading = useSelector(selectSuperAdminLoading);
+  const isVelocityLoading = useSelector(selectVelocityLoading);
+  const errorMessage = useSelector(selectSuperAdminError);
+
   const [timeframe, setTimeframe] = useState('weekly');
-  const [recentBookings, setRecentBookings] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isVelocityLoading, setIsVelocityLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   // Status Filter for Recent Bookings
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Load all initial dashboard data
-  const loadDashboardData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const [kpiRes, velocityRes, bookingsRes] = await Promise.all([
-        getDashboardMetrics(session),
-        getBookingVelocity(timeframe),
-        getRecentBookings(10, session),
-      ]);
-
-      setMetrics(kpiRes);
-      setVelocityData(Array.isArray(velocityRes) ? velocityRes : []);
-      setRecentBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load executive dashboard data.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session, timeframe]);
+  const loadDashboardData = useCallback(() => {
+    dispatch(fetchDashboardDataThunk({ timeframe, session }));
+  }, [dispatch, session, timeframe]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchInitialDashboard() {
-      try {
-        const [kpiRes, velocityRes, bookingsRes] = await Promise.all([
-          getDashboardMetrics(session),
-          getBookingVelocity(timeframe),
-          getRecentBookings(10, session),
-        ]);
-
-        if (isMounted) {
-          setMetrics(kpiRes);
-          setVelocityData(Array.isArray(velocityRes) ? velocityRes : []);
-          setRecentBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setErrorMessage(err.message || 'Failed to load executive dashboard data.');
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchInitialDashboard();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [session, timeframe]);
+    dispatch(fetchDashboardDataThunk({ timeframe, session }));
+  }, [dispatch, session, timeframe]);
 
   // Handle timeframe change for booking velocity chart
-  const handleTimeframeChange = async (newTimeframe) => {
+  const handleTimeframeChange = (newTimeframe) => {
     setTimeframe(newTimeframe);
-    setIsVelocityLoading(true);
-    try {
-      const data = await getBookingVelocity(newTimeframe);
-      setVelocityData(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('[Dashboard] Error updating chart timeframe:', err);
-    } finally {
-      setIsVelocityLoading(false);
-    }
+    dispatch(fetchBookingVelocityThunk({ timeframe: newTimeframe, session }));
   };
 
   // Filtered recent bookings
@@ -256,7 +211,7 @@ export default function SuperAdminDashboardPage({ user = null }) {
           <button
             type="button"
             className="sa-users-alert-close"
-            onClick={() => setErrorMessage(null)}
+            onClick={() => dispatch(clearSuperAdminError())}
           >
             ✕
           </button>

@@ -1,17 +1,23 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   SAMetricCard,
   SATable,
   SABadge,
 } from '../../components/superadmin';
 import {
-  getOperationsMetrics,
-  getLedgerTransactions,
-  getRefundRequests,
-  processRefundAction,
-  getDisputes,
-  resolveDisputeAction,
-} from '../../services/superadmin.api.js';
+  clearSuperAdminError,
+  fetchOperationsDataThunk,
+  processRefundThunk,
+  resolveDisputeThunk,
+  selectDisputesList,
+  selectLedgerList,
+  selectOperationsMetrics,
+  selectRefundsList,
+  selectSuperAdminError,
+  selectSuperAdminLoading,
+} from '@/store/superadmin/index.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 import '../../components/superadmin/superadmin.css';
 
 const OPS_TABS = [
@@ -28,17 +34,20 @@ const OPS_TABS = [
  * @param {Object} props
  * @param {Object} [props.user] - Optional user session object
  */
-export default function SuperAdminOpsBookPage() {
+export default function SuperAdminOpsBookPage({ user = null }) {
+  const dispatch = useDispatch();
+  const { user: authUser } = useAuth();
+  const session = useMemo(() => user || authUser, [user, authUser]);
   // Section Tab State
   const [activeTab, setActiveTab] = useState('ledger');
 
-  // Core Data States
-  const [metrics, setMetrics] = useState(null);
-  const [ledger, setLedger] = useState([]);
-  const [refunds, setRefunds] = useState([]);
-  const [disputes, setDisputes] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
+  // Core Data States from Redux
+  const metrics = useSelector(selectOperationsMetrics);
+  const ledger = useSelector(selectLedgerList);
+  const refunds = useSelector(selectRefundsList);
+  const disputes = useSelector(selectDisputesList);
+  const isLoading = useSelector(selectSuperAdminLoading);
+  const errorMessage = useSelector(selectSuperAdminError);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   // Filters for Ledger
@@ -58,61 +67,13 @@ export default function SuperAdminOpsBookPage() {
   const [modalError, setModalError] = useState(null);
 
   // Load all operations datasets
-  const loadOperationsData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const [metricsRes, ledgerRes, refundsRes, disputesRes] = await Promise.all([
-        getOperationsMetrics(),
-        getLedgerTransactions(),
-        getRefundRequests(),
-        getDisputes(),
-      ]);
-
-      setMetrics(metricsRes);
-      setLedger(Array.isArray(ledgerRes) ? ledgerRes : []);
-      setRefunds(Array.isArray(refundsRes) ? refundsRes : []);
-      setDisputes(Array.isArray(disputesRes) ? disputesRes : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load operations & bookings data.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const loadOperationsData = useCallback(() => {
+    dispatch(fetchOperationsDataThunk({ session }));
+  }, [dispatch, session]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchInitialOperations() {
-      try {
-        const [metricsRes, ledgerRes, refundsRes, disputesRes] = await Promise.all([
-          getOperationsMetrics(),
-          getLedgerTransactions(),
-          getRefundRequests(),
-          getDisputes(),
-        ]);
-
-        if (isMounted) {
-          setMetrics(metricsRes);
-          setLedger(Array.isArray(ledgerRes) ? ledgerRes : []);
-          setRefunds(Array.isArray(refundsRes) ? refundsRes : []);
-          setDisputes(Array.isArray(disputesRes) ? disputesRes : []);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setErrorMessage(err.message || 'Failed to load operations & bookings data.');
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchInitialOperations();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    dispatch(fetchOperationsDataThunk({ session }));
+  }, [dispatch, session]);
 
   // --------------------------------------------------------------------------
   // TAB 1: TRANSACTION LEDGER
@@ -245,30 +206,22 @@ export default function SuperAdminOpsBookPage() {
     setModalError(null);
 
     try {
-      const updated = await processRefundAction(
-        refundModal.refund.refundId,
-        refundModal.action,
-        refundModal.notes
-      );
-
-      // Update state locally
-      setRefunds((prev) =>
-        prev.map((r) => (r.refundId === updated.refundId ? updated : r))
-      );
-
-      // If approved, update ledger view as well
-      if (refundModal.action === 'approve') {
-        const ledgerRes = await getLedgerTransactions();
-        setLedger(ledgerRes);
-      }
+      const { updated, mockMode } = await dispatch(
+        processRefundThunk({
+          refundId: refundModal.refund.refundId,
+          action: refundModal.action,
+          notes: refundModal.notes,
+          session,
+        })
+      ).unwrap();
 
       setFeedbackMessage(
-        `Refund #${updated.refundId} successfully ${updated.status} (Mock Simulation).`
+        `Refund #${updated.refundId} successfully ${updated.status}${mockMode ? ' (Mock Simulation)' : ''}.`
       );
       setRefundModal(null);
       setTimeout(() => setFeedbackMessage(null), 4000);
     } catch (err) {
-      setModalError(err.message || 'Failed to process refund authorization.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to process refund authorization.');
     } finally {
       setIsActionSubmitting(false);
     }
@@ -374,15 +327,12 @@ export default function SuperAdminOpsBookPage() {
     setModalError(null);
 
     try {
-      const updated = await resolveDisputeAction(
-        disputeModal.dispute.disputeId,
-        disputeModal.summary
-      );
-
-      // Update state locally
-      setDisputes((prev) =>
-        prev.map((d) => (d.disputeId === updated.disputeId ? updated : d))
-      );
+      const updated = await dispatch(
+        resolveDisputeThunk({
+          disputeId: disputeModal.dispute.disputeId,
+          summary: disputeModal.summary,
+        })
+      ).unwrap();
 
       setFeedbackMessage(
         `Dispute #${updated.disputeId} successfully marked as resolved (Mock Simulation).`
@@ -390,7 +340,7 @@ export default function SuperAdminOpsBookPage() {
       setDisputeModal(null);
       setTimeout(() => setFeedbackMessage(null), 4000);
     } catch (err) {
-      setModalError(err.message || 'Failed to resolve dispute.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to resolve dispute.');
     } finally {
       setIsActionSubmitting(false);
     }
@@ -538,7 +488,7 @@ export default function SuperAdminOpsBookPage() {
           <button
             type="button"
             className="sa-users-alert-close"
-            onClick={() => setErrorMessage(null)}
+            onClick={() => dispatch(clearSuperAdminError())}
           >
             ✕
           </button>
@@ -872,8 +822,8 @@ export default function SuperAdminOpsBookPage() {
                   {isActionSubmitting
                     ? 'Processing...'
                     : refundModal.action === 'approve'
-                    ? 'Confirm Approval'
-                    : 'Confirm Rejection'}
+                      ? 'Confirm Approval'
+                      : 'Confirm Rejection'}
                 </button>
               </div>
             </form>

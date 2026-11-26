@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   SAMetricCard,
   SAChart,
@@ -6,11 +7,17 @@ import {
   SABadge,
 } from '../../components/superadmin';
 import {
-  getFinanceMetrics,
-  getEarningsSeries,
-  getPayouts,
-  processPayoutAction,
-} from '../../services/superadmin.api.js';
+  clearSuperAdminError,
+  fetchEarningsSeriesThunk,
+  fetchFinanceDataThunk,
+  processPayoutThunk,
+  selectEarningsLoading,
+  selectEarningsSeries,
+  selectFinanceMetrics,
+  selectPayoutsList,
+  selectSuperAdminError,
+  selectSuperAdminLoading,
+} from '@/store/superadmin/index.js';
 import LiveFinancePanel from '../../components/finance/LiveFinancePanel.jsx';
 import '../../components/superadmin/superadmin.css';
 
@@ -20,14 +27,16 @@ import '../../components/superadmin/superadmin.css';
  * and partner disbursement/payout queues with mock action triggers.
  */
 export default function SuperAdminFinancePage() {
-  // Finance Data States
-  const [metrics, setMetrics] = useState(null);
-  const [earningsData, setEarningsData] = useState([]);
+  const dispatch = useDispatch();
+  // Finance Data States from Redux
+  const metrics = useSelector(selectFinanceMetrics);
+  const earningsData = useSelector(selectEarningsSeries);
+  const payoutsList = useSelector(selectPayoutsList);
+  const isLoading = useSelector(selectSuperAdminLoading);
+  const isChartLoading = useSelector(selectEarningsLoading);
+  const errorMessage = useSelector(selectSuperAdminError);
+
   const [timeframe, setTimeframe] = useState('weekly');
-  const [payoutsList, setPayoutsList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isChartLoading, setIsChartLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   // Table Filters
@@ -40,70 +49,18 @@ export default function SuperAdminFinancePage() {
   const [modalError, setModalError] = useState(null);
 
   // Load initial data
-  const loadFinanceData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const [metricsRes, earningsRes, payoutsRes] = await Promise.all([
-        getFinanceMetrics(),
-        getEarningsSeries(timeframe),
-        getPayouts(),
-      ]);
-
-      setMetrics(metricsRes);
-      setEarningsData(Array.isArray(earningsRes) ? earningsRes : []);
-      setPayoutsList(Array.isArray(payoutsRes) ? payoutsRes : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load financial telemetry.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [timeframe]);
+  const loadFinanceData = useCallback(() => {
+    dispatch(fetchFinanceDataThunk({ timeframe }));
+  }, [dispatch, timeframe]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function fetchInitialFinance() {
-      try {
-        const [metricsRes, earningsRes, payoutsRes] = await Promise.all([
-          getFinanceMetrics(),
-          getEarningsSeries(timeframe),
-          getPayouts(),
-        ]);
-
-        if (isMounted) {
-          setMetrics(metricsRes);
-          setEarningsData(Array.isArray(earningsRes) ? earningsRes : []);
-          setPayoutsList(Array.isArray(payoutsRes) ? payoutsRes : []);
-          setIsLoading(false);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setErrorMessage(err.message || 'Failed to load financial telemetry.');
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchInitialFinance();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [timeframe]);
+    dispatch(fetchFinanceDataThunk({ timeframe }));
+  }, [dispatch, timeframe]);
 
   // Handle timeframe change for earnings chart
-  const handleTimeframeChange = async (newTimeframe) => {
+  const handleTimeframeChange = (newTimeframe) => {
     setTimeframe(newTimeframe);
-    setIsChartLoading(true);
-    try {
-      const data = await getEarningsSeries(newTimeframe);
-      setEarningsData(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('[Finance] Error updating earnings series:', err);
-    } finally {
-      setIsChartLoading(false);
-    }
+    dispatch(fetchEarningsSeriesThunk(newTimeframe));
   };
 
   // Filtered payouts
@@ -127,15 +84,12 @@ export default function SuperAdminFinancePage() {
     setModalError(null);
 
     try {
-      const updated = await processPayoutAction(
-        confirmPayoutModal.payout.payoutId,
-        confirmPayoutModal.action
-      );
-
-      // Update state in memory
-      setPayoutsList((prev) =>
-        prev.map((p) => (p.payoutId === updated.payoutId ? updated : p))
-      );
+      const updated = await dispatch(
+        processPayoutThunk({
+          payoutId: confirmPayoutModal.payout.payoutId,
+          action: confirmPayoutModal.action,
+        })
+      ).unwrap();
 
       setFeedbackMessage(
         confirmPayoutModal.action === 'retry'
@@ -145,7 +99,7 @@ export default function SuperAdminFinancePage() {
       setConfirmPayoutModal(null);
       setTimeout(() => setFeedbackMessage(null), 4000);
     } catch (err) {
-      setModalError(err.message || 'Failed to process payout authorization.');
+      setModalError(typeof err === 'string' ? err : err?.message || 'Failed to process payout authorization.');
     } finally {
       setIsActionSubmitting(false);
     }
@@ -331,7 +285,7 @@ Authorized By    : SuperAdmin Console (Mock Sandbox)
           <button
             type="button"
             className="sa-users-alert-close"
-            onClick={() => setErrorMessage(null)}
+            onClick={() => dispatch(clearSuperAdminError())}
           >
             ✕
           </button>
