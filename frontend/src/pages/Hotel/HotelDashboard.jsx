@@ -1,5 +1,5 @@
 // Port of the hotel home from front_end/pages/guide/dashboard.html (#hotel-dashboard) +
-// js/modules/hotelDashboard.js, with every block fed from the backend instead of localStorage.
+// js/modules/hotelDashboard.js. Dashboard records come from the hotel Redux slices.
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePartnerBookings, usePartnerHotels, usePartnerReviews } from '@/store/hotel/hooks.js';

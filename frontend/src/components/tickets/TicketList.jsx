@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
+import { usePortalState } from '@/store/hotel/useHotelState.js';
 import TicketStatusBadge from './TicketStatusBadge.jsx';
 import TicketDetailsModal from './TicketDetailsModal.jsx';
 import './tickets.css';
@@ -22,19 +23,21 @@ import './tickets.css';
  */
 export default function TicketList({
   tickets = [],
+  hotelPartner = false,
   isLoading = false,
   error = null,
   onResolveTicket,
   allowResolve = true,
   className = '',
 }) {
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [filterPriority, setFilterPriority] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = usePortalState('ALL', hotelPartner);
+  const [filterPriority, setFilterPriority] = usePortalState('ALL', hotelPartner);
+  const [searchQuery, setSearchQuery] = usePortalState('', hotelPartner);
+  const [selected, setSelectedTicket] = usePortalState(null, hotelPartner);
+  const [isDetailsOpen, setIsDetailsOpen] = usePortalState(false, hotelPartner);
 
   const canResolve = allowResolve && typeof onResolveTicket === 'function';
+  const selectedTicket = canResolve ? selected : tickets.find((ticket) => ticket.id === selected);
 
   // Submitter actor-role inference helper
   const getSubmitterRole = (ticket) => {
@@ -85,7 +88,7 @@ export default function TicketList({
   }, [tickets, filterStatus, filterPriority, searchQuery]);
 
   const handleOpenDetails = (ticket) => {
-    setSelectedTicket(ticket);
+    setSelectedTicket(canResolve ? ticket : ticket.id);
     setIsDetailsOpen(true);
   };
 

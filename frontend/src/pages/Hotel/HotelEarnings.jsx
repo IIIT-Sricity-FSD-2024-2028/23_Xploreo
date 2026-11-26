@@ -1,8 +1,8 @@
 // Port of front_end/pages/hotels/hotelEarning.html: KPI cards, performance insights, revenue by
 // room type, refund breakdown, recent transactions and payout. All figures come from the
 // server's /bookings/earnings statement.
-import { useState } from 'react';
 import { usePartnerEarnings, usePartnerHotels } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import { ui } from '@/lib/assets.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { fmtDate, inr } from '@/components/hotel/hotelKit.jsx';
@@ -14,7 +14,7 @@ const change = (current, previous) => {
 };
 
 export default function HotelEarnings() {
-  const [hotelId, setHotelId] = useState('');
+  const [hotelId, setHotelId] = useHotelState('');
   const hotels = usePartnerHotels();
   const { data: e, loading, error, reload } = usePartnerEarnings(hotelId);
 

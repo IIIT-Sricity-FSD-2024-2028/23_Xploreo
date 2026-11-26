@@ -1,12 +1,13 @@
 // Guest reviews for the partner's hotels, in the dashboard's review-card style.
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { usePartnerReviews } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import HotelPage, { EmptyState, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { fmtDate } from '@/components/hotel/hotelKit.jsx';
 
 export default function HotelReviews() {
-  const [rating, setRating] = useState(0);
-  const [hotel, setHotel] = useState('');
+  const [rating, setRating] = useHotelState(0);
+  const [hotel, setHotel] = useHotelState('');
   const { data: reviews, summary, loading, error, reload } = usePartnerReviews();
 
   const hotels = useMemo(() => [...new Set((reviews ?? []).map((r) => r.hotelName))], [reviews]);

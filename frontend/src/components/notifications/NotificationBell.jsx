@@ -5,6 +5,9 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from '../../services/notifications.api.js';
+import { useHotelAction, usePartnerNotifications } from '@/store/hotel/hooks.js';
+import { readAllPartnerNotifications, readPartnerNotification } from '@/store/hotel/notificationsSlice.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import './notifications.css';
 
 function formatRelativeTime(dateInput) {
@@ -32,12 +35,45 @@ function getNotificationIcon(type, refundStatus) {
   return { icon: 'ℹ️', className: 'notif-icon-info' };
 }
 
-export default function NotificationBell({ userId }) {
+const EMPTY_NOTIFICATIONS = [];
+
+export default function NotificationBell({ hotelPartner = false }) {
+  return hotelPartner ? <HotelNotificationBell /> : <StandardNotificationBell />;
+}
+
+function HotelNotificationBell() {
+  const [isOpen, setIsOpen] = useHotelState(false);
+  const { accountId, data, reload } = usePartnerNotifications();
+  const markRead = useHotelAction(readPartnerNotification);
+  const markAllRead = useHotelAction(readAllPartnerNotifications);
+  const notifications = data ?? EMPTY_NOTIFICATIONS;
+
+  useEffect(() => {
+    const interval = setInterval(reload, 10000);
+    window.addEventListener('focus', reload);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', reload);
+    };
+  }, [reload]);
+
+  return (
+    <NotificationBellView
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
+      notifications={notifications}
+      unreadCount={notifications.filter((item) => !item.read).length}
+      refresh={reload}
+      onRead={(notification) => markRead({ accountId, id: notification.id })}
+      onReadAll={() => markAllRead({ accountId })}
+    />
+  );
+}
+
+function StandardNotificationBell() {
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const containerRef = useRef(null);
 
   const fetchNotificationData = useCallback(async () => {
     try {
@@ -54,15 +90,43 @@ export default function NotificationBell({ userId }) {
 
   // Poll for notifications every 10 seconds or on window focus
   useEffect(() => {
-    fetchNotificationData();
+    const initialPoll = setTimeout(fetchNotificationData, 0);
     const interval = setInterval(fetchNotificationData, 10000);
     const onFocus = () => fetchNotificationData();
     window.addEventListener('focus', onFocus);
     return () => {
+      clearTimeout(initialPoll);
       clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
   }, [fetchNotificationData]);
+
+  const markRead = async (notification) => {
+    try {
+      await markNotificationAsRead(notification.id);
+      setNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, read: true } : item));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      // Keep the last known notification state.
+    }
+  };
+
+  const markAllRead = async () => {
+    try {
+      await markAllNotificationsAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // Keep the last known notification state.
+    }
+  };
+
+  return <NotificationBellView {...{ isOpen, setIsOpen, notifications, unreadCount }}
+    refresh={fetchNotificationData} onRead={markRead} onReadAll={markAllRead} />;
+}
+
+function NotificationBellView({ isOpen, setIsOpen, notifications, unreadCount, refresh, onRead, onReadAll }) {
+  const containerRef = useRef(null);
 
   // Click outside to close dropdown
   useEffect(() => {
@@ -77,38 +141,16 @@ export default function NotificationBell({ userId }) {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, setIsOpen]);
 
   const handleToggle = () => {
     if (!isOpen) {
-      fetchNotificationData();
+      refresh();
     }
     setIsOpen((prev) => !prev);
   };
 
-  const handleItemClick = async (notif) => {
-    if (!notif.read) {
-      try {
-        await markNotificationAsRead(notif.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n)),
-        );
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch {
-        // Silently continue
-      }
-    }
-  };
-
-  const handleMarkAllRead = async () => {
-    try {
-      await markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch {
-      // Silently continue
-    }
-  };
+  const handleItemClick = (notification) => { if (!notification.read) onRead(notification); };
 
   return (
     <div className="notif-bell-container" ref={containerRef} data-testid="notification-bell-container">
@@ -150,7 +192,7 @@ export default function NotificationBell({ userId }) {
               <button
                 type="button"
                 className="notif-mark-all-btn"
-                onClick={handleMarkAllRead}
+                onClick={onReadAll}
               >
                 Mark all read
               </button>

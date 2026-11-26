@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import { useAuth } from "../../context/AuthContext.jsx";
 import "./auth.css";
 
 const destinationForRole = {
@@ -14,8 +14,9 @@ const destinationForRole = {
   techadmin: "/tech-admin/dashboard",
 };
 
-export default function Login({ user, onAuthenticated }) {
+export default function Login({ user }) {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -31,12 +32,7 @@ export default function Login({ user, onAuthenticated }) {
         username: form.username.trim(),
         password: form.password,
       };
-      const result = await authApi.login(payload);
-      const authenticatedUser = result?.user || result;
-      if (result?.token && !authenticatedUser.token) {
-        authenticatedUser.token = result.token;
-      }
-      onAuthenticated?.(authenticatedUser);
+      const authenticatedUser = await login(payload);
       navigate(destinationForRole[authenticatedUser.role] || "/");
     } catch (requestError) {
       setError(requestError?.message || "Login failed. Please check your credentials.");
@@ -90,9 +86,6 @@ export default function Login({ user, onAuthenticated }) {
               </div>
             </label>
             <div className="auth-options">
-              <label className="remember">
-                <input type="checkbox" /> Keep me signed in
-              </label>
               <Link className="text-button" to="/Auth/forgot-password">Forgot password?</Link>
             </div>
             {error && <p className="form-message error" role="alert">{error}</p>}

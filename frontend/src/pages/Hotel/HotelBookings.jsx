@@ -1,10 +1,11 @@
 // Port of front_end/pages/hotels/hotelBookings.html: summary strip, status tabs, search and
 // booking cards with check-in / check-out / cancel, all against /bookings on the backend.
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
-  useCancelPartnerBookingMutation, useCheckInPartnerBookingMutation, useCheckOutPartnerBookingMutation,
-} from '@/store/hotel/hotelApi.js';
-import { usePartnerBookings } from '@/store/hotel/hooks.js';
+  cancelPartnerBooking, checkInPartnerBooking, checkOutPartnerBooking,
+} from '@/store/hotel/bookingsSlice.js';
+import { useHotelAction, usePartnerBookings } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
@@ -23,19 +24,22 @@ const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 const isPastStay = (b) => String(b.checkOut ?? '').slice(0, 10) < todayStr();
+const EMPTY_IDS = [];
 
 export default function HotelBookings() {
   const [toast, notify] = useToast();
-  const [tab, setTab] = useState('ALL');
-  const [query, setQuery] = useState('');
-  const [detail, setDetail] = useState(null);
-  const [confirmCancel, setConfirmCancel] = useState(null);
-  const [busyIds, setBusyIds] = useState(() => new Set());
+  const [tab, setTab] = useHotelState('ALL');
+  const [query, setQuery] = useHotelState('');
+  const [detailId, setDetail] = useHotelState(null);
+  const [confirmCancelId, setConfirmCancel] = useHotelState(null);
+  const [busyIds, setBusyIds] = useHotelState(EMPTY_IDS);
 
   const { accountId, data: bookings, loading, error, reload } = usePartnerBookings();
-  const [checkInBooking] = useCheckInPartnerBookingMutation();
-  const [checkOutBooking] = useCheckOutPartnerBookingMutation();
-  const [cancelBooking] = useCancelPartnerBookingMutation();
+  const checkInBooking = useHotelAction(checkInPartnerBooking);
+  const checkOutBooking = useHotelAction(checkOutPartnerBooking);
+  const cancelBooking = useHotelAction(cancelPartnerBooking);
+  const detail = bookings?.find((record) => record.id === detailId);
+  const confirmCancel = bookings?.find((record) => record.id === confirmCancelId);
 
   const counts = useMemo(() => {
     const list = bookings ?? [];
@@ -56,7 +60,7 @@ export default function HotelBookings() {
   }, [bookings, tab, query]);
 
   const act = async (booking, mutate, success) => {
-    setBusyIds((ids) => new Set(ids).add(booking.id));
+    setBusyIds((ids) => [...ids, booking.id]);
     try {
       await mutate({ accountId, bookingId: booking.id }).unwrap();
       notify(success);
@@ -65,22 +69,18 @@ export default function HotelBookings() {
     } catch (err) {
       notify(err.message || 'Action failed', true);
     } finally {
-      setBusyIds((ids) => {
-        const remaining = new Set(ids);
-        remaining.delete(booking.id);
-        return remaining;
-      });
+      setBusyIds((ids) => ids.filter((id) => id !== booking.id));
     }
   };
 
   const actionsFor = (b) => {
-    const busy = busyIds.has(b.id);
+    const busy = busyIds.includes(b.id);
     const past = isPastStay(b);
     if (b.status === 'CONFIRMED') {
       return (
         <>
           {past ? null : <button type="button" className="btn-green" disabled={busy} onClick={() => act(b, checkInBooking, `${b.guestName} checked in`)}>Check In</button>}
-          <button type="button" className="btn-cancel" disabled={busy} onClick={() => setConfirmCancel(b)}>Cancel</button>
+          <button type="button" className="btn-cancel" disabled={busy} onClick={() => setConfirmCancel(b.id)}>Cancel</button>
         </>
       );
     }
@@ -124,7 +124,7 @@ export default function HotelBookings() {
                   text={bookings.length ? 'Try another status or search term.' : 'Bookings created by travellers for your hotels will appear here.'}
                 />
               ) : visible.map((b) => (
-                <article key={b.id} className="hotel-booking-card" style={{ cursor: 'pointer' }} onClick={() => setDetail(b)}>
+                <article key={b.id} className="hotel-booking-card" style={{ cursor: 'pointer' }} onClick={() => setDetail(b.id)}>
                   <div className="hotel-booking-left">
                     <h3>{b.guestName}</h3>
                     <p>{b.email}</p>
@@ -174,7 +174,7 @@ export default function HotelBookings() {
           footer={
             <>
               <button type="button" className="btn-light" onClick={() => setConfirmCancel(null)}>Keep booking</button>
-              <button type="button" className="btn-cancel" disabled={busyIds.has(confirmCancel.id)}
+              <button type="button" className="btn-cancel" disabled={busyIds.includes(confirmCancel.id)}
                 onClick={() => act(confirmCancel, cancelBooking, 'Booking cancelled')}>Cancel booking</button>
             </>
           }

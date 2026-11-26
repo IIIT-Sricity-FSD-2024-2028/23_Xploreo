@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import { TicketCreateForm, TicketList } from '../../components/tickets/index.js';
-import { useCreatePartnerSupportTicketMutation } from '@/store/hotel/hotelApi.js';
-import { usePartnerSupportTickets } from '@/store/hotel/hooks.js';
+import { createPartnerSupportTicket } from '@/store/hotel/ticketsSlice.js';
+import { useHotelAction, usePartnerSupportTickets } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import '../Traveller/travellerSupportTickets.css';
 
 /**
@@ -12,10 +12,10 @@ import '../Traveller/travellerSupportTickets.css';
  * while providing hotel-specific copy, context, and issue categories without duplicating ticket logic.
  */
 export default function HotelSupport() {
-  const [activeTab, setActiveTab] = useState('list');
-  const [notification, setNotification] = useState(null);
+  const [activeTab, setActiveTab] = useHotelState('list');
+  const [notification, setNotification] = useHotelState(null);
   const { accountId, tickets, isLoading, error } = usePartnerSupportTickets();
-  const [createSupportTicket] = useCreatePartnerSupportTicketMutation();
+  const createSupportTicket = useHotelAction(createPartnerSupportTicket);
 
   const submitTicket = (values) => createSupportTicket({ accountId, values }).unwrap();
 
@@ -91,6 +91,7 @@ export default function HotelSupport() {
         {activeTab === 'list' && (
           <section aria-labelledby="partner-tickets-queue">
             <TicketList
+              hotelPartner
               tickets={tickets}
               isLoading={isLoading}
               error={error}
@@ -103,6 +104,7 @@ export default function HotelSupport() {
         {activeTab === 'create' && (
           <section aria-labelledby="create-hotel-ticket-form">
             <TicketCreateForm
+              hotelPartner
               submitTicket={submitTicket}
               onSubmitSuccess={handleTicketSubmitted}
             />

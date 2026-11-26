@@ -1,9 +1,11 @@
 // Port of front_end/pages/hotels/hotelRooms.html ("Services"): room types with availability,
 // add / edit / delete. All data comes from /hotels/:id/rooms on the backend.
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useAddRoomMutation, useChangeRoomMutation, useRemoveRoomMutation } from '@/store/hotel/hotelApi.js';
-import { usePartnerCatalog } from '@/store/hotel/hooks.js';
+import { addRoom, changeRoom, removeRoom } from '@/store/hotel/roomTypesSlice.js';
+import { useHotelAction, usePartnerCatalog } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
+import { uploadPartnerImage } from '@/store/hotel/uploads.js';
 import ImageUploader from '@/components/common/ImageUploader.jsx';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { inr, useToast } from '@/components/hotel/hotelKit.jsx';
@@ -13,18 +15,22 @@ const EMPTY_FORM = { hotelId: '', type: '', pricePerNight: '', maxOccupancy: '',
 export default function HotelRooms() {
   const [toast, notify] = useToast();
   const [searchParams] = useSearchParams();
-  const [filter, setFilter] = useState(searchParams.get('hotel') || 'all');
-  const [form, setForm] = useState(null); // null = closed; { id? , ...fields }
-  const [availability, setAvailability] = useState(null); // { room, value }
-  const [removing, setRemoving] = useState(null);
-  const [formError, setFormError] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useHotelState(searchParams.get('hotel') || 'all');
+  const [form, setForm] = useHotelState(null);
+  const [availabilityDraft, setAvailability] = useHotelState(null);
+  const [removingId, setRemoving] = useHotelState(null);
+  const [formError, setFormError] = useHotelState('');
+  const [busy, setBusy] = useHotelState(false);
 
   const { accountId, hotels, rooms: allRooms, loading, error, reload } = usePartnerCatalog();
   const data = useMemo(() => hotels && allRooms ? { hotels, rooms: allRooms } : null, [hotels, allRooms]);
-  const [addRoom] = useAddRoomMutation();
-  const [changeRoom] = useChangeRoomMutation();
-  const [removeRoom] = useRemoveRoomMutation();
+  const add = useHotelAction(addRoom);
+  const change = useHotelAction(changeRoom);
+  const remove = useHotelAction(removeRoom);
+  const uploadImage = useHotelAction(uploadPartnerImage);
+  const removing = allRooms?.find((room) => room.id === removingId);
+  const availabilityRoom = allRooms?.find((room) => room.id === availabilityDraft?.roomId);
+  const availability = availabilityRoom && { room: availabilityRoom, value: availabilityDraft.value };
 
   const rooms = useMemo(
     () => (data?.rooms ?? []).filter((r) => filter === 'all' || r.hotelId === filter),
@@ -74,8 +80,8 @@ export default function HotelRooms() {
     };
     const ok = await run(
       () => (form.id
-        ? changeRoom({ accountId, hotelId: form.hotelId, roomId: form.id, values }).unwrap()
-        : addRoom({ accountId, hotelId: form.hotelId, values }).unwrap()),
+        ? change({ accountId, hotelId: form.hotelId, roomId: form.id, values }).unwrap()
+        : add({ accountId, hotelId: form.hotelId, values }).unwrap()),
       form.id ? 'Service updated' : 'Service added',
     );
     if (ok) setForm(null);
@@ -87,19 +93,19 @@ export default function HotelRooms() {
     if (!Number.isInteger(value) || value < 0 || value > room.totalRooms) {
       return notify(`Available rooms must be between 0 and ${room.totalRooms}`, true);
     }
-    const ok = await run(() => changeRoom({ accountId, hotelId: room.hotelId, roomId: room.id, values: { availableRooms: value } }).unwrap(), 'Availability updated');
+    const ok = await run(() => change({ accountId, hotelId: room.hotelId, roomId: room.id, values: { availableRooms: value } }).unwrap(), 'Availability updated');
     if (ok) setAvailability(null);
   };
 
   const confirmDelete = async () => {
     const room = removing;
-    const ok = await run(() => removeRoom({ accountId, hotelId: room.hotelId, roomId: room.id }).unwrap(), 'Service deleted');
+    const ok = await run(() => remove({ accountId, hotelId: room.hotelId, roomId: room.id }).unwrap(), 'Service deleted');
     if (ok) setRemoving(null);
   };
 
   const toggleStatus = (room) =>
     run(
-      () => changeRoom({ accountId, hotelId: room.hotelId, roomId: room.id, values: { status: room.status === 'inactive' ? 'active' : 'inactive' } }).unwrap(),
+      () => change({ accountId, hotelId: room.hotelId, roomId: room.id, values: { status: room.status === 'inactive' ? 'active' : 'inactive' } }).unwrap(),
       room.status === 'inactive' ? 'Service activated' : 'Service deactivated',
     );
 
@@ -144,12 +150,12 @@ export default function HotelRooms() {
                         </span>
                       </div>
                       <div className="hotel-service-actions">
-                        <button type="button" className="btn-light" onClick={() => setAvailability({ room, value: room.availableRooms })}>Manage Availability</button>
+                        <button type="button" className="btn-light" onClick={() => setAvailability({ roomId: room.id, value: room.availableRooms })}>Manage Availability</button>
                         <button type="button" className="btn-light" onClick={() => openEdit(room)}>Edit</button>
                         <button type="button" className="btn-light" disabled={busy} onClick={() => toggleStatus(room)}>
                           {inactive ? 'Activate' : 'Deactivate'}
                         </button>
-                        <button type="button" className="btn-cancel" onClick={() => setRemoving(room)}>Delete</button>
+                        <button type="button" className="btn-cancel" onClick={() => setRemoving(room.id)}>Delete</button>
                       </div>
                     </article>
                   );
@@ -176,7 +182,7 @@ export default function HotelRooms() {
           <h3>Basic Details</h3>
           <label htmlFor="serviceHotel">Property</label>
           <select id="serviceHotel" value={form.hotelId} onChange={set('hotelId')} disabled={Boolean(form.id)}>
-            {data.hotels.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            {(hotels ?? []).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
           </select>
           <label htmlFor="serviceName">Service Type</label>
           <input id="serviceName" type="text" placeholder="Enter room type (e.g. Deluxe Room)" value={form.type} onChange={set('type')} />
@@ -201,9 +207,11 @@ export default function HotelRooms() {
 
           <h3>Image</h3>
           <ImageUploader
+            hotelPartner
             id="serviceImage"
             value={form.image}
-            onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+            uploadImage={uploadImage}
+            onChange={(url) => setForm((f) => f && { ...f, image: url })}
           />
           {formError ? <p className="hotel-form-error" role="alert" style={{ color: '#dc2626', marginTop: 10 }}>{formError}</p> : null}
         </HotelModal>

@@ -1,10 +1,12 @@
-// Properties: the hotel partner's own hotels. Add / delete a property and see, add to and
+// Properties: the hotel partner's own hotels. Add, edit or delete a property and see, add to and
 // remove the room types (services) inside each one. Everything saved here is what travellers browse.
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext.jsx';
-import { useAddPropertyMutation, useRemovePropertyMutation, useRemoveRoomMutation } from '@/store/hotel/hotelApi.js';
-import { usePartnerCatalog } from '@/store/hotel/hooks.js';
+import { addProperty, changeProperty, removeProperty } from '@/store/hotel/hotelsSlice.js';
+import { removeRoom } from '@/store/hotel/roomTypesSlice.js';
+import { useHotelAction, usePartnerCatalog } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
+import { uploadPartnerImage } from '@/store/hotel/uploads.js';
 import ImageUploader from '@/components/common/ImageUploader.jsx';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { inr, useToast } from '@/components/hotel/hotelKit.jsx';
@@ -14,16 +16,21 @@ const EMPTY_FORM = { name: '', location: '', description: '', stars: '3', priceP
 export default function HotelProperties() {
   const { user } = useAuth();
   const [toast, notify] = useToast();
-  const [form, setForm] = useState(null); // null = closed
-  const [formError, setFormError] = useState('');
-  const [removingHotel, setRemovingHotel] = useState(null);
-  const [removingRoom, setRemovingRoom] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useHotelState(null);
+  const [formError, setFormError] = useHotelState('');
+  const [removingHotelId, setRemovingHotel] = useHotelState(null);
+  const [removingRoomIds, setRemovingRoom] = useHotelState(null);
+  const [busy, setBusy] = useHotelState(false);
 
   const { accountId, properties: data, loading, error, reload } = usePartnerCatalog();
-  const [addProperty] = useAddPropertyMutation();
-  const [removeProperty] = useRemovePropertyMutation();
-  const [removeRoom] = useRemoveRoomMutation();
+  const add = useHotelAction(addProperty);
+  const change = useHotelAction(changeProperty);
+  const remove = useHotelAction(removeProperty);
+  const removeService = useHotelAction(removeRoom);
+  const uploadImage = useHotelAction(uploadPartnerImage);
+  const removingHotel = data?.find((hotel) => hotel.id === removingHotelId);
+  const roomHotel = data?.find((hotel) => hotel.id === removingRoomIds?.hotelId);
+  const removingRoom = roomHotel?.rooms.find((room) => room.id === removingRoomIds?.roomId);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
@@ -54,23 +61,40 @@ export default function HotelProperties() {
       description: form.description.trim(),
       stars: Number(form.stars),
       pricePerNight: price,
-      image: form.image.trim(),
-      images: form.image.trim() ? [form.image.trim()] : [],
-      status: 'active',
     };
-    if (user?.region) values.city = user.region;
-    const ok = await run(() => addProperty({ accountId, values }).unwrap(), 'Property added');
+    const image = form.image.trim();
+    if (!form.id || image !== form.originalImage) {
+      values.image = image;
+      values.images = image ? [image] : [];
+    }
+    if (!form.id) {
+      values.status = 'active';
+      if (user?.region) values.city = user.region;
+    }
+    const ok = await run(
+      () => form.id ? change({ accountId, hotelId: form.id, values }).unwrap() : add({ accountId, values }).unwrap(),
+      form.id ? 'Property updated' : 'Property added',
+    );
     if (ok) setForm(null);
   };
 
+  const editProperty = (hotel) => {
+    const image = hotel.image || hotel.images?.[0] || '';
+    setFormError('');
+    setForm({
+      id: hotel.id, name: hotel.name ?? '', location: hotel.location || hotel.city || '',
+      description: hotel.description ?? '', stars: hotel.stars ?? '3', pricePerNight: hotel.pricePerNight ?? '',
+      image, originalImage: image,
+    });
+  };
+
   const confirmDeleteHotel = async () => {
-    const ok = await run(() => removeProperty({ accountId, hotelId: removingHotel.id }).unwrap(), 'Property deleted');
+    const ok = await run(() => remove({ accountId, hotelId: removingHotel.id }).unwrap(), 'Property deleted');
     if (ok) setRemovingHotel(null);
   };
 
   const confirmDeleteRoom = async () => {
-    const { hotel, room } = removingRoom;
-    const ok = await run(() => removeRoom({ accountId, hotelId: hotel.id, roomId: room.id }).unwrap(), 'Service deleted');
+    const ok = await run(() => removeService({ accountId, ...removingRoomIds }).unwrap(), 'Service deleted');
     if (ok) setRemovingRoom(null);
   };
 
@@ -109,7 +133,7 @@ export default function HotelProperties() {
                           {room.type} · {inr(room.pricePerNight)} / night · {room.availableRooms}/{room.totalRooms} available
                           {room.status === 'inactive' ? ' · inactive' : ''}
                         </span>
-                        <button type="button" className="btn-cancel" disabled={busy} onClick={() => setRemovingRoom({ hotel, room })}>
+                        <button type="button" className="btn-cancel" disabled={busy} onClick={() => setRemovingRoom({ hotelId: hotel.id, roomId: room.id })}>
                           Delete
                         </button>
                       </span>
@@ -119,7 +143,8 @@ export default function HotelProperties() {
 
                 <div className="hotel-service-actions">
                   <Link to={`/hotel/rooms?hotel=${encodeURIComponent(hotel.id)}`} className="btn-light">Manage / Add Services</Link>
-                  <button type="button" className="btn-cancel" onClick={() => setRemovingHotel(hotel)}>Delete Property</button>
+                  <button type="button" className="btn-light" disabled={busy} onClick={() => editProperty(hotel)}>Edit Property</button>
+                  <button type="button" className="btn-cancel" onClick={() => setRemovingHotel(hotel.id)}>Delete Property</button>
                 </div>
               </article>
             ))}
@@ -129,7 +154,7 @@ export default function HotelProperties() {
 
       {form ? (
         <HotelModal
-          title="Add Property"
+          title={form.id ? 'Edit Property' : 'Add Property'}
           onClose={() => setForm(null)}
           footer={
             <>
@@ -160,7 +185,7 @@ export default function HotelProperties() {
             </div>
           </div>
           <h3>Image</h3>
-          <ImageUploader id="propImage" value={form.image} onChange={(url) => setForm((f) => ({ ...f, image: url }))} />
+          <ImageUploader hotelPartner id="propImage" value={form.image} uploadImage={uploadImage} onChange={(url) => setForm((f) => f && { ...f, image: url })} />
           {formError ? <p role="alert" style={{ color: '#dc2626', marginTop: 10 }}>{formError}</p> : null}
         </HotelModal>
       ) : null}
@@ -191,7 +216,7 @@ export default function HotelProperties() {
             </>
           }
         >
-          <p>“{removingRoom.room.type}” at {removingRoom.hotel.name} will be removed. Services with active bookings cannot be deleted.</p>
+          <p>“{removingRoom.type}” at {roomHotel.name} will be removed. Services with active bookings cannot be deleted.</p>
         </HotelModal>
       ) : null}
       {toast}

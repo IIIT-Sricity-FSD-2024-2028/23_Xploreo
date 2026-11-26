@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
-import { authApi } from "../../services/api";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { AuthVisual } from "./login";
 import "./auth.css";
 
@@ -28,8 +28,9 @@ const initialForm = {
 
 const PARTNER_ROLES = ["guide", "hotel", "experience"];
 
-export default function Register({ user, onAuthenticated }) {
+export default function Register({ user }) {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -63,12 +64,7 @@ export default function Register({ user, onAuthenticated }) {
       details.phone = details.phone.trim();
       details.location = details.location.trim();
       if (!isPartnerRole || !details.location) delete details.location;
-      const result = await authApi.register(details);
-      const authenticatedUser = result?.user || result;
-      if (result?.token && !authenticatedUser.token) {
-        authenticatedUser.token = result.token;
-      }
-      onAuthenticated?.(authenticatedUser);
+      const authenticatedUser = await register(details);
       navigate(destinationForRole[authenticatedUser.role] || "/");
     } catch (requestError) {
       setError(requestError?.message || "Registration failed. Please try again.");

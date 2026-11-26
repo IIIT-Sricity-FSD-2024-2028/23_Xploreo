@@ -1,5 +1,5 @@
-import { useState } from 'react';
 import { createTicket } from '../../services/tickets.api.js';
+import { usePortalState } from '@/store/hotel/useHotelState.js';
 import './tickets.css';
 
 const DEFAULT_CATEGORIES = [
@@ -17,6 +17,7 @@ const PRIORITIES = [
   { label: 'Medium (Standard)', value: 'MEDIUM' },
   { label: 'High (Urgent)', value: 'HIGH' },
 ];
+const EMPTY_TOUCHED = {};
 
 /**
  * Reusable Ticket Creation Form for Travellers (M5 & M4).
@@ -35,20 +36,21 @@ const PRIORITIES = [
  */
 export default function TicketCreateForm({
   submitTicket = createTicket,
+  hotelPartner = false,
   onSubmitSuccess,
   initialCategory = '',
   currentUser,
   className = '',
 }) {
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [category, setCategory] = useState(initialCategory || 'Booking');
-  const [priority, setPriority] = useState('MEDIUM');
+  const [subject, setSubject] = usePortalState('', hotelPartner);
+  const [message, setMessage] = usePortalState('', hotelPartner);
+  const [category, setCategory] = usePortalState(initialCategory || 'Booking', hotelPartner);
+  const [priority, setPriority] = usePortalState('MEDIUM', hotelPartner);
 
-  const [touched, setTouched] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState(null);
-  const [successTicket, setSuccessTicket] = useState(null);
+  const [touched, setTouched] = usePortalState(EMPTY_TOUCHED, hotelPartner);
+  const [isSubmitting, setIsSubmitting] = usePortalState(false, hotelPartner);
+  const [apiError, setApiError] = usePortalState(null, hotelPartner);
+  const [successTicket, setSuccessTicket] = usePortalState(null, hotelPartner);
 
   // Client validation
   const errors = {};

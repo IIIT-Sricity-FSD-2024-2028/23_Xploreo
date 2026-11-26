@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Link, NavLink, useNavigate, useLocation, useInRouterContext } from "react-router-dom";
+import { Link, NavLink, useNavigate, useLocation } from "react-router-dom";
 import logo from "../../assets/logo.png";
 import { useAuth } from "../../context/AuthContext.jsx";
 import NotificationBell from "../notifications/NotificationBell.jsx";
+import { usePortalState } from '@/store/hotel/useHotelState.js';
 import "./navbar.css";
 
 const publicLinks = [
@@ -188,7 +188,7 @@ function TravellerStyleNavbar({ displayName, initial, user, dropdownOpen, setDro
           ))}
         </div>
         <div className="navbar-user-section" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <NotificationBell userId={user?.userId || user?.id} />
+          <NotificationBell hotelPartner={user?.role === "hotel"} />
           <span className="navbar-user-greeting">Hello, {displayName} 👋</span>
           <button
             type="button"
@@ -225,12 +225,10 @@ function TravellerStyleNavbar({ displayName, initial, user, dropdownOpen, setDro
 export default function Navbar({ user: propUser, isPublic = false } = {}) {
   const auth = useAuth();
   const navigate = useNavigate();
-  const inRouter = useInRouterContext();
-  const location = inRouter ? useLocation() : null;
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-
+  const location = useLocation();
   const user = propUser || auth?.user || { role: "default" };
   const role = (user?.role || "default").toLowerCase();
+  const [dropdownOpen, setDropdownOpen] = usePortalState(false, role === "hotel");
 
   const pathname = location?.pathname || "";
   const isPublicRoute =

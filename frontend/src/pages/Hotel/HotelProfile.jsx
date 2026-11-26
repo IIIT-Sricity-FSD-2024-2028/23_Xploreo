@@ -1,9 +1,9 @@
 // Port of front_end/pages/hotels/hotelprofile.html + js/modules/hotelprofile.js: block-by-block
 // edit with the original validation rules, now persisted through /hotels/partner/profile.
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useSavePartnerProfileMutation } from '@/store/hotel/hotelApi.js';
-import { usePartnerHotels, usePartnerProfile } from '@/store/hotel/hooks.js';
+import { savePartnerProfile } from '@/store/hotel/partnerProfileSlice.js';
+import { useHotelAction, usePartnerHotels, usePartnerProfile } from '@/store/hotel/hooks.js';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 import HotelPage, { LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { useToast } from '@/components/hotel/hotelKit.jsx';
 
@@ -49,18 +49,21 @@ const BLOCKS = [
   { id: 'media', title: 'Media Uploads', fields: [{ name: 'logo', label: 'Logo image URL', wide: true, placeholder: 'https://… (square, 400×400px or larger)' }] },
 ];
 
+const EMPTY_FIELDS = {};
+
 export default function HotelProfile() {
   const [toast, notify] = useToast();
   const hotels = usePartnerHotels();
   const { accountId, data: profile, loading, error, reload } = usePartnerProfile();
-  const [saveProfile, { isLoading: busy }] = useSavePartnerProfileMutation();
+  const saveProfile = useHotelAction(savePartnerProfile);
   const properties = hotels.data ?? [];
   const pageLoading = loading || hotels.loading;
   const retry = () => { reload(); hotels.reload(); };
 
-  const [editing, setEditing] = useState(null);
-  const [draft, setDraft] = useState({});
-  const [errors, setErrors] = useState({});
+  const [editing, setEditing] = useHotelState(null);
+  const [draft, setDraft] = useHotelState(EMPTY_FIELDS);
+  const [errors, setErrors] = useHotelState(EMPTY_FIELDS);
+  const [busy, setBusy] = useHotelState(false);
 
   const startEdit = (block) => {
     setEditing(block.id);
@@ -89,6 +92,7 @@ export default function HotelProfile() {
     const found = validate(block, draft);
     setErrors(found);
     if (Object.keys(found).length) return;
+    setBusy(true);
     try {
       const body = Object.fromEntries(block.fields.filter((f) => !f.readOnly).map((f) => [f.name, String(draft[f.name] ?? '').trim()]));
       await saveProfile({ accountId, values: body }).unwrap();
@@ -96,6 +100,8 @@ export default function HotelProfile() {
       notify('Profile saved');
     } catch (err) {
       notify(err.message || 'Could not save profile', true);
+    } finally {
+      setBusy(false);
     }
   };
 

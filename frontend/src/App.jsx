@@ -1,7 +1,7 @@
 import { Provider } from "react-redux";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
-import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 import { store } from "./store/index.js";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Login from "./pages/Auth/login";
@@ -33,7 +33,7 @@ import TravellerSupportTicketsPage from "./pages/Traveller/TravellerSupportTicke
 import TravellerCheckoutPage from "./pages/Traveller/TravellerCheckoutPage";
 
 function AppRoutes() {
-  const { user, authenticate } = useAuth();
+  const { user } = useAuth();
   const travellerId = user?.userId || user?.id || user?.username || '20001';
 
   return (
@@ -46,8 +46,8 @@ function AppRoutes() {
       <Route path="/Home/support" element={<Support user={user} />} />
 
       {/* Authentication Routes */}
-      <Route path="/Auth/login" element={<Login user={user} onAuthenticated={authenticate} />} />
-      <Route path="/Auth/register" element={<Register user={user} onAuthenticated={authenticate} />} />
+      <Route path="/Auth/login" element={<Login user={user} />} />
+      <Route path="/Auth/register" element={<Register user={user} />} />
       <Route path="/Auth/forgot-password" element={<ForgotPassword user={user} />} />
       <Route path="/Auth/reset-password" element={<ResetPassword user={user} />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -140,9 +140,7 @@ function App() {
   return (
     <Provider store={store}>
       <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <AppRoutes />
       </BrowserRouter>
     </Provider>
   );

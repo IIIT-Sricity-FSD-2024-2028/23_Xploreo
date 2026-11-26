@@ -1,5 +1,6 @@
-import { useId, useState } from 'react';
+import { useId } from 'react';
 import { uploadMultiple, uploadSingle } from '@/services/upload.api.js';
+import { usePortalState } from '@/store/hotel/useHotelState.js';
 
 const DEFAULT_HELPER = 'JPEG, PNG, GIF or WebP (max. 5MB)';
 const DEFAULT_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp';
@@ -13,6 +14,7 @@ const MAX_BYTES = 5 * 1024 * 1024; // 5MB
  * @param {string} [props.id] - Element ID
  * @param {string|string[]} [props.value] - Current image URL(s)
  * @param {function(string|string[]):void} props.onChange - Change handler receiving new URL(s)
+ * @param {function(File, function(number):void):Promise<{url: string}>} [props.uploadImage] - Single image uploader
  * @param {boolean} [props.multiple=false] - Whether to allow multiple file uploads
  * @param {number} [props.maxFiles=5] - Maximum number of files if multiple is true
  * @param {string} [props.label] - Field label text
@@ -26,6 +28,8 @@ export default function ImageUploader({
   id: customId,
   value,
   onChange,
+  uploadImage = uploadSingle,
+  hotelPartner = false,
   multiple = false,
   maxFiles = 5,
   label,
@@ -38,10 +42,10 @@ export default function ImageUploader({
   const generatedId = useId();
   const inputId = customId || `image-uploader-${generatedId}`;
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [isDragging, setIsDragging] = usePortalState(false, hotelPartner);
+  const [uploading, setUploading] = usePortalState(false, hotelPartner);
+  const [progress, setProgress] = usePortalState(0, hotelPartner);
+  const [errorMessage, setErrorMessage] = usePortalState('', hotelPartner);
 
   // Normalize single/multiple values
   const currentImages = multiple
@@ -90,7 +94,7 @@ export default function ImageUploader({
         onChange?.(combined);
       } else {
         const file = files[0];
-        const res = await uploadSingle(file, (p) => setProgress(p));
+        const res = await uploadImage(file, setProgress);
         onChange?.(res.url);
       }
       setErrorMessage('');

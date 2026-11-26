@@ -1,6 +1,6 @@
 // Non-component helpers shared by the hotel portal pages.
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
+import { useCallback, useEffect, useRef } from 'react';
+import { useHotelState } from '@/store/hotel/useHotelState.js';
 
 export const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -13,21 +13,16 @@ export const fmtDate = (value) => {
 export const STATUS_LABEL = { CONFIRMED: 'Confirmed', CHECKED_IN: 'Checked In', CHECKED_OUT: 'Checked Out', CANCELLED: 'Cancelled' };
 export const STATUS_CLASS = { CONFIRMED: 'confirmed', CHECKED_IN: 'checked-in', CHECKED_OUT: 'completed', CANCELLED: 'cancelled' };
 
-// Loads through `loader` (a stable function) and exposes reload().
-export function useHotelData(loader) {
-  return useAsyncData(loader);
-}
-
 // Small toast: const [toast, notify] = useToast();  notify('Saved') / notify('Failed', true)
 export function useToast() {
-  const [message, setMessage] = useState(null);
+  const [message, setMessage] = useHotelState(null);
   const timer = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
   const notify = useCallback((text, isError = false) => {
     clearTimeout(timer.current);
     setMessage({ text, isError });
     timer.current = setTimeout(() => setMessage(null), 3200);
-  }, []);
+  }, [setMessage]);
   const node = message ? (
     <div
       role="status"
