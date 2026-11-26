@@ -70,6 +70,11 @@ const catalogSlice = createSlice({
 
 const actions = catalogSlice.actions;
 
+export const refreshExperienceCatalog = () => (dispatch) => {
+  dispatch(actions.invalidateRead());
+  return dispatch(fetchExperiences());
+};
+
 function writeExperience(id, request, apply) {
   return async (dispatch, getState) => {
     const state = getState();
@@ -87,10 +92,7 @@ function writeExperience(id, request, apply) {
       const { requestId, data } = selectExperienceCatalog(getState());
       dispatch(apply(result));
       // A read already in flight may have captured data before this write.
-      if (requestId || data === null) {
-        dispatch(actions.invalidateRead());
-        dispatch(fetchExperiences());
-      }
+      if (requestId || data === null) dispatch(refreshExperienceCatalog());
       return result;
     } finally {
       if (isSameSession()) dispatch(actions.writeFinished(key));

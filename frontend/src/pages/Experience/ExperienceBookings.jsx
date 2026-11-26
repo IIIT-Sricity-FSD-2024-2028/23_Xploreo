@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { listExperienceBookings, updateExperienceBookingStatus } from '@/services/partners.api.js';
+import { checkInExperienceBooking, requestExperienceBookingEnd, selectExperienceBooking, selectExperienceBookings } from '@/store/experience/bookingsSlice.js';
+import { useExperienceBookings } from '@/store/experience/useExperienceBookings.js';
 import { compareSlots, formatCurrency, formatDate, todayIso } from '@/lib/datetime.js';
 import { STATUS_FILTERS, bookingStatusMeta } from '@/lib/bookingStatus.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
@@ -21,13 +22,15 @@ const STATUS_COLORS = {
 const statusStyle = (className) => STATUS_COLORS[className] ?? STATUS_COLORS.cancelled;
 
 export default function ExperienceBookings() {
+  const dispatch = useDispatch();
   const [params] = useSearchParams();
-  const { data, error, loading, reload, mutate } = useAsyncData(listExperienceBookings);
+  const { data, error, loading, reload } = useExperienceBookings();
   const [experienceId, setExperienceId] = useState(params.get('experience') || 'all');
   const [status, setStatus] = useState('all');
-  const [details, setDetails] = useState(null);
-  const [busyId, setBusyId] = useState(null);
+  const [detailsId, setDetailsId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const details = useSelector((state) => selectExperienceBooking(state, detailsId));
+  const saving = useSelector((state) => selectExperienceBookings(state).saving);
 
   const bookings = useMemo(() => data ?? [], [data]);
   const today = todayIso();
@@ -53,16 +56,12 @@ export default function ExperienceBookings() {
     return [...list.filter((g) => g.date >= today), ...list.filter((g) => g.date < today).reverse()];
   }, [bookings, experienceId, status, today]);
 
-  async function changeStatus(booking, next) {
-    setBusyId(booking.id);
+  async function saveStatus(thunk) {
     setActionError(null);
     try {
-      const updated = await updateExperienceBookingStatus(booking.id, next);
-      mutate((list) => list.map((b) => (b.id === updated.id ? { ...b, status: updated.status } : b)));
+      await dispatch(thunk);
     } catch (err) {
       setActionError(err);
-    } finally {
-      setBusyId(null);
     }
   }
 
@@ -124,7 +123,7 @@ export default function ExperienceBookings() {
                       </div>
                       {group.items.map((b) => {
                         const meta = bookingStatusMeta(b.status);
-                        const busy = busyId === b.id;
+                        const busy = Object.hasOwn(saving, b.id);
                         return (
                           <div key={b.id} className="ep-booking-user-row">
                             <div>
@@ -134,14 +133,14 @@ export default function ExperienceBookings() {
                             <div>{b.participants} guests</div>
                             <div><span className="gd-chip" style={{ ...statusStyle(meta.className), borderColor: 'transparent' }}>{meta.label}</span></div>
                             <div className="ep-row-actions">
-                              <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" onClick={() => setDetails(b)}>View Details</button>
+                              <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" onClick={() => setDetailsId(b.id)}>View Details</button>
                               {b.status === 'CONFIRMED' ? (
-                                <button type="button" className="gd-btn gd-btn-primary gd-btn-sm" disabled={busy} onClick={() => changeStatus(b, 'CHECKED_IN')}>
+                                <button type="button" className="gd-btn gd-btn-primary gd-btn-sm" disabled={busy} onClick={() => saveStatus(checkInExperienceBooking(b.id))}>
                                   {busy ? 'Saving…' : 'Mark Check-in'}
                                 </button>
                               ) : null}
                               {b.status === 'CHECKED_IN' ? (
-                                <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" disabled={busy} onClick={() => changeStatus(b, 'END_REQUESTED')}>
+                                <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" disabled={busy} onClick={() => saveStatus(requestExperienceBookingEnd(b.id))}>
                                   {busy ? 'Saving…' : 'Request End'}
                                 </button>
                               ) : null}
@@ -162,7 +161,7 @@ export default function ExperienceBookings() {
           ) : null}
 
           {details ? (
-            <ModalFrame id="bookingModal" boxClass="booking-modal-box" labelledBy="modalName" onClose={() => setDetails(null)}>
+            <ModalFrame id="bookingModal" boxClass="booking-modal-box" labelledBy="modalName" onClose={() => setDetailsId(null)}>
               <div className="modal-header">
                 <div>
                   <h2 id="modalName">{details.guestName}</h2>
@@ -171,7 +170,7 @@ export default function ExperienceBookings() {
                     <span id="modalStatus" className={`status-badge ${detailsMeta.className}`}>{detailsMeta.label}</span>
                   </div>
                 </div>
-                <CloseButton label="Close booking details" glyph="✕" onClick={() => setDetails(null)} />
+                <CloseButton label="Close booking details" glyph="✕" onClick={() => setDetailsId(null)} />
               </div>
 
               <hr />

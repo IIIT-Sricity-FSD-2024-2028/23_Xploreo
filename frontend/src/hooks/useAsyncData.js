@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 //   const { data, error, loading, reload, mutate } = useAsyncData(listMyExperiences);
 // - data is kept while reloading, so screens do not flash empty after a save.
 // - mutate(fn) swaps in server data you already have (e.g. a PATCH response) without a refetch.
-export function useAsyncData(loader) {
+// - changing refreshKey reloads data when another workflow invalidates it.
+export function useAsyncData(loader, refreshKey) {
   const [state, setState] = useState({ data: null, error: null, loading: true });
   const [tick, setTick] = useState(0);
 
@@ -22,7 +23,7 @@ export function useAsyncData(loader) {
     return () => {
       cancelled = true;
     };
-  }, [loader, tick]);
+  }, [loader, tick, refreshKey]);
 
   const reload = useCallback(() => setTick((t) => t + 1), []);
   const mutate = useCallback((updater) => setState((s) => ({ ...s, data: updater(s.data) })), []);

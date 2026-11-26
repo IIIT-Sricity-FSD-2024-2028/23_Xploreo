@@ -1,5 +1,6 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { bindSession } from '@/services/session.js';
+import experienceBookingsReducer from './experience/bookingsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
 import { guideReducer } from './guide/index.js';
 import { hotelReducer } from './hotel/index.js';
@@ -9,7 +10,7 @@ const reducers = combineReducers({
   session: sessionReducer,
   hotel: hotelReducer,
   guide: guideReducer,
-  experience: combineReducers({ catalog: experiencesReducer }),
+  experience: combineReducers({ catalog: experiencesReducer, bookings: experienceBookingsReducer }),
 });
 
 function rootReducer(state, action) {

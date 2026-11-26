@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useSelector } from 'react-redux';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
 import { getExperienceEarnings } from '@/services/schedule.api.js';
+import { selectExperienceEarningsRevision } from '@/store/experience/bookingsSlice.js';
 import { formatCurrency, formatDate } from '@/lib/datetime.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
 import { ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
@@ -28,8 +30,9 @@ const PILL = {
 export default function ExperienceEarnings() {
   const [period, setPeriod] = useState('90');
   const [status, setStatus] = useState('all');
+  const earningsRevision = useSelector(selectExperienceEarningsRevision);
   const loader = useCallback(() => getExperienceEarnings({ days: period }), [period]);
-  const { data, error, loading, reload } = useAsyncData(loader);
+  const { data, error, loading, reload } = useAsyncData(loader, earningsRevision);
 
   const unavailable = error?.status === 404;
   const summary = data?.summary;

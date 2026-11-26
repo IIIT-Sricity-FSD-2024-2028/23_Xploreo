@@ -2,8 +2,8 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/foundation';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { listExperienceBookings } from '@/services/partners.api.js';
 import { listReviews } from '@/services/schedule.api.js';
+import { useExperienceBookings } from '@/store/experience/useExperienceBookings.js';
 import { useExperienceCatalog } from '@/store/experience/useExperienceCatalog.js';
 import { compareSlots, formatDate, slotState, timeToMinutes, todayIso } from '@/lib/datetime.js';
 import { ui } from '@/lib/assets.js';
@@ -11,7 +11,6 @@ import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
 import { ErrorNotice, LoadingBlock } from '@/components/experience/Feedback.jsx';
 import './experienceShared.css';
 
-const loadHome = () => Promise.all([listExperienceBookings(), listReviews()]);
 const EMPTY = [];
 
 function alertFor(slot) {
@@ -36,16 +35,19 @@ const SCHEDULE_PILL = {
 export default function ExperienceHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const home = useAsyncData(loadHome);
+  const bookingList = useExperienceBookings();
+  const reviewList = useAsyncData(listReviews);
   const catalog = useExperienceCatalog();
   const experiences = catalog.data ?? EMPTY;
-  const [bookings = EMPTY, reviews = EMPTY] = home.data ?? EMPTY;
-  const ready = catalog.data !== null && home.data !== null;
-  const error = catalog.error ?? home.error;
-  const loading = !error && (catalog.loading || home.loading);
+  const bookings = bookingList.data ?? EMPTY;
+  const reviews = reviewList.data ?? EMPTY;
+  const ready = catalog.data !== null && bookingList.data !== null && reviewList.data !== null;
+  const error = catalog.error ?? bookingList.error ?? reviewList.error;
+  const loading = !error && (catalog.loading || bookingList.loading || reviewList.loading);
   function reload() {
     catalog.reload();
-    home.reload();
+    bookingList.reload();
+    reviewList.reload();
   }
   const today = todayIso();
 
