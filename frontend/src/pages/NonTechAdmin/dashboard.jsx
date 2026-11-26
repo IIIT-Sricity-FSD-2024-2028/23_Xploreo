@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
 import {
   SAMetricCard,
@@ -6,10 +7,16 @@ import {
   SABadge,
 } from '../../components/superadmin';
 import {
-  getNtaDashboardMetrics,
-  getNtaRecentBookings,
-  getNtaPricingDistribution,
-} from '../../services/nta.api.js';
+  fetchNtaPlans,
+  fetchNtaTripActivity,
+  selectNtaDashboardError,
+  selectNtaDashboardKpis,
+  selectNtaDashboardLoading,
+  selectNtaPlansError,
+  selectNtaPlansLoading,
+  selectNtaPricingChartData,
+  selectNtaRecentBookings,
+} from '../../store/nta/index.js';
 import LiveFinancePanel from '../../components/finance/LiveFinancePanel.jsx';
 import '../../components/superadmin/superadmin.css';
 import '../../components/tickets/tickets.css';
@@ -38,49 +45,37 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
     });
   }, [user, authUser]);
 
-  // Telemetry & Data States
-  const [metrics, setMetrics] = useState(null);
-  const [recentBookings, setRecentBookings] = useState([]);
-  const [pricingDistribution, setPricingDistribution] = useState([]);
-
-  // UI & Loading States
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  // Load all dashboard data
-  const loadDashboardData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const [metricsRes, bookingsRes, pricingRes] = await Promise.all([
-        getNtaDashboardMetrics(session),
-        getNtaRecentBookings(session),
-        getNtaPricingDistribution(session),
-      ]);
-
-      setMetrics(metricsRes);
-      setRecentBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
-      setPricingDistribution(Array.isArray(pricingRes) ? pricingRes : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load NTA dashboard telemetry.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session]);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
-
+  // Telemetry & Data — the shared Redux store. Package KPIs and the pricing chart are derived from
+  // state.nta.plans (the same plans Manage Packages uses); trip activity lives in state.nta.dashboard.
+  const dispatch = useDispatch();
+  const kpis = useSelector(selectNtaDashboardKpis);
+  const recentBookings = useSelector(selectNtaRecentBookings);
   // Format pricing distribution for SAChart (bar format: [{ label, price }])
-  const chartData = useMemo(() => {
-    return pricingDistribution.map((item) => ({
-      label: item.name ? (item.name.length > 16 ? `${item.name.slice(0, 14)}...` : item.name) : 'Package',
-      fullName: item.name,
-      price: Number(item.price) || 0,
-      destination: item.destination,
-    }));
-  }, [pricingDistribution]);
+  const chartData = useSelector((state) => selectNtaPricingChartData(state, session.region));
+
+  // Loading & error states
+  const plansLoading = useSelector(selectNtaPlansLoading);
+  const tripsLoading = useSelector(selectNtaDashboardLoading);
+  const plansError = useSelector(selectNtaPlansError);
+  const tripsError = useSelector(selectNtaDashboardError);
+  const isLoading = plansLoading || tripsLoading;
+  const loadError = tripsError || plansError;
+  const errorMessage = loadError ? loadError.message || 'Failed to load NTA dashboard telemetry.' : null;
+  // As before, the KPI cards have no metrics (and show their fallback values) when loading failed.
+  const metrics = loadError ? null : kpis;
+
+  // Load dashboard data once per session; returning here (or from Manage Packages, which shares
+  // the plans) reuses what is already in the store.
+  useEffect(() => {
+    dispatch(fetchNtaPlans({ session }));
+    dispatch(fetchNtaTripActivity({ session }));
+  }, [dispatch, session]);
+
+  // Refresh / Retry buttons: always reload from the server
+  const loadDashboardData = useCallback(() => {
+    dispatch(fetchNtaPlans({ session, force: true }));
+    dispatch(fetchNtaTripActivity({ session, force: true }));
+  }, [dispatch, session]);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';

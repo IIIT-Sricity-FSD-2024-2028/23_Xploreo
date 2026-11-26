@@ -4,6 +4,8 @@ import experienceBookingsReducer from './experience/bookingsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
 import { guideReducer } from './guide/index.js';
 import { hotelReducer } from './hotel/index.js';
+import { ntaReducer } from './nta/index.js';
+import { techadminReducer } from './techadmin/index.js';
 import sessionReducer, { selectUser, sessionEnded, sessionStarted } from './sessionSlice.js';
 
 const reducers = combineReducers({
@@ -11,6 +13,8 @@ const reducers = combineReducers({
   hotel: hotelReducer,
   guide: guideReducer,
   experience: combineReducers({ catalog: experiencesReducer, bookings: experienceBookingsReducer }),
+  techadmin: techadminReducer,
+  nta: ntaReducer,
 });
 
 function rootReducer(state, action) {

@@ -26,7 +26,6 @@ export default function PlansPage({ user = null, currentUser = null, onNavigateD
   // View state: 'list' | 'create' | 'edit'
   const [currentView, setCurrentView] = useState('list');
   const [editingPlan, setEditingPlan] = useState(null);
-  const [refreshCounter, setRefreshCounter] = useState(0);
   const [feedbackNotice, setFeedbackNotice] = useState(null);
 
   // Switch to Create mode
@@ -49,11 +48,10 @@ export default function PlansPage({ user = null, currentUser = null, onNavigateD
     setCurrentView('list');
   };
 
-  // Handle successful form submission
+  // Handle successful form submission (the saved plan is already in the Redux collection)
   const handleFormSuccess = (savedPlan) => {
     setCurrentView('list');
     setEditingPlan(null);
-    setRefreshCounter((prev) => prev + 1);
     setFeedbackNotice({
       type: 'success',
       message: `Package "${savedPlan.title}" saved successfully!`,
@@ -135,7 +133,6 @@ export default function PlansPage({ user = null, currentUser = null, onNavigateD
             onEditPlan={handleStartEdit}
             onCreateNew={handleStartCreate}
             currentUser={activeUser}
-            refreshTrigger={refreshCounter}
           />
         ) : (
           <PlanForm

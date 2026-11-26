@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  getTickets,
-  resolveTicket,
-} from '../../services/tickets.api.js';
-import { getUser } from '../../services/session.js';
+import { useDispatch, useSelector } from 'react-redux';
 import { SAMetricCard } from '../../components/superadmin';
 import TicketStatusBadge from '../../components/tickets/TicketStatusBadge.jsx';
 import TicketDetailsModal from '../../components/tickets/TicketDetailsModal.jsx';
+import {
+  clearTicketsError,
+  fetchTickets,
+  resolveTicketThunk,
+  selectTaCategoryBreakdown,
+  selectTaPriorityBreakdown,
+  selectTaRecentTickets,
+  selectTaTicketKpis,
+  selectTaTickets,
+  selectTaTicketsError,
+  selectTaTicketsLoading,
+} from '../../store/techadmin/index.js';
 import '../../components/superadmin/superadmin.css';
 import '../../components/tickets/tickets.css';
-
-/**
- * Supported Categories defined in the schema and fixtures:
- * Booking, Payment, Hotel, Guide Inquiry, General
- */
-const EXPECTED_CATEGORIES = ['Booking', 'Payment', 'Hotel', 'Guide Inquiry', 'General'];
 
 /**
  * Tech Admin (TA) Support & Technical Operations Dashboard.
@@ -33,152 +35,78 @@ const EXPECTED_CATEGORIES = ['Booking', 'Payment', 'Hotel', 'Guide Inquiry', 'Ge
  * 5. Handles loading, empty, and error states gracefully.
  * 
  * @param {Object} props
- * @param {Object} [props.user] - Optional user session object
  * @param {Function} [props.onNavigateToTickets] - Optional callback to switch to full tickets view
+ * (Identity comes from the signed-in session's JWT; a `user` prop, if passed, is ignored.)
  */
-export default function TechAdminDashboard({ user = null, onNavigateToTickets = null }) {
-  const session = useMemo(() => {
-    const active = user || getUser();
-    return active && active.role !== 'default' ? active : { userId: 'TA001', role: 'techadmin' };
-  }, [user]);
+export default function TechAdminDashboard({ onNavigateToTickets = null }) {
+  const dispatch = useDispatch();
 
-  // Tickets Data State
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
+  // Tickets Data State — the shared Redux collection (same tickets as the Ticket Queue page)
+  const tickets = useSelector(selectTaTickets);
+  const isLoading = useSelector(selectTaTicketsLoading);
+  const loadError = useSelector(selectTaTicketsError);
+
+  // Page feedback (UI only)
   const [feedbackMessage, setFeedbackMessage] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const errorMessage = actionError || loadError?.message || null;
 
-  // Ticket Details Modal State
-  const [selectedTicket, setSelectedTicket] = useState(null);
+  // Ticket Details Modal State (UI only — the ticket record itself is read from the store)
+  const [selectedTicketId, setSelectedTicketId] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const selectedTicket = useMemo(
+    () => tickets.find((t) => t.id === selectedTicketId) ?? null,
+    [tickets, selectedTicketId]
+  );
 
-  // Load tickets from service
-  const loadTicketsData = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    try {
-      const data = await getTickets(session);
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session]);
-
+  // Load tickets once per session; tickets already in the store are reused on navigation.
   useEffect(() => {
-    loadTicketsData();
-  }, [loadTicketsData]);
+    dispatch(fetchTickets());
+  }, [dispatch]);
 
-  // KPI Calculations strictly based on actual ticket dataset
-  const kpis = useMemo(() => {
-    const total = tickets.length;
-    const open = tickets.filter((t) => String(t.status || '').toUpperCase() === 'OPEN').length;
-    const resolved = tickets.filter((t) => String(t.status || '').toUpperCase() === 'RESOLVED').length;
-    const highPriority = tickets.filter((t) => {
-      const isHigh = String(t.priority || '').toUpperCase() === 'HIGH';
-      const isOpen = String(t.status || '').toUpperCase() === 'OPEN';
-      return isHigh && isOpen;
-    }).length;
+  // Refresh button: always reload from the server
+  const loadTicketsData = useCallback(() => {
+    setActionError(null);
+    dispatch(fetchTickets({ force: true }));
+  }, [dispatch]);
 
-    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
+  const dismissError = () => {
+    setActionError(null);
+    dispatch(clearTicketsError());
+  };
 
-    return {
-      total,
-      open,
-      resolved,
-      highPriority,
-      resolutionRate,
-    };
-  }, [tickets]);
-
-  // Workload: Priority Distribution (High, Medium, Low)
-  const priorityBreakdown = useMemo(() => {
-    const total = tickets.length;
-    const priorities = [
-      { key: 'HIGH', label: 'High Priority', color: '#ef4444', bg: '#fef2f2' },
-      { key: 'MEDIUM', label: 'Medium Priority', color: '#f59e0b', bg: '#fffbeb' },
-      { key: 'LOW', label: 'Low Priority', color: '#3b82f6', bg: '#eff6ff' },
-    ];
-
-    return priorities.map((p) => {
-      const count = tickets.filter((t) => String(t.priority || '').toUpperCase() === p.key).length;
-      const openCount = tickets.filter(
-        (t) => String(t.priority || '').toUpperCase() === p.key && String(t.status || '').toUpperCase() === 'OPEN'
-      ).length;
-      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-      return {
-        ...p,
-        count,
-        openCount,
-        percentage,
-      };
-    });
-  }, [tickets]);
-
-  // Workload: Category Distribution (Booking, Payment, Hotel, Guide Inquiry, General, etc.)
-  const categoryBreakdown = useMemo(() => {
-    const total = tickets.length;
-    // Collect all unique categories from actual tickets and ensure known categories are represented
-    const ticketCategories = new Set(tickets.map((t) => t.category).filter(Boolean));
-    EXPECTED_CATEGORIES.forEach((cat) => ticketCategories.add(cat));
-
-    const categoryList = Array.from(ticketCategories);
-
-    return categoryList.map((cat) => {
-      const count = tickets.filter((t) => (t.category || 'General') === cat).length;
-      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
-      return {
-        category: cat,
-        count,
-        percentage,
-      };
-    }).sort((a, b) => b.count - a.count);
-  }, [tickets]);
-
-  // Recent Tickets sorted by createdAt descending
-  const recentTickets = useMemo(() => {
-    const list = [...tickets];
-    list.sort((a, b) => {
-      const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return dateB - dateA;
-    });
-    return list.slice(0, 5);
-  }, [tickets]);
+  // KPIs, workload breakdowns and the latest five tickets — memoized selectors over the store
+  const kpis = useSelector(selectTaTicketKpis);
+  const priorityBreakdown = useSelector(selectTaPriorityBreakdown);
+  const categoryBreakdown = useSelector(selectTaCategoryBreakdown);
+  const recentTickets = useSelector(selectTaRecentTickets);
 
   // Handle viewing ticket details
   const handleOpenDetails = (ticket) => {
-    setSelectedTicket(ticket);
+    setSelectedTicketId(ticket.id);
     setIsDetailsOpen(true);
   };
 
   const handleCloseDetails = () => {
     setIsDetailsOpen(false);
-    setSelectedTicket(null);
+    setSelectedTicketId(null);
   };
 
   // Handle resolving ticket
   const handleResolveTicket = async (ticketId, resolution) => {
     try {
-      const updated = await resolveTicket(ticketId, resolution, session);
-      // Update local state directly
-      setTickets((prev) =>
-        prev.map((t) => (t.id === ticketId ? { ...t, ...updated, status: 'RESOLVED' } : t))
-      );
-      // Also update selected ticket if modal is open
-      setSelectedTicket((prev) =>
-        prev && prev.id === ticketId
-          ? { ...prev, ...updated, status: 'RESOLVED' }
-          : prev
-      );
+      // The slice updates the ticket in place from the server response, so the KPIs, the table
+      // and the open modal all reflect it. unwrap() makes a failed resolve throw.
+      await dispatch(resolveTicketThunk({ ticketId, resolution })).unwrap();
 
       setFeedbackMessage(`Ticket #${ticketId.substring(0, 8)} resolved successfully.`);
       setTimeout(() => setFeedbackMessage(null), 4000);
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to resolve ticket.');
-      setTimeout(() => setErrorMessage(null), 5000);
-      throw err;
+      const message = err?.message || 'Failed to resolve ticket.';
+      setActionError(message);
+      setTimeout(() => setActionError(null), 5000);
+      // Re-throw so TicketDetailsModal shows the error and stays open
+      throw new Error(message, { cause: err });
     }
   };
 
@@ -250,7 +178,7 @@ export default function TechAdminDashboard({ user = null, onNavigateToTickets = 
           <button
             type="button"
             className="sa-users-alert-close"
-            onClick={() => setErrorMessage(null)}
+            onClick={dismissError}
           >
             ✕
           </button>

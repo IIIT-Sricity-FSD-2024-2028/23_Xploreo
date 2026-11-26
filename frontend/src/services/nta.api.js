@@ -301,6 +301,18 @@ export async function getNtaRecentBookings(session = {}) {
   const tripsRes = await fetchData(`${BASE_URL}/trips`, { headers });
   const tripsList = Array.isArray(tripsRes) ? tripsRes : [];
 
+  return toRecentBookings(tripsList, targetRegion);
+}
+
+/**
+ * Maps live GET /trips records to the dashboard's recent-booking rows: region filter, first 15.
+ * Shared by getNtaRecentBookings and getNtaTripActivity so both produce identical rows.
+ *
+ * @param {Array} tripsList - Trips from GET /trips
+ * @param {string} targetRegion - The NTA's region ('' for no filter)
+ * @returns {Array} Package booking / trip records
+ */
+function toRecentBookings(tripsList, targetRegion) {
   if (tripsList.length === 0) {
     return [];
   }
@@ -326,6 +338,32 @@ export async function getNtaRecentBookings(session = {}) {
   }
 
   return mapped.slice(0, 15);
+}
+
+/**
+ * Fetches the region's trip activity for the dashboard in one request.
+ * Live: GET /trips (the server already scopes an NTA to their region) ->
+ *   tripCount       — every region trip (the "Recent Bookings" KPI, as getNtaDashboardMetrics counted it)
+ *   recentBookings  — the table rows, exactly as getNtaRecentBookings builds them
+ * Mock mode: the same rows getNtaRecentBookings returns, with their count.
+ *
+ * @param {Object} [session] - User session identity
+ * @returns {Promise<{ tripCount: number, recentBookings: Array }>}
+ */
+export async function getNtaTripActivity(session = {}) {
+  if (isNtaMockMode()) {
+    const recentBookings = await getNtaRecentBookings(session);
+    return { tripCount: recentBookings.length, recentBookings };
+  }
+
+  const headers = buildNtaHeaders(session);
+  const tripsRes = await fetchData(`${BASE_URL}/trips`, { headers });
+  const tripsList = Array.isArray(tripsRes) ? tripsRes : [];
+
+  return {
+    tripCount: tripsList.length,
+    recentBookings: toRecentBookings(tripsList, (session.region || '').trim()),
+  };
 }
 
 /**

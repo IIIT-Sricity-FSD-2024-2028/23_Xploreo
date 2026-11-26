@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { createPlan, updatePlan } from '../../services/plans.api.js';
+import { useDispatch } from 'react-redux';
+import { clearPlanMutation, createNtaPlan, updateNtaPlan } from '../../store/nta/index.js';
 import { uploadSingle } from '../../services/upload.api.js';
 import { getHotelsByDestination } from '../../mocks/plans/hotels.fixture.js';
 import ItineraryBuilder from './ItineraryBuilder.jsx';
@@ -32,6 +33,11 @@ export default function PlanForm({
   className = '',
 }) {
   const isEditMode = Boolean(initialPlan && initialPlan.id);
+
+  // Saving goes through Redux (state.nta.plans); the form draft below stays local.
+  const dispatch = useDispatch();
+  // Reset the store's create/update status when the form closes.
+  useEffect(() => () => dispatch(clearPlanMutation()), [dispatch]);
 
   // Region locking logic
   const userRole = (currentUser?.role || '').toLowerCase();
@@ -502,11 +508,13 @@ export default function PlanForm({
       };
 
       let savedPlan;
+      // The thunks add/replace the plan in the Redux collection from the server's response;
+      // unwrap() throws on failure so the catch below keeps the draft and shows the real error.
       if (isEditMode) {
-        savedPlan = await updatePlan(initialPlan.id, payload, currentUser);
+        savedPlan = await dispatch(updateNtaPlan({ id: initialPlan.id, data: payload, session: currentUser })).unwrap();
         setSuccessMessage(`Package "${savedPlan.title}" successfully updated!`);
       } else {
-        savedPlan = await createPlan(payload, currentUser);
+        savedPlan = await dispatch(createNtaPlan({ data: payload, session: currentUser })).unwrap();
         setSuccessMessage(`Package "${savedPlan.title}" successfully created!`);
       }
 
