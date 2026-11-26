@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { AuthVisual } from "./login";
@@ -26,56 +26,98 @@ const initialForm = {
   confirmPassword: "",
 };
 
+const SELF_SIGNUP_ROLES = ["traveller", "guide", "hotel", "experience"];
 const PARTNER_ROLES = ["guide", "hotel", "experience"];
+const PHONE_PATTERN = /^(?:\+?91[\s-]?|0)?[6-9]\d{9}$/;
 
-export default function Register({ user }) {
+export default function Register({ user: propUser }) {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { user: authUser, isAuthenticated, loading: authLoading, error: authError, register, clearError } = useAuth();
+  const activeUser = propUser && propUser.role !== "default" ? propUser : authUser;
   const [form, setForm] = useState(initialForm);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
 
-  const change = (event) =>
+  if (isAuthenticated && activeUser?.role) {
+    return <Navigate to={destinationForRole[activeUser.role] || "/"} replace />;
+  }
+
+  const error = localError || authError || "";
+
+  const change = (event) => {
+    setLocalError("");
+    clearError();
     setForm({ ...form, [event.target.name]: event.target.value });
+  };
 
   const isPartnerRole = PARTNER_ROLES.includes(form.role);
 
   async function submitHandler(event) {
     event.preventDefault();
-    setError("");
+    if (authLoading) return;
+    setLocalError("");
+    clearError();
 
+    const trimmedName = form.name.trim();
+    const trimmedUsername = form.username.trim();
+    const trimmedEmail = form.email.trim();
+    const normalizedPhone = form.phone.replace(/[\s()-]/g, "");
+    const trimmedLocation = form.location.trim();
+
+    if (!trimmedName) {
+      setLocalError("Full name is required.");
+      return;
+    }
+    if (!trimmedUsername) {
+      setLocalError("Username is required.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(trimmedEmail)) {
+      setLocalError("Please enter a valid email address.");
+      return;
+    }
+    if (!PHONE_PATTERN.test(normalizedPhone)) {
+      setLocalError("Phone must be a valid 10-digit mobile number.");
+      return;
+    }
+    if (!SELF_SIGNUP_ROLES.includes(form.role)) {
+      setLocalError("Selected account role is not permitted for self-registration.");
+      return;
+    }
+    if (isPartnerRole && !trimmedLocation) {
+      setLocalError("Please enter the region/city you'll be operating in.");
+      return;
+    }
+    if (!form.password || form.password.length < 6) {
+      setLocalError("Password must be at least 6 characters.");
+      return;
+    }
     if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match.");
+      setLocalError("Passwords do not match.");
       return;
     }
 
-    if (isPartnerRole && !form.location.trim()) {
-      setError("Please enter the region/city you'll be operating in.");
-      return;
-    }
-
-    setLoading(true);
     try {
-      const details = { ...form };
-      delete details.confirmPassword;
-      details.username = details.username.trim();
-      details.email = details.email.trim();
-      details.name = details.name.trim();
-      details.phone = details.phone.trim();
-      details.location = details.location.trim();
-      if (!isPartnerRole || !details.location) delete details.location;
+      const details = {
+        name: trimmedName,
+        username: trimmedUsername,
+        email: trimmedEmail,
+        phone: normalizedPhone,
+        role: form.role,
+        password: form.password,
+      };
+      if (isPartnerRole && trimmedLocation) {
+        details.location = trimmedLocation;
+      }
       const authenticatedUser = await register(details);
-      navigate(destinationForRole[authenticatedUser.role] || "/");
+      navigate(destinationForRole[authenticatedUser.role] || "/", { replace: true });
     } catch (requestError) {
-      setError(requestError?.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
+      setLocalError(requestError?.message || "Registration failed. Please try again.");
     }
   }
 
   return (
     <div className="auth-page">
-      <Navbar user={user} />
+      <Navbar user={activeUser} />
       <main className="auth-layout register-layout">
         <section className="auth-panel">
           <div className="auth-heading">
@@ -84,7 +126,7 @@ export default function Register({ user }) {
             <p>Create your Xploreo account in a few simple steps.</p>
           </div>
 
-          <form className="auth-form register-form" onSubmit={submitHandler}>
+          <form className="auth-form register-form" onSubmit={submitHandler} noValidate>
             <label>
               Full name
               <input
@@ -93,6 +135,7 @@ export default function Register({ user }) {
                 onChange={change}
                 placeholder="Your full name"
                 autoComplete="name"
+                disabled={authLoading}
                 required
               />
             </label>
@@ -105,6 +148,7 @@ export default function Register({ user }) {
                 onChange={change}
                 placeholder="Choose a username"
                 autoComplete="username"
+                disabled={authLoading}
                 required
               />
             </label>
@@ -118,6 +162,7 @@ export default function Register({ user }) {
                 onChange={change}
                 placeholder="you@example.com"
                 autoComplete="email"
+                disabled={authLoading}
                 required
               />
             </label>
@@ -131,13 +176,14 @@ export default function Register({ user }) {
                 onChange={change}
                 placeholder="9876543210"
                 autoComplete="tel"
+                disabled={authLoading}
                 required
               />
             </label>
 
             <label>
               I am joining as
-              <select name="role" value={form.role} onChange={change}>
+              <select name="role" value={form.role} onChange={change} disabled={authLoading}>
                 <option value="traveller">Traveller</option>
                 <option value="guide">Guide</option>
                 <option value="hotel">Hotel partner</option>
@@ -153,6 +199,7 @@ export default function Register({ user }) {
                   value={form.location}
                   onChange={change}
                   placeholder="e.g. Goa, Jaipur, Kerala"
+                  disabled={authLoading}
                   required
                 />
               </label>
@@ -168,6 +215,7 @@ export default function Register({ user }) {
                 placeholder="At least 6 characters"
                 autoComplete="new-password"
                 minLength={6}
+                disabled={authLoading}
                 required
               />
             </label>
@@ -182,6 +230,7 @@ export default function Register({ user }) {
                 placeholder="Repeat your password"
                 autoComplete="new-password"
                 minLength={6}
+                disabled={authLoading}
                 required
               />
             </label>
@@ -192,8 +241,8 @@ export default function Register({ user }) {
               </p>
             )}
 
-            <button className="auth-submit" type="submit" disabled={loading}>
-              {loading ? "Creating account…" : "Create account →"}
+            <button className="auth-submit" type="submit" disabled={authLoading}>
+              {authLoading ? "Creating account…" : "Create account →"}
             </button>
           </form>
 

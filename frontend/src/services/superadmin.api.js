@@ -81,13 +81,16 @@ export function resetSuperAdminMockStore() {
  */
 function buildAdminHeaders(session = {}) {
   const activeUser = getUser();
-  const userId = session.userId || session.userid || activeUser?.userId || activeUser?.id || activeUser?.username || 'SA001';
-  const role = session.role || activeUser?.role || 'superadmin';
-  const headers = {
-    'x-user-role': role,
-    'x-user-id': String(userId),
-  };
-  const token = session.token || session.user?.token || getToken();
+  const userId = session?.userId || session?.userid || activeUser?.userId || activeUser?.id || activeUser?.username;
+  const role = session?.role || activeUser?.role;
+  const headers = {};
+  if (role && role !== 'default') {
+    headers['x-user-role'] = role;
+  }
+  if (userId) {
+    headers['x-user-id'] = String(userId);
+  }
+  const token = session?.token || session?.user?.token || getToken();
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -145,10 +148,53 @@ export async function getDashboardMetrics(session = {}) {
  * @param {'weekly' | 'monthly' | 'quarterly'} [timeframe='weekly']
  * @returns {Promise<Array>} Series points [{ label, bookings, revenue }]
  */
-export async function getBookingVelocity(timeframe = 'weekly') {
-  // Chart time-series is client-side / simulated
-  const series = DEMO_BOOKING_VELOCITY[timeframe] || DEMO_BOOKING_VELOCITY.weekly;
-  return JSON.parse(JSON.stringify(series));
+export async function getBookingVelocity(timeframe = 'weekly', session = {}) {
+  if (isSuperAdminMockMode()) {
+    const series = DEMO_BOOKING_VELOCITY[timeframe] || DEMO_BOOKING_VELOCITY.weekly;
+    return JSON.parse(JSON.stringify(series));
+  }
+
+  try {
+    const headers = buildAdminHeaders(session);
+    const trips = await fetchData(`${BASE_URL}/trips`, { headers });
+    const list = Array.isArray(trips) ? trips : [];
+
+    const buckets = new Map();
+    const now = new Date();
+    const labels =
+      timeframe === 'quarterly'
+        ? ['Q1', 'Q2', 'Q3', 'Q4']
+        : timeframe === 'monthly'
+          ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+          : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    labels.forEach((label) => buckets.set(label, { label, bookings: 0, revenue: 0 }));
+
+    list.forEach((t) => {
+      const rawDate = t.itinerary?.day1?.hotel?.checkInDate || t.lastUpdatedAt || now.toISOString();
+      const d = new Date(rawDate);
+      const validDate = isNaN(d.getTime()) ? now : d;
+      let key;
+      if (timeframe === 'quarterly') {
+        key = `Q${Math.floor(validDate.getMonth() / 3) + 1}`;
+      } else if (timeframe === 'monthly') {
+        key = labels[validDate.getMonth()];
+      } else {
+        const dayIdx = (validDate.getDay() + 6) % 7;
+        key = labels[dayIdx];
+      }
+      const entry = buckets.get(key);
+      if (entry) {
+        entry.bookings += 1;
+        entry.revenue += Number(t.totalAmount) || 0;
+      }
+    });
+
+    return Array.from(buckets.values());
+  } catch {
+    const series = DEMO_BOOKING_VELOCITY[timeframe] || DEMO_BOOKING_VELOCITY.weekly;
+    return JSON.parse(JSON.stringify(series));
+  }
 }
 
 /**
@@ -192,8 +238,31 @@ export async function getRecentBookings(limit = 10, session = {}) {
  * 
  * @returns {Promise<Object>} Operations metrics
  */
-export async function getOperationsMetrics() {
-  return { ...DEMO_OPERATIONS_METRICS };
+export async function getOperationsMetrics(session = {}) {
+  if (isSuperAdminMockMode()) {
+    return { ...DEMO_OPERATIONS_METRICS };
+  }
+
+  try {
+    const headers = buildAdminHeaders(session);
+    const trips = await fetchData(`${BASE_URL}/trips`, { headers });
+    const list = Array.isArray(trips) ? trips : [];
+    const total = list.length;
+    const ongoing = list.filter((t) => t.status === 'started' || t.status === 'confirmed').length;
+    const completed = list.filter((t) => t.status === 'completed').length;
+    const cancelled = list.filter((t) => t.status === 'cancelled').length;
+    const rate = total > 0 ? Number(((cancelled / total) * 100).toFixed(1)) : 0;
+
+    return {
+      totalAnnualBookings: total,
+      ongoingExperiences: ongoing,
+      successfulCompletions: completed,
+      attritionRefundsRate: rate,
+      attritionRefundsCount: cancelled,
+    };
+  } catch {
+    return { ...DEMO_OPERATIONS_METRICS };
+  }
 }
 
 export async function getLedgerTransactions(filters = {}, session = {}) {
@@ -560,20 +629,73 @@ export async function updateUserProfile(userId, data = {}, session = {}) {
 
   try {
     const headers = buildAdminHeaders(session);
-    const updated = await fetchData(`${BASE_URL}/auth/users/${userId}`, {
+    const body = {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      location: data.location,
+    };
+    if (data.role) {
+      body.role = data.role;
+    }
+    const updated = await fetchData(`${BASE_URL}/auth/users/${encodeURIComponent(userId)}`, {
       method: 'PATCH',
       headers,
-      body: JSON.stringify({
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        location: data.location,
-      }),
+      body: JSON.stringify(body),
     });
     return updated;
   } catch (err) {
     const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     throw new ApiError(err.message || 'Failed to update user profile.', status);
+  }
+}
+
+/**
+ * Fetches a single user's details by ID.
+ */
+export async function getUserDetails(userId, session = {}) {
+  if (!userId) throw new ApiError('User ID is required.', 400);
+
+  if (isSuperAdminMockMode()) {
+    const found = mockStore.users.find((u) => u.userId === userId || u.username === userId);
+    if (!found) throw new ApiError(`User ${userId} not found.`, 404);
+    return found;
+  }
+
+  try {
+    const headers = buildAdminHeaders(session);
+    return await fetchData(`${BASE_URL}/auth/users/${encodeURIComponent(userId)}`, { headers });
+  } catch (err) {
+    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || 'Failed to fetch user details.', status);
+  }
+}
+
+/**
+ * Deletes a user account (SuperAdmin only, never SuperAdmin accounts).
+ */
+export async function deleteUserOrPartner(userId, session = {}) {
+  if (!userId) throw new ApiError('User ID is required.', 400);
+
+  if (isSuperAdminMockMode()) {
+    const idx = mockStore.users.findIndex((u) => u.userId === userId || u.username === userId);
+    if (idx === -1) throw new ApiError(`User ${userId} not found.`, 404);
+    if (mockStore.users[idx].role === 'superadmin') {
+      throw new ApiError('Super Admin accounts cannot be deleted.', 403);
+    }
+    mockStore.users.splice(idx, 1);
+    return { message: `User ${userId} deleted` };
+  }
+
+  try {
+    const headers = buildAdminHeaders(session);
+    return await fetchData(`${BASE_URL}/auth/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+      headers,
+    });
+  } catch (err) {
+    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || 'Failed to delete user.', status);
   }
 }
 
@@ -610,16 +732,20 @@ export async function createUserOrPartner(data = {}) {
   }
 
   try {
+    const payload = {
+      username,
+      password,
+      name,
+      email,
+      phone: phone || '9000000000',
+      role,
+    };
+    if (data.location && String(data.location).trim()) {
+      payload.location = String(data.location).trim();
+    }
     const created = await fetchData(`${BASE_URL}/auth/register`, {
       method: 'POST',
-      body: JSON.stringify({
-        username,
-        password,
-        name,
-        email,
-        phone: phone || '9000000000',
-        role,
-      }),
+      body: JSON.stringify(payload),
     });
     return created?.user || created;
   } catch (err) {

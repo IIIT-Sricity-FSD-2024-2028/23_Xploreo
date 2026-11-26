@@ -1,4 +1,4 @@
-import { GUEST, getUser, identityHeaders } from "./session.js";
+import { GUEST, getToken, getUser, identityHeaders, notifyUnauthorized } from "./session.js";
 import { dispatchMock } from "@/lib/mockKit/registry.js";
 
 const API_BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:3000/api";
@@ -27,7 +27,7 @@ export async function apiRequest(path, options = {}) {
   }
 
 
-  
+
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -35,6 +35,9 @@ export async function apiRequest(path, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 && getToken() && !path.startsWith("/auth/login") && !path.startsWith("/auth/register")) {
+      notifyUnauthorized();
+    }
     const message = Array.isArray(payload.message) ? payload.message[0] : payload.message || "Something went wrong. Please try again.";
     throw new Error(message);
   }
@@ -63,6 +66,9 @@ export async function fetchData(url, options = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && getToken()) {
+      notifyUnauthorized();
+    }
     const payload = await response.json().catch(() => ({}));
     const message = Array.isArray(payload.message)
       ? payload.message[0]

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
 import { useAuth } from "../../context/AuthContext.jsx";
 import "./auth.css";
@@ -14,36 +14,56 @@ const destinationForRole = {
   techadmin: "/tech-admin/dashboard",
 };
 
-export default function Login({ user }) {
+export default function Login({ user: propUser }) {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { user: authUser, isAuthenticated, loading: authLoading, error: authError, login, clearError } = useAuth();
+  const activeUser = propUser && propUser.role !== "default" ? propUser : authUser;
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [localError, setLocalError] = useState("");
+
+  if (isAuthenticated && activeUser?.role) {
+    return <Navigate to={destinationForRole[activeUser.role] || "/"} replace />;
+  }
+
+  const error = localError || authError || "";
 
   async function submitHandler(event) {
     event.preventDefault();
-    setError("");
-    setLoading(true);
+    if (authLoading) return;
+    setLocalError("");
+    clearError();
+
+    const trimmedUsername = form.username.trim();
+    if (!trimmedUsername) {
+      setLocalError("Please enter your username or email.");
+      return;
+    }
+    if (!form.password || form.password.length < 6) {
+      setLocalError("Password must be at least 6 characters.");
+      return;
+    }
 
     try {
-      const payload = {
-        username: form.username.trim(),
+      const authenticatedUser = await login({
+        username: trimmedUsername,
         password: form.password,
-      };
-      const authenticatedUser = await login(payload);
-      navigate(destinationForRole[authenticatedUser.role] || "/");
+      });
+      const fromPath = location.state?.from?.pathname;
+      const target =
+        fromPath && !fromPath.startsWith("/Auth/") && fromPath !== "/unauthorized"
+          ? fromPath
+          : destinationForRole[authenticatedUser.role] || "/";
+      navigate(target, { replace: true });
     } catch (requestError) {
-      setError(requestError?.message || "Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
+      setLocalError(requestError?.message || "Login failed. Please check your credentials.");
     }
   }
 
   return (
     <div className="auth-page">
-      <Navbar user={user} />
+      <Navbar user={activeUser} />
       <main className="auth-layout">
         <section className="auth-panel">
           <div className="auth-heading">
@@ -51,15 +71,19 @@ export default function Login({ user }) {
             <h1>Continue your journey.</h1>
             <p>Log in to plan, manage, and enjoy every trip with Xploreo.</p>
           </div>
-          <form className="auth-form" onSubmit={submitHandler}>
+          <form className="auth-form" onSubmit={submitHandler} noValidate>
             <label>
               Username or email
               <input
                 name="username"
                 value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                onChange={(e) => {
+                  setLocalError("");
+                  setForm({ ...form, username: e.target.value });
+                }}
                 autoComplete="username"
                 placeholder="you@example.com"
+                disabled={authLoading}
                 required
               />
             </label>
@@ -70,10 +94,14 @@ export default function Login({ user }) {
                   name="password"
                   type={showPassword ? "text" : "password"}
                   value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onChange={(e) => {
+                    setLocalError("");
+                    setForm({ ...form, password: e.target.value });
+                  }}
                   autoComplete="current-password"
                   placeholder="Enter your password"
-                  minLength="6"
+                  minLength={6}
+                  disabled={authLoading}
                   required
                 />
                 <button
@@ -89,8 +117,8 @@ export default function Login({ user }) {
               <Link className="text-button" to="/Auth/forgot-password">Forgot password?</Link>
             </div>
             {error && <p className="form-message error" role="alert">{error}</p>}
-            <button className="auth-submit" type="submit" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in →"}
+            <button className="auth-submit" type="submit" disabled={authLoading}>
+              {authLoading ? "Signing in…" : "Sign in →"}
             </button>
           </form>
           <p className="auth-switch">

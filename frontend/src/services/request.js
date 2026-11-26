@@ -3,7 +3,7 @@
 // Routes registered with the Mock Kit (VITE_MOCKS) are answered locally; everything else goes
 // to the real backend.
 import { dispatchMock } from '@/lib/mockKit/registry.js';
-import { identityHeaders } from './session.js';
+import { getToken, identityHeaders, notifyUnauthorized } from './session.js';
 import { ApiError } from './ApiError.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -34,12 +34,17 @@ export async function request(path, { method = 'GET', body, params } = {}) {
   }
 
   const text = await res.text();
-  let payload = null;
+  let payload;
   try {
     payload = text ? JSON.parse(text) : null;
   } catch {
     payload = null;
   }
-  if (!res.ok) throw ApiError.fromResponse(res.status, payload);
+  if (!res.ok) {
+    if (res.status === 401 && getToken() && !path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
+      notifyUnauthorized();
+    }
+    throw ApiError.fromResponse(res.status, payload);
+  }
   return payload?.data ?? payload;
 }
