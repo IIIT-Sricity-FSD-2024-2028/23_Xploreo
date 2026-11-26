@@ -1,38 +1,41 @@
 // Support tickets for guides, built on the exact same M4/M5 ticket components and styling as
 // the Traveller Support Tickets page (TravellerSupportTicketsPage.jsx) — only the copy differs.
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { TicketCreateForm, TicketList } from '@/components/tickets/index.js';
-import { getTickets } from '@/services/tickets.api.js';
+import {
+  fetchGuideTickets,
+  selectGuideTickets,
+  selectGuideLoading,
+  selectGuideError,
+} from '@/store/guide/index.js';
 import '../Traveller/travellerSupportTickets.css';
 
 export default function GuideSupport() {
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('list');
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getTickets();
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || 'Failed to load your support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Redux Store Selectors
+  const tickets = useSelector(selectGuideTickets);
+  const isLoading = useSelector(selectGuideLoading);
+  const error = useSelector(selectGuideError);
 
-  useEffect(() => { fetchTickets(); }, [fetchTickets]);
+  // Synchronize tickets from backend into Redux Store
+  useEffect(() => {
+    dispatch(fetchGuideTickets());
+  }, [dispatch]);
+
+  const fetchTickets = () => {
+    dispatch(fetchGuideTickets());
+  };
 
   const handleTicketSubmitted = (createdTicket) => {
     setNotification({
       type: 'success',
       message: `Ticket #${createdTicket?.id?.substring(0, 8) || 'new'} created successfully! Our operations desk has received your request.`,
     });
-    fetchTickets();
+    dispatch(fetchGuideTickets());
     setActiveTab('list');
   };
 
@@ -92,7 +95,7 @@ export default function GuideSupport() {
               </div>
             ) : error ? (
               <div className="trav-tickets-error-card" role="alert">
-                <p>{error}</p>
+                <p>{typeof error === 'string' ? error : error?.message || 'Failed to load tickets'}</p>
                 <button type="button" className="trav-tickets-retry-btn" onClick={fetchTickets}>Try Again</button>
               </div>
             ) : tickets.length === 0 ? (

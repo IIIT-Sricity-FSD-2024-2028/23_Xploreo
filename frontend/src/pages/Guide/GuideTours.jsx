@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
 import {
-  getTraveller,
-  listMyAssignments,
-  listMyTrips,
-  listPlans,
-  updateTripTracking,
-} from '@/services/guide.api.js';
+  fetchGuideDashboardData,
+  fetchGuideTrips,
+  updateTripTrackingThunk,
+  selectGuideTrips,
+  selectGuideAssignments,
+  selectGuidePlans,
+  selectGuideLoading,
+  selectGuideError,
+} from '@/store/guide/index.js';
+import { getTraveller } from '@/services/guide.api.js';
 import { formatCurrency, formatDate } from '@/lib/datetime.js';
 import { useToast } from '@/components/guide/Toast.jsx';
 import './guideTours.css';
@@ -77,36 +81,54 @@ function startBlocker(card) {
   return null;
 }
 
-async function loadTours(guideId) {
-  const [trips, assignments, plans] = await Promise.all([listMyTrips(guideId), listMyAssignments(guideId), listPlans()]);
-  // Traveller names and phones come from their profiles; a profile we may not read just shows as "Traveller".
-  const ids = [...new Set(trips.map((t) => t.travellerId))];
-  const settled = await Promise.allSettled(ids.map((id) => getTraveller(id)));
-  const travellers = {};
-  settled.forEach((r, i) => {
-    if (r.status === 'fulfilled') travellers[ids[i]] = r.value;
-  });
-  // assignments merges Trip-guide assignments and Experience-session jobs (see guide.api.js); only
-  // the experience-session ones are used here — Trip tours come from the richer /trips/guide fetch above.
-  return { trips, assignments, plans, travellers };
-}
-
 export default function GuideTours() {
+  const dispatch = useDispatch();
   const { user } = useAuth();
-  const loader = useCallback(() => loadTours(user.id), [user.id]);
-  const { data, error, loading, reload, mutate } = useAsyncData(loader);
+  const trips = useSelector(selectGuideTrips);
+  const assignments = useSelector(selectGuideAssignments);
+  const plans = useSelector(selectGuidePlans);
+  const loading = useSelector(selectGuideLoading);
+  const error = useSelector(selectGuideError);
   const { toast, show } = useToast();
   const [tab, setTab] = useState('pending');
   const [openId, setOpenId] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [travellers, setTravellers] = useState({});
+
+  useEffect(() => {
+    if (user?.id) {
+      if (!trips.length) dispatch(fetchGuideTrips(user.id));
+      if (!assignments.length || !plans.length) dispatch(fetchGuideDashboardData(user.id));
+    }
+  }, [dispatch, user?.id, trips.length, assignments.length, plans.length]);
+
+  useEffect(() => {
+    if (trips.length > 0) {
+      const ids = [...new Set(trips.map((t) => t.travellerId).filter(Boolean))];
+      if (ids.length > 0) {
+        Promise.allSettled(ids.map((id) => getTraveller(id))).then((settled) => {
+          const map = {};
+          settled.forEach((r, i) => {
+            if (r.status === 'fulfilled') map[ids[i]] = r.value;
+          });
+          setTravellers(map);
+        });
+      }
+    }
+  }, [trips]);
+
+  const reload = useCallback(() => {
+    if (user?.id) {
+      dispatch(fetchGuideTrips(user.id));
+      dispatch(fetchGuideDashboardData(user.id));
+    }
+  }, [dispatch, user?.id]);
 
   const cards = useMemo(() => {
-    if (!data) return [];
-    const planById = new Map(data.plans.map((p) => [p.id, p]));
-    // Pending, declined and refunded trips are not tours the guide can run.
-    const tripCards = data.trips.filter((trip) => ['confirmed', 'started', 'completed'].includes(trip.status)).map((trip) => {
+    const planById = new Map(plans.map((p) => [p.id, p]));
+    const tripCards = trips.filter((trip) => ['confirmed', 'started', 'completed'].includes(trip.status)).map((trip) => {
       const plan = planById.get(trip.planId);
-      const t = data.travellers[trip.travellerId];
+      const t = travellers[trip.travellerId];
       const stops = stopsOf(trip);
       return {
         kind: 'trip',
@@ -125,9 +147,7 @@ export default function GuideTours() {
         duration: plan ? `${plan.durationNights + 1} days` : '—',
       };
     });
-    // Experience-session jobs the guide is confirmed for — no itinerary to track, just the single
-    // session, so they only ever land in "Upcoming" or "Completed".
-    const expCards = (data.assignments ?? [])
+    const expCards = (assignments ?? [])
       .filter((job) => job.kind === 'experience' && job.status === 'confirmed')
       .map((job) => ({
         kind: 'experience',
@@ -143,22 +163,21 @@ export default function GuideTours() {
         endAt: asMoment(job.date) !== undefined ? asMoment(job.date) + 86_399_000 : undefined,
       }));
     return [...tripCards, ...expCards];
-  }, [data]);
+  }, [trips, assignments, plans, travellers]);
 
   const counts = Object.fromEntries(TABS.map((t) => [t.key, cards.filter((c) => tabOf(c) === t.key).length]));
   const shown = cards.filter((c) => tabOf(c) === tab);
   const open = cards.find((c) => c.id === openId);
+  const hasData = !loading || trips.length > 0 || assignments.length > 0;
 
-  // Every change is a PATCH; the page then shows exactly what the server answered with.
   async function track(card, changes, message) {
     setBusyId(card.id);
     try {
-      const updated = await updateTripTracking(card.trip.id, changes);
-      mutate((d) => ({ ...d, trips: d.trips.map((t) => (t.id === updated.id ? updated : t)) }));
+      await dispatch(updateTripTrackingThunk({ tripId: card.trip.id, changes })).unwrap();
       if (message) show(message, 'success');
-      return updated;
+      return true;
     } catch (err) {
-      show(err.message || 'Could not update the tour.', 'error');
+      show(typeof err === 'string' ? err : err?.message || 'Could not update the tour.', 'error');
       return null;
     } finally {
       setBusyId(null);
@@ -213,12 +232,12 @@ export default function GuideTours() {
         <div className="gd-tabs" role="tablist">
           {TABS.map((t) => (
             <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} className={`gd-tab${tab === t.key ? ' active' : ''}`} onClick={() => setTab(t.key)}>
-              {t.label}{data ? ` (${counts[t.key]})` : ''}
+              {t.label}{hasData ? ` (${counts[t.key]})` : ''}
             </button>
           ))}
         </div>
 
-        {!data && loading ? (
+        {!hasData && loading ? (
           <div className="gd-review-loading" aria-hidden="true">
             <div className="gd-review-skeleton-card" />
             <div className="gd-review-skeleton-card" />
@@ -229,13 +248,13 @@ export default function GuideTours() {
         {error ? (
           <div className="gd-state-error" role="alert">
             <div className="gd-state-icon">⚠️</div>
-            <h3 className="gd-state-title">{error.status === 403 ? 'Not permitted' : 'Something went wrong'}</h3>
-            <p className="gd-state-text">{error.message}</p>
-            {error.status !== 403 ? <button type="button" className="gd-btn-retry" onClick={reload}>Try Again</button> : null}
+            <h3 className="gd-state-title">{error?.status === 403 ? 'Not permitted' : 'Something went wrong'}</h3>
+            <p className="gd-state-text">{typeof error === 'string' ? error : error?.message || 'Failed to load tours'}</p>
+            {error?.status !== 403 ? <button type="button" className="gd-btn-retry" onClick={reload}>Try Again</button> : null}
           </div>
         ) : null}
 
-        {data ? (
+        {hasData ? (
           <>
             {shown.length === 0 ? <EmptyTours tab={tab} /> : null}
             {tab === 'pending' && shown.length > 0 ? (

@@ -1,7 +1,12 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { listReviews } from '@/services/schedule.api.js';
+import {
+  fetchGuideReviews,
+  selectGuideReviewsSummary,
+  selectGuideLoading,
+  selectGuideError,
+} from '@/store/guide/index.js';
 import './guideReviews.css';
 
 function Stars({ rating, size = 'gd-star-icon' }) {
@@ -12,28 +17,25 @@ function Stars({ rating, size = 'gd-star-icon' }) {
 }
 
 export default function GuideReviews() {
+  const dispatch = useDispatch();
   const { user } = useAuth();
-  const { data, error, loading, reload } = useAsyncData(listReviews);
-  // The server returns what this guide may see; keeping only reviews about this guide is a courtesy filter.
-  const reviews = useMemo(
-    () =>
-      (data ?? [])
-        .filter((r) => r.targetType === 'guide' && String(r.targetId) === String(user.id))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
-    [data, user.id],
-  );
 
-  const totalCount = reviews.length;
-  const avgRating = totalCount > 0 ? (reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / totalCount).toFixed(1) : '0.0';
+  // Memoized selector instance scoped to this guide's user.id
+  const reviewsSummarySelector = useMemo(() => selectGuideReviewsSummary(user?.id), [user?.id]);
+  const { reviews, totalCount, avgRating, ratingCounts } = useSelector(reviewsSummarySelector);
+  const loading = useSelector(selectGuideLoading);
+  const error = useSelector(selectGuideError);
 
-  const ratingCounts = useMemo(() => {
-    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    reviews.forEach((r) => {
-      const star = Math.round(Number(r.rating) || 0);
-      if (counts[star] !== undefined) counts[star]++;
-    });
-    return counts;
-  }, [reviews]);
+  // Synchronize reviews from backend into Redux Store
+  useEffect(() => {
+    dispatch(fetchGuideReviews());
+  }, [dispatch]);
+
+  const reload = () => {
+    dispatch(fetchGuideReviews());
+  };
+
+  const hasData = !loading || reviews.length > 0;
 
   return (
     <div className="gd-page-wrapper">
@@ -83,7 +85,7 @@ export default function GuideReviews() {
           </section>
         ) : null}
 
-        {!data && loading ? (
+        {!hasData && loading ? (
           <div className="gd-review-loading" aria-hidden="true">
             <div className="gd-review-skeleton-card" />
             <div className="gd-review-skeleton-card" />
@@ -94,13 +96,13 @@ export default function GuideReviews() {
         {error ? (
           <div className="gd-state-error" role="alert">
             <div className="gd-state-icon">⚠️</div>
-            <h3 className="gd-state-title">Unable to Load Reviews</h3>
-            <p className="gd-state-text">{error.message}</p>
-            {error.status !== 403 ? <button type="button" className="gd-btn-retry" onClick={reload}>Try Again</button> : null}
+            <h3 className="gd-state-title">{error?.status === 403 ? 'Not permitted' : 'Unable to Load Reviews'}</h3>
+            <p className="gd-state-text">{typeof error === 'string' ? error : error?.message || 'Failed to load reviews'}</p>
+            {error?.status !== 403 ? <button type="button" className="gd-btn-retry" onClick={reload}>Try Again</button> : null}
           </div>
         ) : null}
 
-        {data && reviews.length === 0 && !error ? (
+        {hasData && reviews.length === 0 && !error ? (
           <div className="gd-state-empty">
             <div className="gd-state-icon">⭐</div>
             <h3 className="gd-state-title">No Reviews Yet</h3>

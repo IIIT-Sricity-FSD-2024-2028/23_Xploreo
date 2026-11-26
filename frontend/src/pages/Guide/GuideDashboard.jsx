@@ -1,7 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { applyToExperience, applyToPlan, confirmAssignment, getTraveller, listExperiences, listMyApplications, listMyAssignments, listPlans, rejectAssignment } from '@/services/guide.api.js';
+import {
+  fetchGuideDashboardData,
+  confirmAssignmentThunk,
+  rejectAssignmentThunk,
+  applyToPlanThunk,
+  applyToExperienceThunk,
+  fetchTravellerDetails,
+  clearActiveTraveller,
+  clearGuideState,
+  selectGuidePlans,
+  selectGuideExperiences,
+  selectGuideApplications,
+  selectGuideAssignments,
+  selectGuideLoading,
+  selectGuideActionBusy,
+  selectGuideError,
+  selectActiveTraveller,
+  selectDashboardStats,
+} from '@/store/guide/index.js';
 import { formatCurrency } from '@/lib/datetime.js';
 import StatusChip from '@/components/guide/StatusChip.jsx';
 import { useToast } from '@/components/guide/Toast.jsx';
@@ -42,56 +60,64 @@ const shortDate = (value) => {
 const tripDate = (job) => job.itinerary?.day1?.hotel?.checkInDate || job.itinerary?.day1?.flight?.departureAt || job.lastUpdatedAt;
 
 export default function GuideDashboard() {
+  const dispatch = useDispatch();
   const { user } = useAuth();
   const region = user.region || '';
-  const loader = useCallback(
-    () => Promise.all([listPlans(), listExperiences(), listMyApplications(user.id), listMyAssignments(user.id)]),
-    [user.id],
-  );
-  const { data, error, loading, reload } = useAsyncData(loader);
   const { toast, show } = useToast();
+
+  // Redux Selectors: All data is read directly from the Redux Store
+  const allPlans = useSelector(selectGuidePlans);
+  const allExperiences = useSelector(selectGuideExperiences);
+  const applications = useSelector(selectGuideApplications);
+  const assignments = useSelector(selectGuideAssignments);
+  const loading = useSelector(selectGuideLoading);
+  const actionBusy = useSelector(selectGuideActionBusy);
+  const error = useSelector(selectGuideError);
+  const { accepted, pending, activeJobs } = useSelector(selectDashboardStats);
+
   const [tab, setTab] = useState('plans');
   const [applying, setApplying] = useState(null); // { kind, id, title, ... } being applied to
   const [rejecting, setRejecting] = useState(null); // assignment id awaiting the "are you sure"
   const [details, setDetails] = useState(null); // assignment whose details are open
-  const [busy, setBusy] = useState(false);
 
-  const [allPlans, allExperiences, applications, assignments] = data ?? [[], [], [], []];
-  // The server hands out every active plan/experience; showing the guide's own region first is a convenience.
+  // Synchronize with backend via Redux Thunk
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchGuideDashboardData(user.id));
+    }
+  }, [dispatch, user?.id]);
+
+  const reload = useCallback(() => {
+    if (user?.id) {
+      dispatch(fetchGuideDashboardData(user.id));
+    }
+  }, [dispatch, user?.id]);
+
   const plans = useMemo(() => allPlans.filter((p) => sameArea(p.destination, region)), [allPlans, region]);
   const experiences = useMemo(() => allExperiences.filter((e) => sameArea(e.destination, region)), [allExperiences, region]);
   const planById = useMemo(() => new Map(allPlans.map((p) => [p.id, p])), [allPlans]);
 
-  const accepted = applications.filter((a) => a.status === 'accepted').length;
-  const pending = applications.filter((a) => a.status === 'pending').length;
-  const activeJobs = assignments.filter((a) => a.status === 'confirmed').length;
+  // Data is loaded from Redux
+  const data = !loading || allPlans.length > 0 || applications.length > 0 || assignments.length > 0;
 
   async function onConfirm(id) {
-    setBusy(true);
     try {
-      await confirmAssignment(id, assignments.find((a) => a.id === id)?.kind);
+      await dispatch(confirmAssignmentThunk({ id, kind: assignments.find((a) => a.id === id)?.kind })).unwrap();
       show('Confirmed! Traveller has been notified.', 'success');
-      reload();
     } catch (err) {
-      show(err.message || 'Failed to confirm.', 'error');
-    } finally {
-      setBusy(false);
+      show(err || 'Failed to confirm.', 'error');
     }
   }
 
   async function onReject() {
     const id = rejecting;
-    setBusy(true);
     try {
-      await rejectAssignment(id, assignments.find((a) => a.id === id)?.kind);
+      await dispatch(rejectAssignmentThunk({ id, kind: assignments.find((a) => a.id === id)?.kind })).unwrap();
       show('Declined. The traveller was told and can choose another guide.', 'info');
       setRejecting(null);
-      reload();
     } catch (err) {
       setRejecting(null);
-      show(err.message || 'Failed to reject.', 'error');
-    } finally {
-      setBusy(false);
+      show(err || 'Failed to reject.', 'error');
     }
   }
 
@@ -158,7 +184,7 @@ export default function GuideDashboard() {
             {tab === 'plans' ? <PlansTab plans={plans} experiences={experiences} applications={applications} onApply={setApplying} /> : null}
             {tab === 'applications' ? <ApplicationsTab applications={applications} /> : null}
             {tab === 'assignments' ? (
-              <JobsTab assignments={assignments} planById={planById} busy={busy} onConfirm={onConfirm} onReject={setRejecting} onDetails={setDetails} />
+              <JobsTab assignments={assignments} planById={planById} busy={actionBusy} onConfirm={onConfirm} onReject={setRejecting} onDetails={setDetails} />
             ) : null}
           </>
         ) : null}
@@ -171,7 +197,6 @@ export default function GuideDashboard() {
           onDone={() => {
             setApplying(null);
             show('Application submitted — the regional NTA will review it. Travellers can pick you once it is accepted.', 'success');
-            reload();
           }}
         />
       ) : null}
@@ -180,7 +205,7 @@ export default function GuideDashboard() {
           title="Decline Job"
           text="Are you sure you want to decline this job? The traveller will be told and can choose another guide."
           confirmLabel="Decline Job"
-          busy={busy}
+          busy={actionBusy}
           onConfirm={onReject}
           onClose={() => setRejecting(null)}
         />
@@ -250,9 +275,10 @@ function PlansTab({ plans, experiences, applications, onApply }) {
 }
 
 function ApplyModal({ plan: item, onClose, onDone }) {
+  const dispatch = useDispatch();
   const [price, setPrice] = useState('');
   const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
+  const saving = useSelector(selectGuideActionBusy);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && !saving && onClose();
@@ -267,16 +293,15 @@ function ApplyModal({ plan: item, onClose, onDone }) {
       setError('Please enter a valid price.');
       return;
     }
-    setSaving(true);
     setError('');
     try {
-      const application = item.kind === 'experience'
-        ? await applyToExperience({ experienceId: item.id, guidePricePerPerson: value })
-        : await applyToPlan({ planId: item.id, guidePricePerPerson: value });
+      const thunk = item.kind === 'experience'
+        ? applyToExperienceThunk({ experienceId: item.id, guidePricePerPerson: value })
+        : applyToPlanThunk({ planId: item.id, guidePricePerPerson: value });
+      const application = await dispatch(thunk).unwrap();
       onDone(application);
     } catch (err) {
-      setError(err.fieldErrors?.guidePricePerPerson || err.message || 'Failed to submit. Try again.');
-      setSaving(false);
+      setError(err || 'Failed to submit. Try again.');
     }
   }
 
@@ -454,23 +479,22 @@ function ExperienceDetailsModal({ assignment, onClose }) {
 }
 
 function TripDetailsModal({ assignment, onClose }) {
-  const [traveller, setTraveller] = useState(undefined); // undefined = loading, null = unavailable
+  const dispatch = useDispatch();
+  const traveller = useSelector(selectActiveTraveller);
   const [note, setNote] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    getTraveller(assignment.travellerId).then(
-      (t) => !cancelled && setTraveller(t),
-      (err) => {
-        if (cancelled) return;
-        setTraveller(null);
-        setNote(err.status === 403 ? 'Traveller contact details are not available for this job.' : '');
-      },
-    );
+    if (assignment?.travellerId) {
+      dispatch(fetchTravellerDetails(assignment.travellerId))
+        .unwrap()
+        .catch((err) => {
+          setNote(err?.status === 403 ? 'Traveller contact details are not available for this job.' : '');
+        });
+    }
     return () => {
-      cancelled = true;
+      dispatch(clearActiveTraveller());
     };
-  }, [assignment.travellerId]);
+  }, [dispatch, assignment?.travellerId]);
 
   const name = traveller ? `${traveller.fname || ''} ${traveller.lname || ''}`.trim() : '';
   const count = assignment.travelerCount || assignment.numberOfTravelers || 1;
