@@ -25,6 +25,11 @@ export function isPastHotelStay(checkOut) {
   return String(checkOut ?? '').slice(0, 10) < hotelTodayIso();
 }
 
+export function isBeforeCheckIn(checkIn) {
+  const datePart = String(checkIn ?? '').slice(0, 10);
+  return Boolean(datePart) && datePart > hotelTodayIso();
+}
+
 export function tomorrowIso() {
   const d = new Date();
   d.setDate(d.getDate() + 1);

@@ -6,7 +6,7 @@ import {
 } from '@/store/hotel/bookingsSlice.js';
 import { useHotelAction, usePartnerBookings } from '@/store/hotel/hooks.js';
 import { useHotelState } from '@/store/hotel/useHotelState.js';
-import { isPastHotelStay } from '@/lib/datetime.js';
+import { isBeforeCheckIn, isPastHotelStay } from '@/lib/datetime.js';
 import HotelPage, { EmptyState, HotelModal, LoadState, PageHeader } from '@/components/hotel/HotelPage.jsx';
 import { STATUS_CLASS, STATUS_LABEL, fmtDate, inr, useToast } from '@/components/hotel/hotelKit.jsx';
 
@@ -61,6 +61,10 @@ export default function HotelBookings() {
       notify('This stay has already ended.', true);
       return;
     }
+    if (mutate === checkInBooking && isBeforeCheckIn(booking.checkIn)) {
+      notify(`Check-in is only allowed on or after ${fmtDate(booking.checkIn)}.`, true);
+      return;
+    }
     setBusyIds((ids) => [...ids, booking.id]);
     try {
       await mutate({ accountId, bookingId: booking.id }).unwrap();
@@ -78,9 +82,18 @@ export default function HotelBookings() {
     if (isPastHotelStay(b.checkOut)) return null;
     const busy = busyIds.includes(b.id);
     if (b.status === 'CONFIRMED') {
+      const tooEarly = isBeforeCheckIn(b.checkIn);
       return (
         <>
-          <button type="button" className="btn-green" disabled={busy} onClick={() => act(b, checkInBooking, `${b.guestName} checked in`)}>Check In</button>
+          <button
+            type="button"
+            className="btn-green"
+            disabled={busy || tooEarly}
+            title={tooEarly ? `Check-in opens on ${fmtDate(b.checkIn)}` : undefined}
+            onClick={() => act(b, checkInBooking, `${b.guestName} checked in`)}
+          >
+            Check In
+          </button>
           <button type="button" className="btn-cancel" disabled={busy} onClick={() => setConfirmCancel(b.id)}>Cancel</button>
         </>
       );

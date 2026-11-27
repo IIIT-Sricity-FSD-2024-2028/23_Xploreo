@@ -359,7 +359,14 @@ export class BookingsService {
         `Only CONFIRMED bookings can be checked in (current: ${booking.status}).`,
       );
     }
-    this.assertStayNotPast(booking.checkOut, 'checked in');
+    const today = hotelTodayIso();
+    this.assertStayNotPast(booking.checkOut, 'checked in', today);
+    const checkInDate = String(booking.checkIn ?? '').slice(0, 10);
+    if (checkInDate && checkInDate > today) {
+      throw new BadRequestException(
+        `Check-in is only allowed on or after the booking check-in date (${checkInDate}).`,
+      );
+    }
     return this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_IN);
   }
 
