@@ -44,6 +44,7 @@ export class PlansService {
       includesFlight: dto.includesFlight ?? true,
       image: dto.image ?? '',
       tags: dto.tags ?? [],
+      createdByNtaId: actor?.role === 'nontechadmin' ? actor.userId : undefined,
       itinerary: dto.itinerary,
     });
   }
@@ -77,6 +78,7 @@ export class PlansService {
       to: query.to,
       destination: effectiveDestination,
       statuses,
+      createdByNtaId: actor?.role === 'nontechadmin' ? actor.userId : undefined,
     });
   }
 
@@ -99,6 +101,11 @@ export class PlansService {
           `Cannot access package in destination '${plan.destination}': outside your assigned region '${actor.region}'`,
         );
       }
+      if (plan.createdByNtaId && plan.createdByNtaId !== actor.userId) {
+        throw new ForbiddenException(
+          `Cannot access package '${plan.id}': owned by another NTA`,
+        );
+      }
     }
 
     return plan;
@@ -113,6 +120,11 @@ export class PlansService {
       if (ntaRegion && existing.destination.trim().toLowerCase() !== ntaRegion) {
         throw new ForbiddenException(
           `Cannot modify package in destination '${existing.destination}': outside your assigned region '${actor.region}'`,
+        );
+      }
+      if (existing.createdByNtaId && existing.createdByNtaId !== actor.userId) {
+        throw new ForbiddenException(
+          `Cannot modify package '${existing.id}': owned by another NTA`,
         );
       }
       if (dto.destination && dto.destination.trim().toLowerCase() !== ntaRegion) {

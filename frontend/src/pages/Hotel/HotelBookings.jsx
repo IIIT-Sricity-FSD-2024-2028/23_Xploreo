@@ -141,6 +141,23 @@ export default function HotelBookings() {
                 <article key={b.id} className="hotel-booking-card" style={{ cursor: 'pointer' }} onClick={() => setDetail(b.id)}>
                   <div className="hotel-booking-left">
                     <h3>{b.guestName}</h3>
+                    {b.isPackageComponent ? (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: 999,
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          marginBottom: 4,
+                        }}
+                      >
+                        Part of Holiday Package
+                      </span>
+                    ) : null}
                     <p>{b.email}</p>
                     <p>{b.phone}</p>
                   </div>
@@ -151,9 +168,14 @@ export default function HotelBookings() {
                     <div className="hotel-badge">{STATUS_LABEL[b.status] || b.status}</div>
                   </div>
                   <div className="hotel-booking-right">
-                    <h3>{inr(b.totalAmount)}</h3>
+                    <h3>{b.isPackageComponent && !b.totalAmount ? 'Included in Package' : inr(b.totalAmount)}</h3>
                     <p>{b.hotel?.name || b.hotelId}</p>
                     <p>{b.roomType} · {b.guests} guest{b.guests === 1 ? '' : 's'}</p>
+                    {b.isPackageComponent && b.tripId ? (
+                      <p style={{ fontSize: 12, color: '#475569' }}>
+                        Trip #{b.tripId}{b.packagePlanId ? ` · Plan ${b.packagePlanId}` : ''}
+                      </p>
+                    ) : null}
                     <div className="hotel-actions" style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}
                       onClick={(e) => e.stopPropagation()}>
                       {actionsFor(b)}
@@ -173,10 +195,15 @@ export default function HotelBookings() {
           footer={<><span className={`hotel-status ${STATUS_CLASS[detail.status]}`}>{STATUS_LABEL[detail.status]}</span><div style={{ display: 'flex', gap: 8 }}>{actionsFor(detail)}</div></>}
         >
           <p><strong>{detail.guestName}</strong> · #{detail.id}</p>
+          {detail.isPackageComponent ? (
+            <p style={{ color: '#1d4ed8', fontWeight: 600 }}>
+              Part of Holiday Package · Trip #{detail.tripId}{detail.packagePlanId ? ` (Plan ${detail.packagePlanId})` : ''}
+            </p>
+          ) : null}
           <p className="hotel-sub-text">{detail.email} · {detail.phone}</p>
           <p>{detail.hotel?.name || detail.hotelId} — {detail.roomType} × {detail.rooms || 1}</p>
           <p>{fmtDate(detail.checkIn)} → {fmtDate(detail.checkOut)} · {detail.guests} guest{detail.guests === 1 ? '' : 's'}</p>
-          <p><strong>{inr(detail.totalAmount)}</strong></p>
+          <p><strong>{detail.isPackageComponent && !detail.totalAmount ? 'Included in Holiday Package' : inr(detail.totalAmount)}</strong></p>
           {detail.notes ? <p className="hotel-sub-text">Notes: {detail.notes}</p> : null}
         </HotelModal>
       ) : null}

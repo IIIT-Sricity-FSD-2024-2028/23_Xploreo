@@ -148,3 +148,20 @@ export const selectGuideApplicationCounts = createSelector([selectGuideApplicati
   });
   return res;
 });
+
+// ---------------------------------------------------------------------------
+// Package Bookings & Component Distribution (state.nta.packageBookings)
+// ---------------------------------------------------------------------------
+
+const selectNtaPackageBookingsState = (state) => state.nta.packageBookings;
+
+export const selectNtaPackageBookings = (state) => selectNtaPackageBookingsState(state)?.items ?? [];
+export const selectNtaPackageBookingsStatus = (state) => selectNtaPackageBookingsState(state)?.status ?? 'idle';
+export const selectNtaPackageBookingsError = (state) => selectNtaPackageBookingsState(state)?.error ?? null;
+export const selectSelectedNtaPackageBookingId = (state) => selectNtaPackageBookingsState(state)?.selectedId ?? null;
+export const selectSelectedNtaPackageBookingDetail = (state) => selectNtaPackageBookingsState(state)?.selectedDetail ?? null;
+export const selectNtaPackageBookingDetailStatus = (state) => selectNtaPackageBookingsState(state)?.detailStatus ?? 'idle';
+export const selectNtaPackageBookingDetailError = (state) => selectNtaPackageBookingsState(state)?.detailError ?? null;
+export const selectNtaPackageDispatchStatus = (state) => selectNtaPackageBookingsState(state)?.dispatchStatus ?? 'idle';
+export const selectNtaPackageDispatchError = (state) => selectNtaPackageBookingsState(state)?.dispatchError ?? null;
+export const selectNtaPackageLastDispatchResult = (state) => selectNtaPackageBookingsState(state)?.lastDispatchResult ?? null;

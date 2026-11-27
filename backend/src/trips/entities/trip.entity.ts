@@ -27,6 +27,8 @@ export class Trip {
   itinerary!: StructuredItinerary;
   travellers?: number;
   totalAmount!: number;
+  hotelBookingId?: string;
+  experienceBookingIds?: string[];
   currentDay!: number;
   currentStop!: string;
   currentLocation!: string;

@@ -258,7 +258,7 @@ export async function getNtaRecentActivity(session = {}) {
     action: 'Package Trip Booked',
     detail: `Traveller ${trip.travellerId} created trip for plan ${trip.planId || 'N/A'}`,
     destination: trip.itinerary?.day1?.hotel?.name || 'Assigned Destination',
-    amount: trip.price || 24500,
+    amount: trip.totalAmount ?? trip.price ?? 0,
     timestamp: trip.createdAt || new Date().toISOString(),
     status: trip.status || 'confirmed',
     customerName: trip.travellerId || 'Traveller',
@@ -327,7 +327,7 @@ function toRecentBookings(tripsList, targetRegion) {
     bookingDate: trip.createdAt || new Date().toISOString(),
     travelDate: trip.itinerary?.day1?.hotel?.checkInDate || null,
     status: trip.status || 'confirmed',
-    price: trip.price || null,
+    price: trip.totalAmount ?? trip.price ?? null,
     currency: 'INR',
     guests: trip.guests || 1,
     isDirectTripActivity: true, // Accurately flags that this record represents raw trip activity from /trips
@@ -364,6 +364,60 @@ export async function getNtaTripActivity(session = {}) {
     tripCount: tripsList.length,
     recentBookings: toRecentBookings(tripsList, (session.region || '').trim()),
   };
+}
+
+// ============================================================================
+// 1B. NTA PACKAGE BOOKING DISTRIBUTION METHODS (Phase 3)
+// ============================================================================
+
+export async function getNtaPackageBookings(session = {}) {
+  if (isNtaMockMode()) {
+    return [];
+  }
+  try {
+    const headers = buildNtaHeaders(session);
+    const res = await fetchData(`${BASE_URL}/trips/nta/packages`, { headers });
+    return Array.isArray(res) ? res : res?.data || [];
+  } catch (err) {
+    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || 'Failed to load NTA package bookings.', status);
+  }
+}
+
+export async function getNtaPackageBookingDetail(tripId, session = {}) {
+  if (!tripId) throw new ApiError('Trip ID is required.', 400);
+  if (isNtaMockMode()) {
+    return null;
+  }
+  try {
+    const headers = buildNtaHeaders(session);
+    const res = await fetchData(
+      `${BASE_URL}/trips/nta/packages/${encodeURIComponent(tripId)}`,
+      { headers },
+    );
+    return res?.data ?? res;
+  } catch (err) {
+    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || 'Failed to load package booking details.', status);
+  }
+}
+
+export async function dispatchNtaPackageBooking(tripId, session = {}) {
+  if (!tripId) throw new ApiError('Trip ID is required.', 400);
+  try {
+    const headers = buildNtaHeaders(session);
+    const res = await fetchData(
+      `${BASE_URL}/trips/nta/packages/${encodeURIComponent(tripId)}/dispatch`,
+      {
+        method: 'POST',
+        headers,
+      },
+    );
+    return res?.data ?? res;
+  } catch (err) {
+    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || 'Failed to forward package components to partners.', status);
+  }
 }
 
 /**

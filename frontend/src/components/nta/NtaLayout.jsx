@@ -4,6 +4,7 @@ import { Navbar, useAuth } from '@/foundation';
 const LINKS = [
   { to: '/nta/dashboard', label: 'Regional Dashboard', icon: 'dashboard.svg' },
   { to: '/nta/plans', label: 'Manage Packages', icon: 'tours.svg' },
+  { to: '/nta/package-bookings', label: 'Package Bookings', icon: 'tours.svg' },
   { to: '/nta/guides', label: 'Guide Applications', icon: 'user.svg' },
 ];
 

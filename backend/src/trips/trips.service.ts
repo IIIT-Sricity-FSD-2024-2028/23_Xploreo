@@ -3,11 +3,19 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
-import { StructuredItinerary } from '../common/entities/itinerary.entity';
+import { StructuredItinerary, ItineraryItemStatus } from '../common/entities/itinerary.entity';
 import { mergeStructuredItineraryPatch } from '../common/utils/itinerary-mapper';
+import { AuthRepository } from '../auth/auth.repository';
 import { PlansRepository } from '../plans/plans.repository';
 import { GuideRepository } from '../guide/guide.repository';
+import { HotelsRepository } from '../hotels/hotels.repository';
+import { BookingsRepository } from '../bookings/bookings.repository';
+import { BookingStatus } from '../bookings/entities/booking.entity';
+import { ExperiencesRepository } from '../experiences/experiences.repository';
+import { ExperienceBookingsRepository } from '../experience-bookings/experience-bookings.repository';
+import { ExperienceBookingStatus } from '../experience-bookings/entities/experience-booking.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
 import { UpdateTripTrackingDto } from './dto/update-trip-tracking.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
@@ -35,6 +43,11 @@ export class TripsService {
     private readonly guideRepository: GuideRepository,
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
+    @Optional() private readonly hotelsRepository?: HotelsRepository,
+    @Optional() private readonly bookingsRepository?: BookingsRepository,
+    @Optional() private readonly experiencesRepository?: ExperiencesRepository,
+    @Optional() private readonly experienceBookingsRepository?: ExperienceBookingsRepository,
+    @Optional() private readonly authRepository?: AuthRepository,
   ) {}
 
   // Once a guideId is attached to a trip (the traveller legitimately picked that guide), expose
@@ -272,7 +285,9 @@ export class TripsService {
         .filter((t) => {
           const plan = this.plansRepository.findById(t.planId);
           const destination = plan?.destination || t.currentLocation || '';
-          return destination.trim().toLowerCase() === ntaRegion;
+          if (destination.trim().toLowerCase() !== ntaRegion) return false;
+          if (plan?.createdByNtaId && plan.createdByNtaId !== actor.userId) return false;
+          return true;
         })
         .map((t) => this.withGuide(t));
     }
@@ -298,12 +313,511 @@ export class TripsService {
             `Cannot access trip in destination '${destination}': outside your assigned region '${actor.region}'`,
           );
         }
+        if (plan?.createdByNtaId && plan.createdByNtaId !== actor.userId) {
+          throw new ForbiddenException(
+            `Cannot access trip '${trip.id}': package is owned by another NTA`,
+          );
+        }
       } else if (!isSuperAdmin && !isOwnerTraveller && !isAssignedGuide) {
         throw new ForbiddenException('You are not authorized to view this trip.');
       }
     }
 
     return this.withGuide(trip);
+  }
+
+  findNtaPackageBookings(actor?: { userId?: string; role?: string; region?: string }) {
+    if (actor?.role !== 'nontechadmin' && actor?.role !== 'superadmin') {
+      throw new ForbiddenException('Only NTA or SuperAdmin can view package distribution bookings.');
+    }
+    return this.findAll(actor).map((trip) => this.toNtaPackageBooking(trip));
+  }
+
+  getNtaPackageBookingDetail(
+    id: string,
+    actor?: { userId?: string; role?: string; region?: string },
+  ) {
+    if (actor?.role !== 'nontechadmin' && actor?.role !== 'superadmin') {
+      throw new ForbiddenException('Only NTA or SuperAdmin can view package distribution bookings.');
+    }
+    const trip = this.findOne(id, actor);
+    return this.toNtaPackageBooking(trip);
+  }
+
+  private toNtaPackageBooking(trip: Trip) {
+    const plan = this.plansRepository.findById(trip.planId);
+    const linkedHotelBookings = this.bookingsRepository?.findByTripId(trip.id) ?? [];
+    const linkedExpBookings = this.experienceBookingsRepository?.findByTripId(trip.id) ?? [];
+
+    const itineraryHotel = trip.itinerary?.day1?.hotel;
+    const hotelComponents =
+      itineraryHotel && itineraryHotel.hotelId
+        ? (() => {
+            const hotel = this.hotelsRepository?.findById(itineraryHotel.hotelId);
+            const activeBooking =
+              (trip.hotelBookingId
+                ? linkedHotelBookings.find(
+                    (b) => b.id === trip.hotelBookingId && b.status !== BookingStatus.CANCELLED,
+                  )
+                : undefined) ??
+              linkedHotelBookings.find(
+                (b) =>
+                  b.hotelId === itineraryHotel.hotelId &&
+                  b.status !== BookingStatus.CANCELLED,
+              );
+            const assignedBooking =
+              activeBooking ??
+              linkedHotelBookings.find((b) => b.hotelId === itineraryHotel.hotelId);
+            return [
+              {
+                itineraryItemId: itineraryHotel.id,
+                hotelId: itineraryHotel.hotelId,
+                hotelName: hotel?.name ?? itineraryHotel.name,
+                partnerId: hotel?.partnerId ?? null,
+                checkInDate: itineraryHotel.checkInDate,
+                checkOutDate: itineraryHotel.checkOutDate,
+                roomType: itineraryHotel.roomType,
+                itineraryStatus: itineraryHotel.status,
+                bookingId: assignedBooking?.id ?? null,
+                assignmentStatus: activeBooking ? 'assigned' : 'unassigned',
+                bookingStatus: assignedBooking?.status ?? null,
+              },
+            ];
+          })()
+        : [];
+
+    const experienceComponents = (trip.itinerary?.days ?? []).flatMap((day) =>
+      (day.experiences ?? [])
+        .filter((exp) => Boolean(exp?.experienceId))
+        .map((exp) => {
+          const experience = this.experiencesRepository?.findById(exp.experienceId);
+          const scheduledDate = String(
+            exp.startsAt || itineraryHotel?.checkInDate || '',
+          ).slice(0, 10);
+          const activeBooking = linkedExpBookings.find(
+            (b) =>
+              b.experienceId === exp.experienceId &&
+              (!scheduledDate || String(b.date).slice(0, 10) === scheduledDate) &&
+              b.status !== ExperienceBookingStatus.CANCELLED,
+          );
+          const assignedBooking =
+            activeBooking ??
+            linkedExpBookings.find(
+              (b) =>
+                b.experienceId === exp.experienceId &&
+                (!scheduledDate || String(b.date).slice(0, 10) === scheduledDate),
+            );
+          return {
+            dayNumber: day.dayNumber,
+            itineraryItemId: exp.id,
+            experienceId: exp.experienceId,
+            title: experience?.title ?? exp.title,
+            partnerId: experience?.partnerId ?? null,
+            location: exp.location,
+            startsAt: exp.startsAt,
+            endsAt: exp.endsAt,
+            itineraryStatus: exp.status,
+            bookingId: assignedBooking?.id ?? null,
+            assignmentStatus: activeBooking ? 'assigned' : 'unassigned',
+            bookingStatus: assignedBooking?.status ?? null,
+          };
+        }),
+    );
+
+    return {
+      tripId: trip.id,
+      travellerId: trip.travellerId,
+      planId: trip.planId,
+      packageTitle: plan?.title ?? trip.planId,
+      destination: plan?.destination ?? trip.currentLocation ?? '',
+      createdByNtaId: plan?.createdByNtaId ?? null,
+      travellers: trip.travellers ?? 1,
+      totalAmount: trip.totalAmount,
+      overallStatus: trip.status,
+      trackingStatus: trip.trackingStatus,
+      hotelComponents,
+      experienceComponents,
+    };
+  }
+
+  dispatchNtaPackageBooking(
+    id: string,
+    actor?: { userId?: string; role?: string; region?: string },
+  ) {
+    if (actor?.role !== 'nontechadmin' && actor?.role !== 'superadmin') {
+      throw new ForbiddenException('Only NTA or SuperAdmin can dispatch package bookings.');
+    }
+
+    const trip = this.findOne(id, actor);
+    const plan = this.plansRepository.findById(trip.planId);
+    if (!plan) {
+      throw new NotFoundException(`Plan ${trip.planId} not found`);
+    }
+
+    if (
+      trip.status === TripStatus.DRAFT ||
+      trip.status === TripStatus.CANCELLED ||
+      trip.status === TripStatus.REJECTED_BY_GUIDE
+    ) {
+      throw new BadRequestException(
+        `Cannot dispatch package booking in status '${trip.status}'. Only paid/confirmed bookings can be dispatched.`,
+      );
+    }
+
+    const traveller = this.authRepository?.findById(trip.travellerId);
+    const guestName = traveller?.name || `Traveller ${trip.travellerId}`;
+    const email = traveller?.email || `${trip.travellerId}@xploreo.com`;
+    const phone = traveller?.phone || '9000000000';
+    const travellersCount = Math.max(1, trip.travellers ?? 1);
+
+    const nextItinerary: StructuredItinerary = {
+      ...trip.itinerary,
+      day1: {
+        ...trip.itinerary.day1,
+        hotel: trip.itinerary.day1?.hotel ? { ...trip.itinerary.day1.hotel } : trip.itinerary.day1?.hotel,
+      },
+      days: (trip.itinerary.days ?? []).map((d) => ({
+        ...d,
+        experiences: (d.experiences ?? []).map((e) => ({ ...e })),
+      })),
+    };
+
+    const failedComponents: Array<{ componentType: 'hotel' | 'experience'; targetId: string; error: string }> = [];
+    let hotelBookingId = trip.hotelBookingId;
+    let dispatchedHotel: Record<string, unknown> | null = null;
+
+    // 1. Hotel component dispatch (idempotent)
+    const itineraryHotel = nextItinerary.day1?.hotel;
+    if (itineraryHotel && itineraryHotel.hotelId) {
+      try {
+        const hotel = this.hotelsRepository?.findById(itineraryHotel.hotelId);
+        if (!hotel || hotel.status !== 'active') {
+          throw new NotFoundException(`Hotel ${itineraryHotel.hotelId} not found or inactive`);
+        }
+
+        const existingHotelBooking = (this.bookingsRepository?.findByTripId(trip.id) ?? []).find(
+          (b) => b.hotelId === hotel.id && b.status !== BookingStatus.CANCELLED,
+        );
+
+        if (existingHotelBooking) {
+          hotelBookingId = existingHotelBooking.id;
+          itineraryHotel.status = ItineraryItemStatus.CONFIRMED;
+          dispatchedHotel = {
+            bookingId: existingHotelBooking.id,
+            hotelId: hotel.id,
+            partnerId: hotel.partnerId,
+            created: false,
+            idempotent: true,
+          };
+        } else if (this.bookingsRepository) {
+          const checkIn = itineraryHotel.checkInDate || new Date().toISOString().slice(0, 10);
+          const checkOut =
+            itineraryHotel.checkOutDate ||
+            new Date(Date.parse(checkIn) + 86_400_000).toISOString().slice(0, 10);
+
+          const baseHotelBookingId = `pkg-htl-${trip.id}-${hotel.id}`;
+          let nextHotelBookingId = baseHotelBookingId;
+          let hotelRetry = 1;
+          while (this.bookingsRepository.findById(nextHotelBookingId)) {
+            nextHotelBookingId = `${baseHotelBookingId}-r${hotelRetry++}`;
+          }
+
+          const created = this.bookingsRepository.create({
+            id: nextHotelBookingId,
+            hotelId: hotel.id,
+            travellerId: trip.travellerId,
+            guestName,
+            email,
+            phone,
+            checkIn,
+            checkOut,
+            guests: travellersCount,
+            roomType: itineraryHotel.roomType || 'Standard Room',
+            rooms: 1,
+            guestNames: [guestName],
+            notes: `Package component for Trip ${trip.id} (${plan.title})`,
+            totalAmount: 0,
+            tripId: trip.id,
+            isPackageComponent: true,
+            packagePlanId: plan.id,
+          });
+          hotelBookingId = created.id;
+          itineraryHotel.status = ItineraryItemStatus.CONFIRMED;
+          dispatchedHotel = {
+            bookingId: created.id,
+            hotelId: hotel.id,
+            partnerId: hotel.partnerId,
+            created: true,
+            idempotent: false,
+          };
+        }
+      } catch (err) {
+        failedComponents.push({
+          componentType: 'hotel',
+          targetId: itineraryHotel.hotelId,
+          error: err instanceof Error ? err.message : 'Failed to dispatch hotel component',
+        });
+      }
+    }
+
+    // 2. Experience component dispatch (idempotent)
+    const expBookingIdSet = new Set<string>(trip.experienceBookingIds ?? []);
+    const dispatchedExperiences: Array<Record<string, unknown>> = [];
+    const existingExpBookings = this.experienceBookingsRepository?.findByTripId(trip.id) ?? [];
+
+    for (const day of nextItinerary.days) {
+      for (const exp of day.experiences ?? []) {
+        if (!exp?.experienceId) continue;
+        try {
+          const experience = this.experiencesRepository?.findById(exp.experienceId);
+          if (!experience) {
+            throw new NotFoundException(`Experience ${exp.experienceId} not found`);
+          }
+
+          const scheduledDate = String(
+            exp.startsAt || itineraryHotel?.checkInDate || new Date().toISOString(),
+          ).slice(0, 10);
+
+          const existingExp = existingExpBookings.find(
+            (b) =>
+              b.experienceId === experience.id &&
+              String(b.date).slice(0, 10) === scheduledDate &&
+              b.status !== ExperienceBookingStatus.CANCELLED,
+          );
+
+          if (existingExp) {
+            expBookingIdSet.add(existingExp.id);
+            exp.status = this.mapExperienceStatusToItinerary(existingExp.status);
+            dispatchedExperiences.push({
+              dayNumber: day.dayNumber,
+              bookingId: existingExp.id,
+              experienceId: experience.id,
+              partnerId: experience.partnerId,
+              created: false,
+              idempotent: true,
+            });
+          } else if (this.experienceBookingsRepository) {
+            const baseExpBookingId = `pkg-exp-${trip.id}-${day.dayNumber}-${experience.id}`;
+            let nextExpBookingId = baseExpBookingId;
+            let expRetry = 1;
+            while (this.experienceBookingsRepository.findById(nextExpBookingId)) {
+              nextExpBookingId = `${baseExpBookingId}-r${expRetry++}`;
+            }
+
+            const created = this.experienceBookingsRepository.create({
+              id: nextExpBookingId,
+              experienceId: experience.id,
+              travellerId: trip.travellerId,
+              guestName,
+              email,
+              phone,
+              date: scheduledDate,
+              participants: travellersCount,
+              totalAmount: 0,
+              tripId: trip.id,
+              isPackageComponent: true,
+              packagePlanId: plan.id,
+            });
+            existingExpBookings.push(created);
+            expBookingIdSet.add(created.id);
+            exp.status = ItineraryItemStatus.CONFIRMED;
+            dispatchedExperiences.push({
+              dayNumber: day.dayNumber,
+              bookingId: created.id,
+              experienceId: experience.id,
+              partnerId: experience.partnerId,
+              created: true,
+              idempotent: false,
+            });
+          }
+        } catch (err) {
+          failedComponents.push({
+            componentType: 'experience',
+            targetId: exp.experienceId,
+            error: err instanceof Error ? err.message : 'Failed to dispatch experience component',
+          });
+        }
+      }
+    }
+
+    const updatedTrip =
+      this.tripsRepository.update(trip.id, {
+        itinerary: nextItinerary,
+        hotelBookingId,
+        experienceBookingIds: [...expBookingIdSet],
+        lastUpdatedAt: new Date().toISOString(),
+      }) ?? trip;
+
+    return {
+      trip: this.withGuide(updatedTrip),
+      packageBooking: this.toNtaPackageBooking(updatedTrip),
+      dispatched: {
+        hotel: dispatchedHotel,
+        experiences: dispatchedExperiences,
+      },
+      failedComponents,
+    };
+  }
+
+  private mapHotelStatusToItinerary(status: BookingStatus): ItineraryItemStatus {
+    switch (status) {
+      case BookingStatus.CHECKED_IN:
+        return ItineraryItemStatus.CHECKED_IN;
+      case BookingStatus.CHECKED_OUT:
+        return ItineraryItemStatus.CHECKED_OUT;
+      case BookingStatus.CANCELLED:
+        return ItineraryItemStatus.CANCELLED;
+      case BookingStatus.CONFIRMED:
+      default:
+        return ItineraryItemStatus.CONFIRMED;
+    }
+  }
+
+  private mapExperienceStatusToItinerary(
+    status: ExperienceBookingStatus,
+  ): ItineraryItemStatus {
+    switch (status) {
+      case ExperienceBookingStatus.CHECKED_IN:
+      case ExperienceBookingStatus.END_REQUESTED:
+        return ItineraryItemStatus.CHECKED_IN;
+      case ExperienceBookingStatus.COMPLETED:
+        return ItineraryItemStatus.COMPLETED;
+      case ExperienceBookingStatus.CANCELLED:
+        return ItineraryItemStatus.CANCELLED;
+      case ExperienceBookingStatus.CONFIRMED:
+      default:
+        return ItineraryItemStatus.CONFIRMED;
+    }
+  }
+
+  syncComponentStatus(
+    tripId: string,
+    event:
+      | { kind: 'hotel'; hotelId: string; bookingStatus: BookingStatus }
+      | {
+          kind: 'experience';
+          experienceId: string;
+          bookingDate?: string;
+          bookingId?: string;
+          bookingStatus: ExperienceBookingStatus;
+        },
+  ) {
+    const trip = this.tripsRepository.findById(tripId);
+    if (!trip) return undefined;
+
+    const nextItinerary: StructuredItinerary = {
+      ...trip.itinerary,
+      day1: {
+        ...trip.itinerary.day1,
+        hotel: trip.itinerary.day1?.hotel ? { ...trip.itinerary.day1.hotel } : trip.itinerary.day1?.hotel,
+      },
+      days: (trip.itinerary.days ?? []).map((d) => ({
+        ...d,
+        experiences: (d.experiences ?? []).map((e) => ({ ...e })),
+      })),
+    };
+
+    if (event.kind === 'hotel' && nextItinerary.day1?.hotel?.hotelId === event.hotelId) {
+      nextItinerary.day1.hotel.status = this.mapHotelStatusToItinerary(event.bookingStatus);
+    }
+
+    if (event.kind === 'experience') {
+      const targetDate = event.bookingDate ? String(event.bookingDate).slice(0, 10) : '';
+      for (const day of nextItinerary.days) {
+        for (const exp of day.experiences ?? []) {
+          if (exp.experienceId !== event.experienceId) continue;
+          const expDate = String(exp.startsAt || nextItinerary.day1?.hotel?.checkInDate || '').slice(0, 10);
+          if (!targetDate || !expDate || expDate === targetDate) {
+            exp.status = this.mapExperienceStatusToItinerary(event.bookingStatus);
+          }
+        }
+      }
+    }
+
+    // Derive overall package progress against ALL expected itinerary components (never only dispatched rows)
+    const hotelBookings = this.bookingsRepository?.findByTripId(trip.id) ?? [];
+    const expBookings = this.experienceBookingsRepository?.findByTripId(trip.id) ?? [];
+
+    let expectedTotal = 0;
+    let completedCount = 0;
+    let anyInProgress = false;
+
+    const itineraryHotel = nextItinerary.day1?.hotel;
+    if (itineraryHotel && itineraryHotel.hotelId) {
+      expectedTotal += 1;
+      const activeHotel = hotelBookings.find(
+        (b) => b.hotelId === itineraryHotel.hotelId && b.status !== BookingStatus.CANCELLED,
+      );
+      if (activeHotel?.status === BookingStatus.CHECKED_OUT) {
+        completedCount += 1;
+      } else if (activeHotel?.status === BookingStatus.CHECKED_IN) {
+        anyInProgress = true;
+      }
+    }
+
+    for (const day of nextItinerary.days ?? []) {
+      for (const exp of day.experiences ?? []) {
+        if (!exp?.experienceId) continue;
+        expectedTotal += 1;
+        const expDate = String(exp.startsAt || itineraryHotel?.checkInDate || '').slice(0, 10);
+        const activeExp = expBookings.find(
+          (b) =>
+            b.experienceId === exp.experienceId &&
+            (!expDate || String(b.date).slice(0, 10) === expDate) &&
+            b.status !== ExperienceBookingStatus.CANCELLED,
+        );
+        if (activeExp?.status === ExperienceBookingStatus.COMPLETED) {
+          completedCount += 1;
+        } else if (
+          activeExp?.status === ExperienceBookingStatus.CHECKED_IN ||
+          activeExp?.status === ExperienceBookingStatus.END_REQUESTED
+        ) {
+          anyInProgress = true;
+        }
+      }
+    }
+
+    let nextStatus = trip.status;
+    let nextTrackingStatus = trip.trackingStatus;
+    let nextProgress = trip.progressPercentage;
+
+    if (expectedTotal > 0) {
+      nextProgress = Math.round((completedCount / expectedTotal) * 100);
+      if (completedCount === expectedTotal) {
+        nextStatus = TripStatus.COMPLETED;
+        nextTrackingStatus = TripTrackingStatus.COMPLETED;
+      } else if (anyInProgress || completedCount > 0) {
+        if (nextStatus === TripStatus.CONFIRMED) {
+          nextStatus = TripStatus.STARTED;
+        }
+        nextTrackingStatus = TripTrackingStatus.ONGOING;
+      }
+    }
+
+    const updated = this.tripsRepository.update(trip.id, {
+      itinerary: nextItinerary,
+      status: nextStatus,
+      trackingStatus: nextTrackingStatus,
+      progressPercentage: nextProgress,
+      lastUpdatedAt: new Date().toISOString(),
+    });
+
+    if (trip.travellerId) {
+      const label = event.kind === 'hotel' ? 'Hotel stay' : 'Experience';
+      const isCancelled =
+        event.bookingStatus === BookingStatus.CANCELLED ||
+        event.bookingStatus === ExperienceBookingStatus.CANCELLED;
+      this.notificationsService.create({
+        userId: trip.travellerId,
+        title: 'Package Component Updated',
+        message: `${label} in your package #${trip.id} is now ${String(event.bookingStatus).toLowerCase().replace('_', ' ')}.`,
+        type: isCancelled ? NotificationType.BOOKING_CANCELLED : NotificationType.INFO,
+        bookingId: trip.id,
+        bookingType: 'trip',
+      });
+    }
+
+    return updated;
   }
 
   findByTraveller(travellerId: string, actor?: { userId?: string; role?: string }) {

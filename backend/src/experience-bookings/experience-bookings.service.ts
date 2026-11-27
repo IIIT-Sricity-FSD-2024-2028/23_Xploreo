@@ -1,8 +1,11 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  Optional,
+  forwardRef,
 } from '@nestjs/common';
 import { ExperienceAvailability } from '../experiences/entities/experience.entity';
 import { ExperiencesRepository } from '../experiences/experiences.repository';
@@ -17,6 +20,7 @@ import { RefundStatus } from '../common/refund/refund.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
+import { TripsService } from '../trips/trips.service';
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -52,6 +56,9 @@ export class ExperienceBookingsService {
     private readonly guideRepository: GuideRepository,
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    @Inject(forwardRef(() => TripsService))
+    private readonly tripsService?: TripsService,
   ) {
     this.captureSeedBaselines();
   }
@@ -303,6 +310,16 @@ export class ExperienceBookingsService {
 
     if (experience) this.syncExperience(experience.id);
 
+    if (booking.tripId) {
+      this.tripsService?.syncComponentStatus(booking.tripId, {
+        kind: 'experience',
+        experienceId: booking.experienceId,
+        bookingDate: String(booking.date).slice(0, 10),
+        bookingId: booking.id,
+        bookingStatus: ExperienceBookingStatus.CANCELLED,
+      });
+    }
+
     // 4. Send traveller in-app notifications
     if (booking.travellerId) {
       this.notificationsService.create({
@@ -377,6 +394,16 @@ export class ExperienceBookingsService {
 
     const updated = this.bookingsRepository.setStatus(id, status);
     if (experience) this.syncExperience(experience.id);
+
+    if (booking.tripId && updated) {
+      this.tripsService?.syncComponentStatus(booking.tripId, {
+        kind: 'experience',
+        experienceId: booking.experienceId,
+        bookingDate: String(booking.date).slice(0, 10),
+        bookingId: booking.id,
+        bookingStatus: updated.status,
+      });
+    }
 
     return {
       ...updated,

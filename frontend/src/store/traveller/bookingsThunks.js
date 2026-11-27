@@ -15,30 +15,56 @@ import {
 } from '@/services/partners.api.js';
 import {
   cancelExperienceGuide,
+  getTravellerTrips,
   listExperienceGuides,
   requestExperienceGuide,
 } from '@/services/tripGuides.api.js';
+import { getUser } from '@/services/session.js';
 
 export const fetchTravellerBookings = createAsyncThunk(
   'traveller/bookings/fetchTravellerBookings',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      const [expData, hotelData] = await Promise.all([
+      const authUser = getState()?.auth?.user ?? getUser();
+      const travellerId = authUser?.userId || authUser?.id;
+
+      const [expData, hotelData, tripsData] = await Promise.all([
         listExperienceBookings(),
         listHotelBookings(),
+        travellerId ? getTravellerTrips(travellerId).catch(() => []) : Promise.resolve([]),
       ]);
 
-      const expList = (Array.isArray(expData) ? expData : expData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'experience',
-      }));
+      const expList = (Array.isArray(expData) ? expData : expData?.data || [])
+        .filter((b) => !b.isPackageComponent && !b.tripId)
+        .map((b) => ({
+          ...b,
+          bookingType: 'experience',
+        }));
 
-      const hotelList = (Array.isArray(hotelData) ? hotelData : hotelData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'hotel',
-      }));
+      const hotelList = (Array.isArray(hotelData) ? hotelData : hotelData?.data || [])
+        .filter((b) => !b.isPackageComponent && !b.tripId)
+        .map((b) => ({
+          ...b,
+          bookingType: 'hotel',
+        }));
 
-      return [...expList, ...hotelList];
+      const seenPackageIds = new Set();
+      const packageList = (Array.isArray(tripsData) ? tripsData : [])
+        .filter((t) => {
+          if (!t?.id || seenPackageIds.has(t.id)) return false;
+          seenPackageIds.add(t.id);
+          return true;
+        })
+        .map((t) => ({
+          ...t,
+          bookingType: 'package',
+          status: String(t.status || 'CONFIRMED').toUpperCase(),
+          guests: t.travellers ?? 1,
+          checkIn: t.itinerary?.day1?.hotel?.checkInDate || null,
+          checkOut: t.itinerary?.day1?.hotel?.checkOutDate || null,
+        }));
+
+      return [...packageList, ...expList, ...hotelList];
     } catch (error) {
       return rejectWithValue(error?.message || 'Failed to load bookings from server.');
     }

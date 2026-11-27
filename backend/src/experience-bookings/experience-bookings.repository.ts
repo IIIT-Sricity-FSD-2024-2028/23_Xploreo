@@ -161,6 +161,12 @@ export class ExperienceBookingsRepository {
       .map((booking) => ({ ...booking }));
   }
 
+  findByTripId(tripId: string): ExperienceBooking[] {
+    return this.bookings
+      .filter((booking) => booking.tripId === tripId)
+      .map((booking) => ({ ...booking }));
+  }
+
   findById(id: string): ExperienceBooking | undefined {
     const booking = this.bookings.find((b) => b.id === id);
     return booking ? { ...booking } : undefined;

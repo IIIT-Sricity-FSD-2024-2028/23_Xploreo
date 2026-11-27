@@ -113,6 +113,7 @@ export class FinanceService {
     }
 
     for (const booking of this.hotelBookings.findAll()) {
+      if (booking.isPackageComponent || booking.tripId) continue;
       const hotel = this.hotels.findById(booking.hotelId);
       rows.push({
         kind: 'hotel',
@@ -133,6 +134,7 @@ export class FinanceService {
     }
 
     for (const booking of this.experienceBookings.findAll()) {
+      if (booking.isPackageComponent || booking.tripId) continue;
       const experience = this.experiences.findById(booking.experienceId);
       rows.push({
         kind: 'experience',

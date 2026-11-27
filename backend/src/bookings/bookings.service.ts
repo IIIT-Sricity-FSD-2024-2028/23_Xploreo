@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   forwardRef,
   Inject,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { RefundService } from '../common/refund/refund.service';
 import { RefundStatus } from '../common/refund/refund.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { TripsService } from '../trips/trips.service';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HOTEL_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -55,6 +57,9 @@ export class BookingsService {
     private readonly hotelsService: HotelsService,
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    @Inject(forwardRef(() => TripsService))
+    private readonly tripsService?: TripsService,
   ) {
     this.captureSeedBaselines();
   }
@@ -337,6 +342,14 @@ export class BookingsService {
 
     this.refreshAvailability(booking.hotelId, booking.roomType);
 
+    if (booking.tripId) {
+      this.tripsService?.syncComponentStatus(booking.tripId, {
+        kind: 'hotel',
+        hotelId: booking.hotelId,
+        bookingStatus: BookingStatus.CANCELLED,
+      });
+    }
+
     // 4. Send traveller in-app notifications
     if (booking.travellerId) {
       // Notification 1: Cancellation confirmation with actual refund status
@@ -450,7 +463,15 @@ export class BookingsService {
         `Check-in is only allowed on or after the booking check-in date (${checkInDate}).`,
       );
     }
-    return this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_IN);
+    const updated = this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_IN);
+    if (booking.tripId && updated) {
+      this.tripsService?.syncComponentStatus(booking.tripId, {
+        kind: 'hotel',
+        hotelId: booking.hotelId,
+        bookingStatus: updated.status,
+      });
+    }
+    return updated;
   }
 
   checkOut(id: string, userId: string | undefined) {
@@ -470,6 +491,14 @@ export class BookingsService {
     this.bookingsRepository.setCheckOutDate(id, today);
     const updated = this.bookingsRepository.setStatus(id, BookingStatus.CHECKED_OUT);
     this.refreshAvailability(booking.hotelId, booking.roomType);
+
+    if (booking.tripId && updated) {
+      this.tripsService?.syncComponentStatus(booking.tripId, {
+        kind: 'hotel',
+        hotelId: booking.hotelId,
+        bookingStatus: updated.status,
+      });
+    }
     return updated;
   }
 

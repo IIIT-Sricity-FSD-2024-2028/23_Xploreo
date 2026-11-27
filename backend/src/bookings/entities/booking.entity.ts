@@ -22,6 +22,9 @@ export class Booking {
   rooms!: number;
   guestNames!: string[];
   notes?: string;
+  tripId?: string;
+  isPackageComponent?: boolean;
+  packagePlanId?: string;
   subtotal?: number;
   taxesAndFees?: number;
   totalAmount!: number;
