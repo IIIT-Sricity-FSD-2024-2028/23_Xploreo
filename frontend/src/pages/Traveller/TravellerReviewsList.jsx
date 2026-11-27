@@ -1,8 +1,9 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   formatReviewDate,
   getTargetTypeMeta,
   getStarArray,
+  matchesReviewAuthor,
   REVIEW_TARGET_TYPES,
 } from '../../utils/reviewUtils.js';
 
@@ -168,9 +169,7 @@ export default function TravellerReviewsList({
           {filteredReviews.map((review) => {
             const targetMeta = getTargetTypeMeta(review.targetType);
             const stars = getStarArray(review.rating);
-            const isOwnReview =
-              currentTravellerId &&
-              Number(review.userId) === Number(currentTravellerId);
+            const isOwnReview = matchesReviewAuthor(review.userId, currentTravellerId);
 
             return (
               <article

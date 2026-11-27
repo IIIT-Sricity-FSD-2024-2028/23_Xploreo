@@ -12,7 +12,7 @@ import {
   selectBookingsLoading,
   selectSelectedBookingId,
   setSelectedBookingId,
-} from '../../features/bookingsSlice.js';
+} from '../../store/traveller/index.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import BookingDetailsView from './BookingDetailsView.jsx';
 import ExperienceGuidePanel from './ExperienceGuidePanel.jsx';

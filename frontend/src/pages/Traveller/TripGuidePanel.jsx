@@ -7,7 +7,7 @@ import {
   selectTripAvailableGuides,
   selectTripGuidesError,
   selectTripGuidesLoading,
-} from '../../features/tripsSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
 

@@ -12,7 +12,7 @@ import {
   selectSupportTickets,
   selectSupportTicketsError,
   selectSupportTicketsLoading,
-} from '../../features/supportTicketsSlice.js';
+} from '../../store/traveller/index.js';
 import './travellerSupportTickets.css';
 
 /**

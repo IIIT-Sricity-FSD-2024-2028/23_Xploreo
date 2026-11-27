@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
 import { selectAuthUser } from '@/features/authSlice.js';
-import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
-import { createExperienceSlotBooking } from '@/features/bookingsSlice.js';
+import {
+  createExperienceSlotBooking,
+  fetchBrowseItemDetail,
+  selectBrowseDetail,
+} from '@/store/traveller/index.js';
 import { getTodayIsoDate, validateExperienceBooking } from '@/utils/bookingValidationUtils.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';

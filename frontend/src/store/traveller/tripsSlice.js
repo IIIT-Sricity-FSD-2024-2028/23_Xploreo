@@ -1,18 +1,19 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from '@/features/authSlice.js';
+import { mapBackendTrip, reconcileTripTracking } from '@/utils/tripTrackingUtils.js';
+import { processCheckoutPayment } from './checkoutThunks.js';
 import {
-  cancelGuideRequest,
-  cancelTrip,
-  createTrip,
-  getTravellerTrips,
-  getTripById,
-  listAvailableGuides,
-  requestGuide,
-  retryTripRefund,
-  updateTrip,
-} from '../services/tripGuides.api.js';
-import { mapBackendTrip, reconcileTripTracking } from '../utils/tripTrackingUtils.js';
-import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
-import { processCheckoutPayment } from './checkoutSlice.js';
+  cancelGuideForTrip,
+  cancelTravellerTrip,
+  createTravellerTrip,
+  fetchTravellerTrips,
+  fetchTripAvailableGuides,
+  fetchTripDetail,
+  pollTravellerTrips,
+  requestGuideForTrip,
+  retryTravellerTripRefund,
+  updateTravellerTrip,
+} from './tripsThunks.js';
 
 function reconcileTripList(prevTrips = [], incomingMapped = []) {
   const prevMap = new Map((prevTrips || []).map((t) => [t.id, t]));
@@ -21,142 +22,6 @@ function reconcileTripList(prevTrips = [], incomingMapped = []) {
     return existing ? reconcileTripTracking(existing, incoming) : incoming;
   });
 }
-
-export const fetchTravellerTrips = createAsyncThunk(
-  'trips/fetchTravellerTrips',
-  async (travellerId, { rejectWithValue }) => {
-    try {
-      if (!travellerId) {
-        return rejectWithValue('Authentication required. Missing or invalid saved session.');
-      }
-      const rawData = await getTravellerTrips(travellerId);
-      return Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load trips');
-    }
-  },
-);
-
-export const pollTravellerTrips = createAsyncThunk(
-  'trips/pollTravellerTrips',
-  async ({ travellerId, selectedTripId }, { rejectWithValue }) => {
-    try {
-      if (!travellerId) return { mode: 'noop' };
-      if (selectedTripId) {
-        const rawDetail = await getTripById(selectedTripId);
-        return {
-          mode: 'single',
-          tripId: selectedTripId,
-          trip: rawDetail ? mapBackendTrip(rawDetail) : null,
-        };
-      }
-      const rawData = await getTravellerTrips(travellerId);
-      const mapped = Array.isArray(rawData) ? rawData.map(mapBackendTrip).filter(Boolean) : [];
-      return { mode: 'list', trips: mapped };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Background poll failed');
-    }
-  },
-);
-
-export const fetchTripDetail = createAsyncThunk(
-  'trips/fetchTripDetail',
-  async (tripId, { rejectWithValue }) => {
-    try {
-      const rawDetail = await getTripById(tripId);
-      return rawDetail ? mapBackendTrip(rawDetail) : null;
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load trip details');
-    }
-  },
-);
-
-export const cancelTravellerTrip = createAsyncThunk(
-  'trips/cancelTravellerTrip',
-  async ({ id, reason }, { rejectWithValue }) => {
-    try {
-      const result = await cancelTrip(id, { reason });
-      return { id, result };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to cancel trip. Please try again.');
-    }
-  },
-);
-
-export const retryTravellerTripRefund = createAsyncThunk(
-  'trips/retryTravellerTripRefund',
-  async (tripId, { rejectWithValue }) => {
-    try {
-      const result = await retryTripRefund(tripId);
-      return { tripId, result };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to retry refund.');
-    }
-  },
-);
-
-export const requestGuideForTrip = createAsyncThunk(
-  'trips/requestGuideForTrip',
-  async ({ tripId, guideId }, { rejectWithValue }) => {
-    try {
-      const updated = await requestGuide(tripId, guideId);
-      return { tripId, updated: updated ? mapBackendTrip(updated) : null };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Could not send the request.');
-    }
-  },
-);
-
-export const cancelGuideForTrip = createAsyncThunk(
-  'trips/cancelGuideForTrip',
-  async (tripId, { rejectWithValue }) => {
-    try {
-      const updated = await cancelGuideRequest(tripId);
-      return { tripId, updated: updated ? mapBackendTrip(updated) : null };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Could not cancel the request.');
-    }
-  },
-);
-
-export const createTravellerTrip = createAsyncThunk(
-  'trips/createTravellerTrip',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const created = await createTrip(payload);
-      return created ? mapBackendTrip(created) : null;
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to create trip.');
-    }
-  },
-);
-
-export const updateTravellerTrip = createAsyncThunk(
-  'trips/updateTravellerTrip',
-  async ({ tripId, patch }, { rejectWithValue }) => {
-    try {
-      const updated = await updateTrip(tripId, patch);
-      return updated ? mapBackendTrip(updated) : null;
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to update trip.');
-    }
-  },
-);
-
-export const fetchTripAvailableGuides = createAsyncThunk(
-  'trips/fetchTripAvailableGuides',
-  async (tripId, { rejectWithValue }) => {
-    try {
-      const guides = await listAvailableGuides(tripId);
-      return { tripId, guides: Array.isArray(guides) ? guides : [] };
-    } catch (error) {
-      return rejectWithValue({
-        tripId,
-        message: error?.message || 'Could not load guides.',
-      });
-    }
-  },
-);
 
 const initialState = {
   items: [],
@@ -178,7 +43,7 @@ const initialState = {
 };
 
 const tripsSlice = createSlice({
-  name: 'trips',
+  name: 'traveller/trips',
   initialState,
   reducers: {
     setSelectedTripId(state, action) {
@@ -426,24 +291,5 @@ export const {
   clearTripCancellationResult,
   resetTripsState,
 } = tripsSlice.actions;
-
-export const selectTripsList = (state) => state.trips.items;
-export const selectTripsLoading = (state) => state.trips.loading;
-export const selectTripsError = (state) => state.trips.error;
-export const selectTripsRefreshing = (state) => state.trips.refreshing;
-export const selectTripDetailsLoading = (state) => state.trips.detailsLoading;
-export const selectTripDetailError = (state) => state.trips.detailError || null;
-export const selectSelectedTripId = (state) => state.trips.selectedTripId;
-export const selectTripActionLoading = (state) => Boolean(state.trips.actionLoading);
-export const selectTripActionError = (state) => state.trips.actionError || null;
-export const selectTripCancellationResult = (state) => state.trips.lastCancellation || null;
-export const selectTripGuideActionLoading = (state) => Boolean(state.trips.guideActionLoading);
-export const selectTripGuideActionError = (state) => state.trips.guideActionError || null;
-export const selectTripAvailableGuides = (state, tripId) =>
-  state.trips.availableGuidesByTripId?.[tripId] ?? null;
-export const selectTripGuidesLoading = (state, tripId) =>
-  Boolean(state.trips.availableGuidesLoading?.[tripId]);
-export const selectTripGuidesError = (state, tripId) =>
-  state.trips.availableGuidesError?.[tripId] || null;
 
 export default tripsSlice.reducer;

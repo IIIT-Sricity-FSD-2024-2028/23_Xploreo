@@ -6,17 +6,15 @@ import { formatCurrency } from '../../utils/checkoutUtils.js';
 import { reconcileTripTracking } from '../../utils/tripTrackingUtils.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import {
-  fetchReviews,
-  selectReviewsHasLoaded,
-  selectReviewsList,
-} from '../../features/reviewsSlice.js';
-import {
   clearTripActionError,
   clearTripCancellationResult,
   clearTripDetailError,
+  fetchReviews,
   fetchTravellerTrips,
   fetchTripDetail,
   pollTravellerTrips,
+  selectReviewsHasLoaded,
+  selectReviewsList,
   selectSelectedTripId,
   selectTripDetailsLoading,
   selectTripsError,
@@ -24,7 +22,7 @@ import {
   selectTripsLoading,
   selectTripsRefreshing,
   setSelectedTripId,
-} from '../../features/tripsSlice.js';
+} from '../../store/traveller/index.js';
 // Production-safe fixture fallback when useFixtures is enabled without preview bundle
 const sampleTripsList = [];
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';

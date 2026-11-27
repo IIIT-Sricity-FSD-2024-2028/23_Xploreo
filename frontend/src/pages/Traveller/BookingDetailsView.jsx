@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { BookingSummaryCard } from '../../components/checkout/index.js';
 import { formatDate } from '../../utils/checkoutUtils.js';
-import { retryBookingRefund } from '../../features/bookingsSlice.js';
+import { retryBookingRefund } from '../../store/traveller/index.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
 import './travellerBookings.css';
 

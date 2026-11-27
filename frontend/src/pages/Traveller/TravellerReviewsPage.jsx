@@ -5,18 +5,20 @@ import Navbar from '../../components/Navbar/navbar.jsx';
 import TravellerReviewsList from './TravellerReviewsList.jsx';
 import ReviewSubmissionForm from './ReviewSubmissionForm.jsx';
 import { selectAuthUser } from '../../features/authSlice.js';
+import { getEligibleTripsForReview, hasReviewedTripTarget } from '../../utils/reviewUtils.js';
 import {
   addDemoReview,
   clearReviewSubmitState,
   fetchReviews,
+  fetchTravellerTrips,
   selectReviewsError,
   selectReviewsList,
   selectReviewsLoading,
   selectReviewSubmitError,
   selectReviewSubmitting,
+  selectTripsList,
   submitReview,
-} from '../../features/reviewsSlice.js';
-import { fetchTravellerTrips, selectTripsList } from '../../features/tripsSlice.js';
+} from '../../store/traveller/index.js';
 import './travellerReviews.css';
 
 /**
@@ -106,6 +108,8 @@ function TravellerReviewsCore({
     dispatch(fetchTravellerTrips(tId));
   }, [isPreviewMode, effectiveUser?.userId, dispatch]);
 
+  const activeUserId = currentTravellerId || effectiveUser?.userId || null;
+
   // Trips whose persisted status is completed
   const completedTrips = useMemo(() => {
     return (travellerTrips || []).filter(
@@ -113,13 +117,9 @@ function TravellerReviewsCore({
     );
   }, [travellerTrips]);
 
-  const reviewedTripIds = useMemo(() => {
-    return new Set((reviews || []).map((r) => r.tripId).filter(Boolean));
-  }, [reviews]);
-
   const eligibleTrips = useMemo(() => {
-    return completedTrips.filter((t) => !reviewedTripIds.has(t.id));
-  }, [completedTrips, reviewedTripIds]);
+    return getEligibleTripsForReview(travellerTrips, reviews, { userId: activeUserId });
+  }, [travellerTrips, reviews, activeUserId]);
 
   // Overall rating summary calculations
   const totalCount = reviews.length;
@@ -190,8 +190,12 @@ function TravellerReviewsCore({
         if (!isCompleted) {
           throw new Error('Selected trip is not completed. Reviews can only be submitted for completed trips.');
         }
-        if (reviewedTripIds.has(targetTripId)) {
-          throw new Error('A review has already been submitted for this trip.');
+        if (hasReviewedTripTarget(reviews, {
+          tripId: targetTripId,
+          targetType: formData.targetType,
+          userId: formData.userId || activeUserId,
+        })) {
+          throw new Error(`A ${formData.targetType || ''} review has already been submitted for this trip.`.replace(/\s+/g, ' '));
         }
       }
 
@@ -387,7 +391,7 @@ function TravellerReviewsCore({
           isLoading={isLoading}
           error={error}
           onRetry={handleRetry}
-          currentTravellerId={currentTravellerId}
+          currentTravellerId={activeUserId}
           onOpenCreateModal={handleOpenModal}
         />
 
@@ -430,7 +434,7 @@ function TravellerReviewsCore({
                   onCancel={handleCloseModal}
                   isSubmitting={isSubmitting}
                   apiError={submitError}
-                  currentUserId={currentTravellerId}
+                  currentUserId={activeUserId}
                   defaultTargetType={defaultTargetType}
                   defaultTargetId={defaultTargetId}
                   completedTrips={eligibleTrips}

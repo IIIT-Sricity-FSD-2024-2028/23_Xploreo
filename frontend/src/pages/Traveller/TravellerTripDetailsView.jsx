@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
-import { retryTravellerTripRefund } from '../../features/tripsSlice.js';
+import { retryTravellerTripRefund } from '../../store/traveller/index.js';
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 import './travellerTrips.css';
 

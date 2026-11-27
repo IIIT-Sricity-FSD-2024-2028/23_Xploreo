@@ -32,7 +32,7 @@ import {
   setBrowseFilters,
   setSelectedItemPreview,
   toggleBrowseAmenity,
-} from '../../features/browseSlice.js';
+} from '../../store/traveller/index.js';
 import './travellerBrowse.css';
 
 /**

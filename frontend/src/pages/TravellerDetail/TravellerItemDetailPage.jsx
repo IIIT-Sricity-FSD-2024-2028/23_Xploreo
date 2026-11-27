@@ -6,9 +6,9 @@ import { selectAuthUser } from '../../features/authSlice.js';
 import {
   fetchBrowseItemDetail,
   selectBrowseDetail,
+  setCheckoutItem,
   setSelectedItemPreview,
-} from '../../features/browseSlice.js';
-import { setCheckoutItem } from '../../features/checkoutSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import {
   validateExperienceBooking,
@@ -205,8 +205,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       ? activeBookingCheckIn
       : effectiveType === 'package'
         ? (String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10) >= activeBookingCheckIn
-            ? String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10)
-            : activeBookingCheckIn)
+          ? String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10)
+          : activeBookingCheckIn)
         : selectedCheckOut;
 
   const liveBookingValidation = useMemo(() => {
@@ -379,8 +379,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     effectiveType === 'hotel'
       ? 'Hotels & Stays'
       : effectiveType === 'experience'
-      ? 'Curated Experience'
-      : 'Holiday Tour Package';
+        ? 'Curated Experience'
+        : 'Holiday Tour Package';
 
   return (
     <div className="trav-page-container" data-testid="traveller-item-detail-page">
@@ -846,11 +846,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                   const totalDaysCount = isArrayItin
                     ? rawItin.length
                     : (experienceDays.length > 0
-                        ? Math.max(
-                            day1Hotel ? 1 : 0,
-                            ...experienceDays.map((d, i) => Number(d.dayNumber || i + 2))
-                          )
-                        : (day1Hotel ? 1 : (item.durationNights ? item.durationNights + 1 : 0)));
+                      ? Math.max(
+                        day1Hotel ? 1 : 0,
+                        ...experienceDays.map((d, i) => Number(d.dayNumber || i + 2))
+                      )
+                      : (day1Hotel ? 1 : (item.durationNights ? item.durationNights + 1 : 0)));
 
                   return (
                     <>

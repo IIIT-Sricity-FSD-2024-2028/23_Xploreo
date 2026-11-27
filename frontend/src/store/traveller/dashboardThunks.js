@@ -1,9 +1,8 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { listHotelBookings } from '../services/hotels.api.js';
-import { listExperienceBookings } from '../services/partners.api.js';
-import { listReviews } from '../services/reviews.api.js';
-import { getTravellerTrips } from '../services/tripGuides.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { listHotelBookings } from '@/services/hotels.api.js';
+import { listExperienceBookings } from '@/services/partners.api.js';
+import { listReviews } from '@/services/reviews.api.js';
+import { getTravellerTrips } from '@/services/tripGuides.api.js';
 
 export function calculateBookingStats(list = []) {
   const safeList = Array.isArray(list) ? list : [];
@@ -32,7 +31,7 @@ function createMatchesIdentifier(userIdentifiers = []) {
 }
 
 export const fetchDashboardSummary = createAsyncThunk(
-  'dashboard/fetchDashboardSummary',
+  'traveller/dashboard/fetchDashboardSummary',
   async ({ userIdentifiers = [], candidateTripIds = [], currentTravellerId = '' } = {}) => {
     const isUserMatch = createMatchesIdentifier(userIdentifiers);
 
@@ -135,78 +134,3 @@ export const fetchDashboardSummary = createAsyncThunk(
     };
   },
 );
-
-const initialState = {
-  bookingStats: {
-    loading: false,
-    error: false,
-    total: 0,
-    count: 0,
-    confirmed: 0,
-    cancelled: 0,
-    confirmedSpend: 0,
-  },
-  tripStats: {
-    loading: false,
-    error: false,
-    count: 0,
-  },
-  reviewStats: {
-    loading: false,
-    error: false,
-    count: 0,
-  },
-  loading: false,
-  error: null,
-  loaded: false,
-  lastTravellerId: null,
-};
-
-const dashboardSlice = createSlice({
-  name: 'dashboard',
-  initialState,
-  reducers: {
-    resetDashboardState: () => initialState,
-  },
-  extraReducers: (builder) => {
-    builder
-      .addCase(fetchDashboardSummary.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-        state.bookingStats = { ...state.bookingStats, loading: true, error: false };
-        state.tripStats = { ...state.tripStats, loading: true, error: false };
-        state.reviewStats = { ...state.reviewStats, loading: true, error: false };
-      })
-      .addCase(fetchDashboardSummary.fulfilled, (state, action) => {
-        state.loading = false;
-        state.loaded = true;
-        state.error = null;
-        state.bookingStats = action.payload.bookingStats;
-        state.tripStats = action.payload.tripStats;
-        state.reviewStats = action.payload.reviewStats;
-        state.lastTravellerId = action.payload.travellerId;
-      })
-      .addCase(fetchDashboardSummary.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || action.error.message || 'Failed to load dashboard statistics.';
-        state.bookingStats = { ...state.bookingStats, loading: false, error: true };
-        state.tripStats = { ...state.tripStats, loading: false, error: true };
-        state.reviewStats = { ...state.reviewStats, loading: false, error: true };
-      })
-      .addCase(logoutUser, () => initialState)
-      .addCase(logoutSession.fulfilled, () => initialState)
-      .addCase(restoreAuthSession.rejected, () => initialState)
-      .addCase(setAuthUser, () => initialState)
-      .addCase(loginUser.fulfilled, () => initialState)
-      .addCase(registerUser.fulfilled, () => initialState);
-  },
-});
-
-export const { resetDashboardState } = dashboardSlice.actions;
-
-export const selectBookingStats = (state) => state.dashboard.bookingStats;
-export const selectTripStats = (state) => state.dashboard.tripStats;
-export const selectReviewStats = (state) => state.dashboard.reviewStats;
-export const selectDashboardLoading = (state) => state.dashboard.loading;
-
-export default dashboardSlice.reducer;
