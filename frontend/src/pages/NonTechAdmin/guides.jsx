@@ -1,8 +1,19 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
 import { SABadge } from '../../components/superadmin';
-import { getGuideApplications, updateGuideApplicationStatus } from '../../services/nta.api.js';
-import { getPlans } from '../../services/plans.api.js';
+import {
+  decideGuideApplication,
+  fetchGuideApplications,
+  fetchNtaPlans,
+  selectGuideApplicationCounts,
+  selectGuideApplications,
+  selectGuideApplicationsError,
+  selectGuideApplicationsLoading,
+  selectNtaPlans,
+  selectNtaPlansError,
+  selectNtaPlansLoading,
+} from '../../store/nta/index.js';
 import '../../components/superadmin/superadmin.css';
 import '../../components/tickets/tickets.css';
 import '../../components/nta/nta.css';
@@ -13,6 +24,10 @@ const STATUS_TABS = [
   { key: 'accepted', label: 'Accepted' },
   { key: 'rejected', label: 'Rejected' },
 ];
+
+// Stable empty values used when the NTA has no assigned region.
+const NO_ITEMS = [];
+const NO_COUNTS = { all: 0, pending: 0, accepted: 0, rejected: 0 };
 
 /**
  * NonTechAdmin Guide Applications Review & Decision Page.
@@ -45,11 +60,24 @@ export default function GuidesPage({
 
   const assignedRegion = session.region || '';
 
-  // Data states
-  const [allRegionalApps, setAllRegionalApps] = useState([]);
-  const [regionalPackages, setRegionalPackages] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
+  // Data states — the shared Redux store: applications in state.nta.guideApplications, and the
+  // region's packages (for the package filter) in state.nta.plans, the same plans Manage Packages uses.
+  const dispatch = useDispatch();
+  const storeApps = useSelector(selectGuideApplications);
+  const storeCounts = useSelector(selectGuideApplicationCounts);
+  const appsLoading = useSelector(selectGuideApplicationsLoading);
+  const appsError = useSelector(selectGuideApplicationsError);
+  const storePlans = useSelector(selectNtaPlans);
+  const plansLoading = useSelector(selectNtaPlansLoading);
+  const plansError = useSelector(selectNtaPlansError);
+
+  // Without an assigned region there is nothing to load or show.
+  const allRegionalApps = assignedRegion ? storeApps : NO_ITEMS;
+  const regionalPackages = assignedRegion ? storePlans : NO_ITEMS;
+  const isLoading = Boolean(assignedRegion) && (appsLoading || plansLoading);
+  const errorMessage = assignedRegion
+    ? appsError?.message || plansError?.message || null
+    : null;
 
   // Filters
   const [activeStatusTab, setActiveStatusTab] = useState('all');
@@ -78,51 +106,23 @@ export default function GuidesPage({
     setActiveStatusTab('all');
   }, [assignedRegion]);
 
-  // Load packages and applications for the active region
-  const loadData = useCallback(async () => {
-    if (!assignedRegion) {
-      setAllRegionalApps([]);
-      setRegionalPackages([]);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    try {
-      const [appsRes, plansRes] = await Promise.all([
-        getGuideApplications({ destination: assignedRegion }, session),
-        getPlans({ destination: assignedRegion }, session),
-      ]);
-
-      const appsList = Array.isArray(appsRes) ? appsRes : [];
-      const plansList = Array.isArray(plansRes?.data) ? plansRes.data : Array.isArray(plansRes) ? plansRes : [];
-
-      setAllRegionalApps(appsList);
-      setRegionalPackages(plansList);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load guide applications.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [assignedRegion, session]);
-
+  // Load packages and applications for the active region into the store (once per session;
+  // returning to this page reuses them, and decisions update them in place).
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!assignedRegion) return;
+    dispatch(fetchGuideApplications({ filters: { destination: assignedRegion }, session }));
+    dispatch(fetchNtaPlans({ session }));
+  }, [dispatch, assignedRegion, session]);
 
-  // Calculate status counts strictly from the current region's applications
-  const counts = useMemo(() => {
-    const res = { all: allRegionalApps.length, pending: 0, accepted: 0, rejected: 0 };
-    allRegionalApps.forEach((app) => {
-      const st = String(app.status || '').toLowerCase();
-      if (st === 'pending') res.pending += 1;
-      else if (st === 'accepted') res.accepted += 1;
-      else if (st === 'rejected') res.rejected += 1;
-    });
-    return res;
-  }, [allRegionalApps]);
+  // Refresh / Retry buttons: always reload both from the server
+  const loadData = useCallback(() => {
+    if (!assignedRegion) return;
+    dispatch(fetchGuideApplications({ filters: { destination: assignedRegion }, session, force: true }));
+    dispatch(fetchNtaPlans({ session, force: true }));
+  }, [dispatch, assignedRegion, session]);
+
+  // Status counts strictly from the current region's applications
+  const counts = assignedRegion ? storeCounts : NO_COUNTS;
 
   // Filter applications by status tab, search keyword, and package dropdown
   const filteredApps = useMemo(() => {
@@ -197,26 +197,16 @@ export default function GuidesPage({
     setModalFeedback(null);
 
     try {
-      const result = await updateGuideApplicationStatus(
-        selectedApp.id,
-        {
+      // The thunk replaces this application in the store with the server's record (no refetch);
+      // unwrap() throws on failure so the modal shows the real error and the entry is unchanged.
+      await dispatch(
+        decideGuideApplication({
+          id: selectedApp.id,
           status: decisionStatus,
           reason: decisionStatus === 'rejected' ? rejectionReason.trim() : 'Application approved.',
-        },
-        session
-      );
-
-      const updated = result.application || {
-        ...selectedApp,
-        status: decisionStatus,
-        decisionNotes: decisionStatus === 'rejected' ? rejectionReason.trim() : 'Application approved.',
-        decidedAt: new Date().toISOString(),
-      };
-
-      // Update state in allRegionalApps immediately
-      setAllRegionalApps((prev) =>
-        prev.map((item) => (item.id === selectedApp.id ? updated : item))
-      );
+          session,
+        })
+      ).unwrap();
 
       setPageSuccessNotice(
         `Guide application for ${selectedApp.guideName} was successfully ${decisionStatus}!`

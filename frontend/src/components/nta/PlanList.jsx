@@ -1,5 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getPlans, deletePlan } from '../../services/plans.api.js';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  deletePlanThunk,
+  fetchNtaPlans,
+  planRemoved,
+  selectNtaPlans,
+  selectNtaPlansError,
+  selectNtaPlansLoading,
+} from '../../store/nta/index.js';
 import PlanCard from './PlanCard.jsx';
 import PlanDetailsModal from './PlanDetailsModal.jsx';
 import './nta.css';
@@ -35,9 +43,12 @@ export default function PlanList({
   refreshTrigger = 0,
   className = '',
 }) {
-  const [plans, setPlans] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Plan data, loading and load errors come from the shared Redux store (state.nta.plans)
+  const dispatch = useDispatch();
+  const plans = useSelector(selectNtaPlans);
+  const loading = useSelector(selectNtaPlansLoading);
+  const loadError = useSelector(selectNtaPlansError);
+  const error = loadError ? loadError.message || 'Failed to retrieve travel packages.' : null;
 
   const assignedRegion = currentUser?.region || '';
   const userRole = (currentUser?.role || '').toLowerCase();
@@ -75,54 +86,16 @@ export default function PlanList({
     setPlanToDelete(null);
   }, [assignedRegion]);
 
-  // Asynchronous data fetching
+  // Load plans into the store once per session; creates and edits update the store in place, so
+  // returning to the list does not refetch. A changed refreshTrigger still forces a reload.
   useEffect(() => {
-    let ignore = false;
-    getPlans({}, currentUser)
-      .then((response) => {
-        if (!ignore) {
-          const data = Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-            ? response
-            : [];
-          setPlans(data);
-          setError(null);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err.message || 'Failed to retrieve travel packages.');
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [currentUser, refreshTrigger]);
+    dispatch(fetchNtaPlans(refreshTrigger ? { session: currentUser, force: true } : { session: currentUser }));
+  }, [dispatch, currentUser, refreshTrigger]);
 
   // Manual retry handler
   const handleRetry = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    getPlans({}, currentUser)
-      .then((response) => {
-        const data = Array.isArray(response?.data)
-          ? response.data
-          : Array.isArray(response)
-          ? response
-          : [];
-        setPlans(data);
-      })
-      .catch((err) => {
-        setError(err.message || 'Failed to retrieve travel packages.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, [currentUser]);
+    dispatch(fetchNtaPlans({ session: currentUser, force: true }));
+  }, [dispatch, currentUser]);
 
   // Custom deletion callback or default deletion confirmation
   const handleDeleteConfirm = async () => {
@@ -131,7 +104,7 @@ export default function PlanList({
       setIsDeleting(true);
       try {
         await onDeletePlan(planToDelete);
-        setPlans((prev) => prev.filter((p) => p.id !== planToDelete.id));
+        dispatch(planRemoved(planToDelete.id));
         setPlanToDelete(null);
       } catch (err) {
         setDeleteError(err.message || 'Failed to delete package.');
@@ -141,14 +114,14 @@ export default function PlanList({
       return;
     }
 
+    // SuperAdmin only (the delete button is not shown to anyone else; the thunk also refuses).
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      await deletePlan(planToDelete.id, currentUser);
-      setPlans((prev) => prev.filter((p) => p.id !== planToDelete.id));
+      await dispatch(deletePlanThunk({ id: planToDelete.id, session: currentUser })).unwrap();
       setPlanToDelete(null);
     } catch (err) {
-      setDeleteError(err.message || 'Failed to delete package.');
+      setDeleteError(err?.message || 'Failed to delete package.');
     } finally {
       setIsDeleting(false);
     }

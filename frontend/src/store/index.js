@@ -21,7 +21,9 @@ import experienceBookingsReducer from './experience/bookingsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
 import { guideReducer } from './guide/index.js';
 import { hotelReducer } from './hotel/index.js';
+import { ntaReducer } from './nta/index.js';
 import { superadminReducer } from './superadmin/index.js';
+import { techadminReducer } from './techadmin/index.js';
 import sessionReducer, { sessionEnded, sessionStarted } from './sessionSlice.js';
 
 const reducers = combineReducers({
@@ -39,6 +41,8 @@ const reducers = combineReducers({
   supportTickets: supportTicketsReducer,
   checkout: checkoutReducer,
   notifications: notificationsReducer,
+  techadmin: techadminReducer,
+  nta: ntaReducer,
 });
 
 function isSessionResetAction(action) {

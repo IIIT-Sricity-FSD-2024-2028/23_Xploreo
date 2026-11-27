@@ -1,14 +1,22 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import TicketList from '../../components/tickets/TicketList.jsx';
-import { getTickets, resolveTicket } from '../../services/tickets.api.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { MOCK_TICKETS } from '../../mocks/tickets/tickets.fixture.js';
+import {
+  fetchTickets,
+  resolveTicketThunk,
+  selectTaTickets,
+  selectTaTicketsError,
+  selectTaTicketsLoading,
+} from '../../store/techadmin/index.js';
 import '../../components/tickets/tickets.css';
 
 /**
  * Tech Admin Tickets Page.
  * Mounts the production TicketList component with real ticket loading and resolution flows.
- * Also supports isolated previews with previewMockData prop.
+ * Tickets come from the shared Redux store (state.techadmin.tickets), the same collection the
+ * TA dashboard shows. Also supports isolated previews with previewMockData prop.
  *
  * @param {Object} props
  * @param {boolean} [props.previewMockData=false] - When true, runs in isolated preview mode with mock tickets
@@ -19,41 +27,34 @@ export default function TechAdminTicketsPage({ previewMockData = false }) {
     return user || { userId: 'TA001', role: 'techadmin' };
   }, [user]);
 
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const dispatch = useDispatch();
+  const storeTickets = useSelector(selectTaTickets);
+  const storeLoading = useSelector(selectTaTicketsLoading);
+  const storeError = useSelector(selectTaTicketsError);
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    // If explicit mock preview requested, load mock fixture directly without network calls
-    if (previewMockData) {
-      setTimeout(() => {
-        setTickets(MOCK_TICKETS);
-        setIsLoading(false);
-      }, 100);
-      return;
-    }
-
-    try {
-      const data = await getTickets(session);
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setErrorMessage(err.message || 'Failed to load support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [session, previewMockData]);
+  // Isolated development preview: fixture tickets kept only in this page, never written to the
+  // shared store and never sent to the network. null = still "loading" the preview.
+  const [previewTickets, setPreviewTickets] = useState(null);
 
   useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
+    // If explicit mock preview requested, load mock fixture directly without network calls
+    if (previewMockData) {
+      const timer = setTimeout(() => setPreviewTickets(MOCK_TICKETS), 100);
+      return () => clearTimeout(timer);
+    }
+    // Loads once per session; tickets already in the store are reused when navigating back here.
+    dispatch(fetchTickets());
+    return undefined;
+  }, [dispatch, previewMockData]);
+
+  const tickets = previewMockData ? previewTickets ?? [] : storeTickets;
+  const isLoading = previewMockData ? previewTickets === null : storeLoading;
+  const errorMessage = previewMockData ? null : storeError?.message ?? null;
 
   const handleResolveTicket = async (ticketId, resolution) => {
     if (previewMockData) {
-      setTickets((prev) =>
-        prev.map((t) =>
+      setPreviewTickets((prev) =>
+        (prev ?? []).map((t) =>
           t.id === ticketId
             ? {
                 ...t,
@@ -69,11 +70,11 @@ export default function TechAdminTicketsPage({ previewMockData = false }) {
     }
 
     try {
-      await resolveTicket(ticketId, resolution, session);
-      // Refresh tickets to reflect updated state
-      await fetchTickets();
+      // The slice updates this ticket in place from the server response — no list refetch.
+      // unwrap() makes a failed resolve (e.g. 400 already resolved) throw, as TicketDetailsModal expects.
+      await dispatch(resolveTicketThunk({ ticketId, resolution })).unwrap();
     } catch (err) {
-      throw new Error(err.message || 'Failed to resolve ticket.');
+      throw new Error(err?.message || 'Failed to resolve ticket.', { cause: err });
     }
   };
 
