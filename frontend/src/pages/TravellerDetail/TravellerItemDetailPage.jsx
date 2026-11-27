@@ -1,41 +1,27 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
-import { useAuth } from '../../context/AuthContext.jsx';
-import { getHotel, listRooms } from '../../services/hotels.api.js';
-import { getExperience } from '../../services/partners.api.js';
-import { getPlanById } from '../../services/plans.api.js';
-import { apiRequest } from '../../services/api.js';
+import { selectAuthUser } from '../../features/authSlice.js';
 import {
-  DEFAULT_HOTEL_FIXTURES,
-  DEFAULT_EXPERIENCE_FIXTURES,
-  DEFAULT_PLAN_FIXTURES,
-  mapBackendHotel,
-  mapBackendExperience,
-  mapBackendPlan,
-} from '../../utils/browseUtils.js';
-import { formatCurrency, formatDate, validateBookingDates } from '../../utils/checkoutUtils.js';
+  fetchBrowseItemDetail,
+  selectBrowseDetail,
+  setSelectedItemPreview,
+} from '../../features/browseSlice.js';
+import { setCheckoutItem } from '../../features/checkoutSlice.js';
+import { formatCurrency } from '../../utils/checkoutUtils.js';
+import {
+  validateExperienceBooking,
+  validateHotelRoomBooking,
+  validatePackageBooking,
+} from '../../utils/bookingValidationUtils.js';
 import './travellerDetail.css';
 
-/**
- * TravellerItemDetailPage
- * Dedicated full page for inspecting Hotel, Experience, or Holiday Package details.
- * Supports:
- * - Dynamic data retrieval by item ID & category with browser refresh persistence
- * - Multiple images in an interactive gallery carousel with graceful missing image fallbacks
- * - Comprehensive item specifics (amenities, schedule slots, package tags & itinerary)
- * - Clear "Book Slot" CTA transitioning into the existing /Traveller/checkout flow
- * - Preservation of user selections (guests, rooms, dates, destination)
- */
 export default function TravellerItemDetailPage({ user: propUser, defaultType }) {
-  let authUser = null;
-  try {
-    const auth = useAuth();
-    authUser = auth?.user;
-  } catch {
-    authUser = null;
-  }
-  const user = propUser || authUser;
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const detail = useSelector(selectBrowseDetail);
+  const user = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
   const { type: paramType, id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,15 +42,19 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const initialGuests = searchParams.get('guests') || location.state?.guestCount || location.state?.guests || '2';
   const initialRooms = searchParams.get('rooms') || location.state?.roomCount || location.state?.rooms || '1';
 
-  // State management
-  const [item, setItem] = useState(() => {
-    if (location.state?.item && String(location.state.item.id) === String(id)) {
-      return location.state.item;
-    }
-    return null;
-  });
-  const [loading, setLoading] = useState(!item);
-  const [error, setError] = useState(null);
+  const expectedKey = `${effectiveType}:${id}`;
+  const statePreview = location.state?.item && String(location.state.item.id) === String(id)
+    ? location.state.item
+    : null;
+  const item = detail.key === expectedKey ? (detail.item || statePreview) : statePreview;
+  const rooms = useMemo(
+    () => (detail.key === expectedKey ? (detail.rooms || []).filter((r) => r.status !== 'inactive') : []),
+    [detail.key, detail.rooms, expectedKey],
+  );
+  const loading = detail.key === expectedKey ? detail.loading : !item;
+  const error = detail.key === expectedKey
+    ? (typeof detail.error === 'string' ? detail.error : detail.error?.message || null)
+    : null;
 
   // Gallery carousel state
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -81,110 +71,68 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const [selectedGuests, setSelectedGuests] = useState(initialGuests);
   const [selectedRooms, setSelectedRooms] = useState(initialRooms);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
-  const [rooms, setRooms] = useState([]);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
   const [bookError, setBookError] = useState('');
 
-  // Fetch item data on mount or when id/type changes
   useEffect(() => {
-    let isCancelled = false;
-
-    async function loadItem() {
-      if (!id) {
-        setError('Invalid item identifier provided.');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        let loaded = null;
-
-        if (effectiveType === 'hotel') {
-          const raw = await getHotel(id);
-          if (raw) loaded = mapBackendHotel(raw);
-        } else if (effectiveType === 'experience') {
-          const raw = await getExperience(id);
-          if (raw) loaded = mapBackendExperience(raw);
-        } else if (effectiveType === 'package') {
-          const raw = await getPlanById(id);
-          if (raw) loaded = mapBackendPlan(raw);
-        }
-
-        if (!isCancelled) {
-          if (loaded) {
-            setItem(loaded);
-            if (Array.isArray(loaded.slots) && loaded.slots.length > 0) {
-              const today = new Date().toISOString().slice(0, 10);
-              const available = loaded.slots.find((s) => s.available && String(s.date).slice(0, 10) >= today && (s.capacity - (s.booked || 0)) > 0);
-              setSelectedSlotId(available ? available.id : null);
-            }
-          } else if (!item) {
-            setError(`The requested ${effectiveType} (#${id}) could not be found.`);
-          }
-        }
-      } catch (err) {
-        if (!isCancelled && !item) {
-          setError(err.message || `Failed to load ${effectiveType} details.`);
-        }
-      } finally {
-        if (!isCancelled) setLoading(false);
-      }
+    if (statePreview && detail.key !== expectedKey) {
+      dispatch(setSelectedItemPreview({ key: expectedKey, item: statePreview }));
     }
+    if (id) {
+      dispatch(fetchBrowseItemDetail({ type: effectiveType, id }));
+    }
+  }, [dispatch, effectiveType, id, expectedKey, statePreview, detail.key]);
 
-    loadItem();
+  const effectiveSelectedSlotId = useMemo(() => {
+    if (selectedSlotId) return selectedSlotId;
+    const slots = item?.slots;
+    if (Array.isArray(slots) && slots.length > 0) {
+      const available = slots.find(
+        (s) => s.available && String(s.date).slice(0, 10) >= todayStr && (s.capacity - (s.booked || 0)) > 0,
+      );
+      return available ? available.id : null;
+    }
+    return null;
+  }, [selectedSlotId, item, todayStr]);
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [id, effectiveType]);
+  const effectiveSelectedRoomId = useMemo(() => {
+    if (rooms.some((r) => r.id === selectedRoomId)) return selectedRoomId;
+    return (rooms.find((r) => r.availableRooms > 0) || rooms[0])?.id ?? null;
+  }, [rooms, selectedRoomId]);
 
-  // Room types the hotel partner added to this property (active ones only)
-  useEffect(() => {
-    if (effectiveType !== 'hotel' || !id) return undefined;
-    let cancelled = false;
-    listRooms(id)
-      .then((list) => {
-        if (cancelled) return;
-        const active = (list || []).filter((r) => r.status !== 'inactive');
-        setRooms(active);
-        setSelectedRoomId((prev) => (active.some((r) => r.id === prev) ? prev : (active.find((r) => r.availableRooms > 0) || active[0])?.id ?? null));
-      })
-      .catch(() => { if (!cancelled) setRooms([]); });
-    return () => { cancelled = true; };
-  }, [id, effectiveType]);
-
-  const selectedRoom = rooms.find((r) => r.id === selectedRoomId) || null;
+  const selectedRoom = rooms.find((r) => r.id === effectiveSelectedRoomId) || null;
 
   // For a hotel with a chosen room type, the room count is capped at what is left of that type.
-  // No hardcoded ceiling — the list always goes exactly as far as real inventory allows.
   const roomOptions = useMemo(() => {
     if (effectiveType !== 'hotel' || !selectedRoom) return null;
     const max = Math.max(1, Number(selectedRoom.availableRooms) || 0);
     return Array.from({ length: max }, (_, i) => i + 1);
   }, [effectiveType, selectedRoom]);
 
-  useEffect(() => {
-    if (roomOptions && Number(selectedRooms) > roomOptions.length) setSelectedRooms(String(roomOptions.length));
-  }, [roomOptions, selectedRooms]);
+  const clampedSelectedRooms = roomOptions && Number(selectedRooms) > roomOptions.length
+    ? String(roomOptions.length)
+    : selectedRooms;
 
-  // Guest count is capped at real spots left (the chosen session's own slot capacity for an
-  // experience, or the item's own capacity otherwise) — never a fixed "5+" sentinel that silently
-  // misreports how many guests are actually being booked.
+  // Guest count options allow selecting up to full hotel/room capacity so invalid combinations
+  // (e.g. 1 room with 8 guests) are explicitly surfaced & blocked rather than silently masked.
   const guestOptions = useMemo(() => {
     let max = Number(item?.capacity) || 10;
-    if (effectiveType === 'experience' && Array.isArray(item?.slots)) {
-      const slot = item.slots.find((s) => s.id === selectedSlotId);
+    if (effectiveType === 'hotel' && selectedRoom) {
+      const maxPerRoom = Math.max(1, Number(selectedRoom.maxOccupancy) || 4);
+      const avail = Math.max(1, Number(selectedRoom.availableRooms) || 1);
+      max = Math.max(maxPerRoom, maxPerRoom * avail, Number(selectedGuests) || 1);
+    } else if (effectiveType === 'experience' && Array.isArray(item?.slots)) {
+      const slot = item.slots.find((s) => s.id === effectiveSelectedSlotId);
       if (slot) max = Math.max(1, (Number(slot.capacity) || 0) - (Number(slot.booked) || 0));
     }
     return Array.from({ length: Math.max(1, max) }, (_, i) => i + 1);
-  }, [item, effectiveType, selectedSlotId]);
+  }, [item, effectiveType, effectiveSelectedSlotId, selectedRoom, selectedGuests]);
 
-  useEffect(() => {
-    if (Number(selectedGuests) > guestOptions.length) setSelectedGuests(String(guestOptions.length));
-  }, [guestOptions, selectedGuests]);
+  const clampedSelectedGuests = effectiveType === 'hotel'
+    ? String(Math.max(1, Number(selectedGuests) || 1))
+    : Number(selectedGuests) > guestOptions.length
+      ? String(guestOptions.length)
+      : selectedGuests;
 
   // Photo gallery calculation (safe, no invented URLs)
   const images = useMemo(() => {
@@ -226,8 +174,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   };
 
   const nights = calculateNights();
-  const guestCountNum = Math.max(1, Number(selectedGuests) || 2);
-  const roomCountNum = Math.max(1, Number(selectedRooms) || 1);
+  const guestCountNum = Math.max(1, Number(clampedSelectedGuests) || 2);
+  const roomCountNum = Math.max(1, Number(clampedSelectedRooms) || 1);
   const startingRate = Number(
     (effectiveType === 'hotel' ? selectedRoom?.pricePerNight : undefined) ?? item?.pricePerNight ?? item?.price ?? item?.pricePerPerson ?? 5000,
   );
@@ -235,82 +183,125 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     effectiveType === 'hotel'
       ? startingRate * nights * roomCountNum
       : effectiveType === 'package'
-      ? startingRate * guestCountNum
-      : startingRate * guestCountNum;
+        ? startingRate * guestCountNum
+        : startingRate * guestCountNum;
   // Stays and experiences carry 12% taxes & fees (same rate as the server); packages keep their own figure.
   const taxes = effectiveType === 'package' ? Number(item?.taxesAndFees ?? 1200) : Math.round(subtotal * 0.12);
   const totalAmount = subtotal + taxes;
-  const isSoldOut = effectiveType === 'package' && (item?.status || '').toLowerCase() === 'sold_out';
+  const packageStatus = effectiveType === 'package' ? String(item?.status || 'available').toLowerCase() : 'available';
+  const isSoldOut = effectiveType === 'package' && packageStatus !== 'available';
+
+  const selectedSlotObj = Array.isArray(item?.slots)
+    ? item.slots.find((s) => s.id === effectiveSelectedSlotId)
+    : null;
+  const activeBookingCheckIn =
+    effectiveType === 'experience' && selectedSlotObj?.date
+      ? String(selectedSlotObj.date).slice(0, 10)
+      : effectiveType === 'package'
+        ? (selectedCheckIn || String(item?.itinerary?.day1?.hotel?.checkInDate || '').slice(0, 10))
+        : selectedCheckIn;
+  const activeBookingCheckOut =
+    effectiveType === 'experience'
+      ? activeBookingCheckIn
+      : effectiveType === 'package'
+        ? (String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10) >= activeBookingCheckIn
+            ? String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10)
+            : activeBookingCheckIn)
+        : selectedCheckOut;
+
+  const liveBookingValidation = useMemo(() => {
+    if (!item) return { valid: false, error: '' };
+    if (effectiveType === 'hotel') {
+      if (rooms.length === 0) {
+        return { valid: false, error: 'No bookable room categories are currently available for this hotel.' };
+      }
+      return validateHotelRoomBooking({
+        hotel: item,
+        room: selectedRoom,
+        roomsCount: roomCountNum,
+        guestsCount: guestCountNum,
+        checkIn: activeBookingCheckIn,
+        checkOut: activeBookingCheckOut,
+        today: todayStr,
+      });
+    }
+    if (effectiveType === 'experience') {
+      return validateExperienceBooking({
+        experience: item,
+        slot: selectedSlotObj,
+        date: activeBookingCheckIn,
+        participants: guestCountNum,
+        today: todayStr,
+      });
+    }
+    return validatePackageBooking({
+      plan: item,
+      guestsCount: guestCountNum,
+      checkIn: activeBookingCheckIn,
+      checkOut: activeBookingCheckOut,
+      today: todayStr,
+    });
+  }, [
+    item,
+    effectiveType,
+    rooms.length,
+    selectedRoom,
+    roomCountNum,
+    guestCountNum,
+    activeBookingCheckIn,
+    activeBookingCheckOut,
+    selectedSlotObj,
+    todayStr,
+  ]);
 
   // Handle "Book Slot" navigation into existing /Traveller/checkout flow
   const handleBookSlot = () => {
     if (!item) return;
     if (isSoldOut) {
-      setBookError('This travel package is sold out and cannot be booked.');
+      setBookError('This travel package is currently unavailable and cannot be booked.');
       return;
     }
 
-    const selectedSlotObj = Array.isArray(item.slots)
-      ? item.slots.find((s) => s.id === selectedSlotId)
-      : null;
-
-    // Dates come from the thing being booked: a hotel's chosen stay, an experience's chosen session,
-    // a package's fixed itinerary — never from a stray search-bar date.
-    let bookingCheckIn = selectedCheckIn;
-    let bookingCheckOut = selectedCheckOut;
-    if (effectiveType === 'experience') {
-      if (Array.isArray(item.slots) && item.slots.length > 0) {
-        if (!selectedSlotObj) {
-          setBookError('Please select a session slot to book.');
-          return;
-        }
-        if (!selectedSlotObj.available || (selectedSlotObj.capacity || 0) - (selectedSlotObj.booked || 0) < guestCountNum) {
-          setBookError('That session does not have enough spots left. Choose another session or fewer guests.');
-          return;
-        }
-        bookingCheckIn = String(selectedSlotObj.date).slice(0, 10);
-      }
-      bookingCheckOut = bookingCheckIn;
-    } else if (effectiveType === 'package') {
-      const hotel = item.itinerary?.day1?.hotel;
-      if (hotel?.checkInDate) {
-        bookingCheckIn = hotel.checkInDate;
-        bookingCheckOut = hotel.checkOutDate || hotel.checkInDate;
-      }
-    }
-    if (effectiveType === 'hotel' && rooms.length > 0) {
-      if (!selectedRoom) {
-        setBookError('Please select a room type to book.');
-        return;
-      }
-      if (selectedRoom.availableRooms < roomCountNum) {
-        setBookError(`Only ${selectedRoom.availableRooms} "${selectedRoom.type}" room(s) left. Choose another room type or fewer rooms.`);
-        return;
-      }
-    }
-    const dateError = validateBookingDates({
-      type: effectiveType === 'hotel' ? 'hotel' : effectiveType,
-      checkIn: bookingCheckIn,
-      checkOut: bookingCheckOut,
-    });
-    if (dateError) {
-      setBookError(dateError);
+    if (!liveBookingValidation.valid) {
+      setBookError(liveBookingValidation.error || 'Please resolve the reservation validation errors above.');
       return;
+    }
+
+    let bookingItinerary = effectiveType === 'package' ? item.itinerary : undefined;
+    if (effectiveType === 'package' && bookingItinerary?.day1?.hotel && activeBookingCheckIn) {
+      bookingItinerary = {
+        ...bookingItinerary,
+        day1: {
+          ...bookingItinerary.day1,
+          hotel: {
+            ...bookingItinerary.day1.hotel,
+            checkInDate: activeBookingCheckIn,
+            checkOutDate: activeBookingCheckOut || activeBookingCheckIn,
+          },
+        },
+      };
     }
     setBookError('');
 
     const checkoutItem = {
-      id: item.id || `item-${Date.now()}`,
+      id: item.id || id,
       title: item.name || item.title || 'Selected Reservation',
       type: effectiveType === 'hotel' ? 'hotel' : effectiveType === 'experience' ? 'experience' : 'plan',
       location: item.location || item.city || item.destination || 'India',
-      date: bookingCheckIn,
-      checkIn: bookingCheckIn,
-      checkOut: bookingCheckOut,
-      itinerary: effectiveType === 'package' ? item.itinerary : undefined,
+      date: activeBookingCheckIn,
+      checkIn: activeBookingCheckIn,
+      checkOut: activeBookingCheckOut,
+      itinerary: bookingItinerary,
       guestCount: guestCountNum,
-      roomCount: roomCountNum,
+      roomCount: effectiveType === 'hotel' ? roomCountNum : 1,
+      roomId: effectiveType === 'hotel' ? selectedRoom?.id : undefined,
       roomType: effectiveType === 'hotel' ? selectedRoom?.type : undefined,
+      maxOccupancy: effectiveType === 'hotel' ? selectedRoom?.maxOccupancy : undefined,
+      availableRooms: effectiveType === 'hotel' ? selectedRoom?.availableRooms : undefined,
+      capacity: effectiveType === 'experience' ? (selectedSlotObj?.capacity ?? item.capacity) : item.capacity,
+      slots: effectiveType === 'experience' ? item.slots : undefined,
+      status: item.status,
+      availability: item.availability,
       basePrice: startingRate,
       taxesAndFees: taxes,
       total: totalAmount,
@@ -319,13 +310,15 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       item,
     };
 
+    dispatch(setCheckoutItem(checkoutItem));
+
     navigate('/Traveller/checkout', {
       state: {
         item: checkoutItem,
         guests: guestCountNum,
-        rooms: roomCountNum,
-        checkIn: bookingCheckIn,
-        checkOut: bookingCheckOut,
+        rooms: effectiveType === 'hotel' ? roomCountNum : 1,
+        checkIn: activeBookingCheckIn,
+        checkOut: activeBookingCheckOut,
       },
     });
   };
@@ -369,7 +362,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
               <button
                 type="button"
                 className="trav-btn trav-btn-secondary"
-                onClick={() => window.location.reload()}
+                onClick={() => dispatch(fetchBrowseItemDetail({ type: effectiveType, id }))}
               >
                 Retry
               </button>
@@ -657,7 +650,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {rooms.map((room) => {
                         const soldOut = room.availableRooms <= 0;
-                        const chosen = room.id === selectedRoomId;
+                        const chosen = room.id === effectiveSelectedRoomId;
                         return (
                           <button
                             key={room.id}
@@ -737,12 +730,20 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {item.slots.map((slot) => {
                         const isPast = String(slot.date).slice(0, 10) < todayStr;
-                        const spotsLeft = isPast ? 0 : Math.max(0, (slot.capacity || 10) - (slot.booked || 0));
-                        const isSelected = selectedSlotId === slot.id && !isPast;
+                        const spotsLeft = isPast || slot.available === false
+                          ? 0
+                          : Math.max(0, (slot.capacity || 10) - (slot.booked || 0));
+                        const isDisabled = isPast || slot.available === false || spotsLeft <= 0;
+                        const isSelected = effectiveSelectedSlotId === slot.id && !isDisabled;
                         return (
                           <div
                             key={slot.id}
-                            onClick={() => !isPast && spotsLeft > 0 && setSelectedSlotId(slot.id)}
+                            onClick={() => {
+                              if (!isDisabled) {
+                                setSelectedSlotId(slot.id);
+                                setSelectedCheckIn(String(slot.date).slice(0, 10));
+                              }
+                            }}
                             style={{
                               display: 'flex',
                               alignItems: 'center',
@@ -751,8 +752,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                               borderRadius: '10px',
                               border: isSelected ? '2px solid #0d9488' : '1px solid #e2e8f0',
                               backgroundColor: isSelected ? '#f0fdfa' : '#ffffff',
-                              cursor: isPast || spotsLeft === 0 ? 'not-allowed' : 'pointer',
-                              opacity: isPast ? 0.55 : 1,
+                              cursor: isDisabled ? 'not-allowed' : 'pointer',
+                              opacity: isDisabled ? 0.55 : 1,
                               transition: 'all 0.15s ease',
                             }}
                           >
@@ -763,11 +764,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                             <span
                               style={{
                                 fontSize: '0.85rem',
-                                color: spotsLeft > 0 ? '#0d9488' : '#ef4444',
+                                color: !isDisabled ? '#0d9488' : '#ef4444',
                                 fontWeight: 700,
                               }}
                             >
-                              {isPast ? 'Session passed' : spotsLeft > 0 ? `${spotsLeft} spots available` : 'Sold out'}
+                              {isPast ? 'Session passed' : slot.available === false ? 'Unavailable' : spotsLeft > 0 ? `${spotsLeft} spots available` : 'Sold out'}
                             </span>
                           </div>
                         );
@@ -1150,7 +1151,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 </label>
                 <select
                   id="detail-guests"
-                  value={selectedGuests}
+                  value={clampedSelectedGuests}
                   onChange={(e) => setSelectedGuests(e.target.value)}
                   style={{
                     width: '100%',
@@ -1166,17 +1167,22 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     <option key={n} value={String(n)}>{n} {n === 1 ? 'Guest' : 'Guests'}</option>
                   ))}
                 </select>
+                {effectiveType === 'hotel' && selectedRoom && (
+                  <p style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                    Max {selectedRoom.maxOccupancy} guests/room ({Number(selectedRoom.maxOccupancy || 4) * roomCountNum} max for {roomCountNum} {selectedRoom.type} room{roomCountNum === 1 ? '' : 's'})
+                  </p>
+                )}
               </div>
 
-              {/* Rooms selector (hotels & packages) */}
-              {effectiveType !== 'experience' && (
+              {/* Rooms selector (hotels only) */}
+              {effectiveType === 'hotel' && (
                 <div>
                   <label htmlFor="detail-rooms" style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
                     ROOMS
                   </label>
                   <select
                     id="detail-rooms"
-                    value={selectedRooms}
+                    value={clampedSelectedRooms}
                     onChange={(e) => setSelectedRooms(e.target.value)}
                     style={{
                       width: '100%',
@@ -1234,19 +1240,23 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
               </div>
             )}
 
-            {bookError ? (
-              <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '12px' }}>
-                {bookError}
+            {(bookError || (!liveBookingValidation.valid && !isSoldOut && liveBookingValidation.error)) ? (
+              <div
+                role="alert"
+                data-testid="booking-validation-error"
+                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '10px 12px', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '12px' }}
+              >
+                {bookError || liveBookingValidation.error}
               </div>
             ) : null}
 
             {/* Clear "Book Slot" Primary CTA Button */}
             <button
               type="button"
-              className={`trav-btn ${isSoldOut ? 'trav-btn-disabled' : 'trav-btn-primary'}`}
+              className={`trav-btn ${(isSoldOut || !liveBookingValidation.valid) ? 'trav-btn-disabled' : 'trav-btn-primary'}`}
               id="btn-book-slot"
               data-testid="btn-book-slot"
-              disabled={isSoldOut}
+              disabled={isSoldOut || !liveBookingValidation.valid}
               onClick={handleBookSlot}
               style={{
                 width: '100%',
@@ -1255,14 +1265,14 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 fontWeight: 800,
                 boxSizing: 'border-box',
                 textAlign: 'center',
-                boxShadow: isSoldOut ? 'none' : '0 4px 14px rgba(13, 148, 136, 0.35)',
-                opacity: isSoldOut ? 0.6 : 1,
-                cursor: isSoldOut ? 'not-allowed' : 'pointer',
-                backgroundColor: isSoldOut ? '#94a3b8' : undefined,
-                borderColor: isSoldOut ? '#94a3b8' : undefined,
+                boxShadow: (isSoldOut || !liveBookingValidation.valid) ? 'none' : '0 4px 14px rgba(13, 148, 136, 0.35)',
+                opacity: (isSoldOut || !liveBookingValidation.valid) ? 0.6 : 1,
+                cursor: (isSoldOut || !liveBookingValidation.valid) ? 'not-allowed' : 'pointer',
+                backgroundColor: (isSoldOut || !liveBookingValidation.valid) ? '#94a3b8' : undefined,
+                borderColor: (isSoldOut || !liveBookingValidation.valid) ? '#94a3b8' : undefined,
               }}
             >
-              {isSoldOut ? 'Sold Out — Bookings Unavailable' : 'Book Slot'}
+              {isSoldOut ? 'Unavailable — Bookings Closed' : 'Book Slot'}
             </button>
 
             <div style={{ marginTop: '16px', textAlign: 'center' }}>

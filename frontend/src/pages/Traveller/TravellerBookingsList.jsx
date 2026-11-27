@@ -1,8 +1,19 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useInRouterContext } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
-import { apiRequest } from '../../services/api.js';
+import {
+  clearBookingActionError,
+  clearBookingCancellationResult,
+  fetchTravellerBookings,
+  selectBookingsError,
+  selectBookingsList,
+  selectBookingsLoading,
+  selectSelectedBookingId,
+  setSelectedBookingId,
+} from '../../features/bookingsSlice.js';
+import { selectAuthUser } from '../../features/authSlice.js';
 import BookingDetailsView from './BookingDetailsView.jsx';
 import ExperienceGuidePanel from './ExperienceGuidePanel.jsx';
 import CancellationModal from '../../components/checkout/CancellationModal.jsx';
@@ -43,8 +54,8 @@ function getBookingImage(booking) {
  * - Rich booking cards with destination imagery, badge pills, and responsive layout
  * - Preserves all live API calls, mock hotel fallback, and auth guards.
  */
-export default function TravellerBookingsList({
-  user,
+function TravellerBookingsCore({
+  user: propUser,
   showNavbar = true,
   bookings: initialBookings = [],
   isLoading: initialLoading = false,
@@ -52,8 +63,17 @@ export default function TravellerBookingsList({
   onRetry,
   currentTravellerId,
   useFixtures = false,
+  inRouter = false,
+  locationKey = null,
 }) {
-  const inRouter = useInRouterContext();
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const liveBookings = useSelector(selectBookingsList);
+  const liveLoading = useSelector(selectBookingsLoading);
+  const liveError = useSelector(selectBookingsError);
+  const reduxSelectedBookingId = useSelector(selectSelectedBookingId);
+
+  const user = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
   const effectiveUser = user || {
     name: 'Anjali Sharma',
     username: 'Anjali Sharma',
@@ -65,10 +85,6 @@ export default function TravellerBookingsList({
   const isControlled = initialLoading || !!initialError;
   const shouldAutoFetch = !isPreviewMode && !isControlled;
 
-  const [liveBookings, setLiveBookings] = useState([]);
-  const [liveLoading, setLiveLoading] = useState(shouldAutoFetch);
-  const [liveError, setLiveError] = useState(null);
-
   const bookings = isPreviewMode || isControlled ? initialBookings : liveBookings;
   const isLoading = isControlled ? initialLoading : (isPreviewMode ? false : liveLoading);
   const error = isControlled ? initialError : (isPreviewMode ? null : liveError);
@@ -76,51 +92,40 @@ export default function TravellerBookingsList({
   const [activeTab, setActiveTab] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL'); // 'ALL' | 'EXPERIENCE' | 'HOTEL'
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [localSelectedBookingId, setLocalSelectedBookingId] = useState(null);
   const [cancellingBooking, setCancellingBooking] = useState(null);
 
-  const fetchLiveBookings = useCallback(async () => {
-    setLiveLoading(true);
-    setLiveError(null);
-    try {
-      // Fetch both experience bookings and hotel bookings from live backend APIs
-      const [expData, hotelData] = await Promise.all([
-        apiRequest('/experience-bookings'),
-        apiRequest('/bookings'),
-      ]);
-
-      const expList = (Array.isArray(expData) ? expData : expData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'experience',
-      }));
-
-      const hotelList = (Array.isArray(hotelData) ? hotelData : hotelData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'hotel',
-      }));
-
-      setLiveBookings([...expList, ...hotelList]);
-    } catch (err) {
-      setLiveError(err?.message || 'Failed to load bookings from server.');
-      setLiveBookings([]);
-    } finally {
-      setLiveLoading(false);
+  const selectedBookingId = isPreviewMode ? localSelectedBookingId : reduxSelectedBookingId;
+  const updateSelectedBookingId = (id) => {
+    if (isPreviewMode) {
+      setLocalSelectedBookingId(id);
+    } else {
+      dispatch(setSelectedBookingId(id));
     }
-  }, []);
+  };
+
+  const fetchLiveBookings = useCallback(() => {
+    return dispatch(fetchTravellerBookings());
+  }, [dispatch]);
 
   useEffect(() => {
-    let isCancelled = false;
-    const load = async () => {
-      await Promise.resolve();
-      if (!isCancelled && shouldAutoFetch) {
-        await fetchLiveBookings();
-      }
-    };
-    load();
-    return () => {
-      isCancelled = true;
-    };
+    if (shouldAutoFetch) {
+      fetchLiveBookings();
+    }
   }, [shouldAutoFetch, fetchLiveBookings]);
+
+  // Reset selected booking detail & transient action/cancellation state on route transition
+  useEffect(() => {
+    if (isPreviewMode) return undefined;
+    dispatch(setSelectedBookingId(null));
+    dispatch(clearBookingActionError());
+    dispatch(clearBookingCancellationResult());
+    return () => {
+      dispatch(setSelectedBookingId(null));
+      dispatch(clearBookingActionError());
+      dispatch(clearBookingCancellationResult());
+    };
+  }, [dispatch, isPreviewMode, locationKey]);
 
   const handleRetry = () => {
     if (onRetry) {
@@ -151,7 +156,7 @@ export default function TravellerBookingsList({
         <div className="trav-bookings-page" data-testid="traveller-booking-details-container">
           <BookingDetailsView
             booking={selectedBooking}
-            onBack={() => setSelectedBookingId(null)}
+            onBack={() => updateSelectedBookingId(null)}
             onCancelClick={(b) => setCancellingBooking(b)}
             onBookingUpdated={fetchLiveBookings}
           />
@@ -532,7 +537,7 @@ export default function TravellerBookingsList({
                     <button
                       type="button"
                       className="trav-btn-view-details"
-                      onClick={() => setSelectedBookingId(booking.id)}
+                      onClick={() => updateSelectedBookingId(booking.id)}
                       aria-label={`View details for ${title || booking.id}`}
                     >
                       View Details →
@@ -580,5 +585,19 @@ export default function TravellerBookingsList({
       </div>
     </div>
 
+  );
+}
+
+function TravellerBookingsWithRouter(props) {
+  const location = useLocation();
+  return <TravellerBookingsCore {...props} inRouter locationKey={location?.key || 'router'} />;
+}
+
+export default function TravellerBookingsList(props) {
+  const inRouter = useInRouterContext();
+  return inRouter ? (
+    <TravellerBookingsWithRouter {...props} />
+  ) : (
+    <TravellerBookingsCore {...props} inRouter={false} locationKey={null} />
   );
 }

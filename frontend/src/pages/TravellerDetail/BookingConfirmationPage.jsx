@@ -1,6 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { getBooking, cancelBooking, getHotel } from '@/services/hotels.api.js';
+import {
+  fetchBookingDetail,
+  selectBookingDetailError,
+  selectBookingDetailLoading,
+  selectSelectedBookingDetail,
+  selectSelectedBookingHotel,
+  setSelectedBookingDetail,
+} from '@/features/bookingsSlice.js';
 import CancellationModal from '@/components/checkout/CancellationModal.jsx';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
@@ -9,56 +17,35 @@ import '@/pages/Traveller/travellerBookings.css';
 export default function BookingConfirmationPage() {
   const { id } = useParams();
   const location = useLocation();
+  const dispatch = useDispatch();
 
-  const [booking, setBooking] = useState(location.state?.booking || null);
-  const [hotel, setHotel] = useState(null);
-  const [loading, setLoading] = useState(!location.state?.booking);
-  const [error, setError] = useState(null);
+  const reduxBooking = useSelector(selectSelectedBookingDetail);
+  const reduxHotel = useSelector(selectSelectedBookingHotel);
+  const detailLoading = useSelector(selectBookingDetailLoading);
+  const detailError = useSelector(selectBookingDetailError);
+
+  const locationBooking = location.state?.booking || null;
+  const booking = (reduxBooking && String(reduxBooking.id) === String(id)) ? reduxBooking : locationBooking;
+  const hotel = (reduxBooking && String(reduxBooking.id) === String(id)) ? reduxHotel : null;
+  const loading = detailLoading && !booking;
+  const error = !booking ? detailError : null;
+
   const [copied, setCopied] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
-
-  const loadBookingData = async () => {
-    if (!id || id.trim() === '') {
-      setError({ status: 400, message: 'Invalid booking reference ID provided.' });
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const bookingData = await getBooking(id);
-      setBooking(bookingData);
-
-      if (bookingData?.hotelId) {
-        try {
-          const hotelData = await getHotel(bookingData.hotelId);
-          setHotel(hotelData);
-        } catch {
-          // If hotel fails to load, booking is still displayed
-        }
-      }
-    } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
-      const message = err?.message || 'Failed to load booking details.';
-      setError({ status, message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const loadBookingData = useCallback(() => {
+    dispatch(fetchBookingDetail(id));
+  }, [dispatch, id]);
 
   useEffect(() => {
-    if (!booking) {
-      loadBookingData();
-    } else if (booking.hotelId && !hotel) {
-      getHotel(booking.hotelId)
-        .then((data) => setHotel(data))
-        .catch(() => {});
+    if (locationBooking && (!reduxBooking || String(reduxBooking.id) !== String(id))) {
+      dispatch(setSelectedBookingDetail({ booking: locationBooking, hotel: null }));
     }
-  }, [id]);
+    if (!locationBooking || (locationBooking.hotelId && !hotel)) {
+      loadBookingData();
+    }
+  }, [id, locationBooking, reduxBooking, hotel, dispatch, loadBookingData]);
 
   const handleCopyCode = () => {
     const code = booking?.id || id;
@@ -74,18 +61,17 @@ export default function BookingConfirmationPage() {
   };
 
   const handleCancelSuccess = (result) => {
-    if (result?.booking) {
-      setBooking(result.booking);
-    } else {
-      setBooking((prev) => ({
-        ...prev,
-        status: 'CANCELLED',
-        refundStatus: result?.refundStatus,
-        refundAmount: result?.refundAmount,
-        refundReference: result?.refundReference,
-        cancellationPolicyNote: result?.cancellationPolicyNote,
-      }));
-    }
+    const updatedBooking = result?.booking
+      ? result.booking
+      : {
+          ...booking,
+          status: 'CANCELLED',
+          refundStatus: result?.refundStatus,
+          refundAmount: result?.refundAmount,
+          refundReference: result?.refundReference,
+          cancellationPolicyNote: result?.cancellationPolicyNote,
+        };
+    dispatch(setSelectedBookingDetail({ booking: updatedBooking, hotel }));
     setCancelSuccess(true);
   };
 
@@ -194,8 +180,6 @@ export default function BookingConfirmationPage() {
   }
 
   const isCancelled = booking.status === 'CANCELLED';
-  const isConfirmed = booking.status === 'CONFIRMED' || booking.status === 'confirmed';
-  const isCheckedIn = booking.status === 'CHECKED_IN';
   const isCompleted = booking.status === 'COMPLETED' || booking.status === 'CHECKED_OUT';
 
   const calculateNights = () => {

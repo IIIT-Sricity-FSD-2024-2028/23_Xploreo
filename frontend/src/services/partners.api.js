@@ -7,7 +7,7 @@ import { request } from '@/foundation';
 const EXPERIENCE_FIELDS = ['title', 'description', 'destination', 'category', 'price', 'durationHours', 'capacity', 'image', 'availability'];
 const PROFILE_FIELDS = ['name', 'email', 'phone', 'businessName', 'location'];
 // CreateExperienceBookingDto
-const EXPERIENCE_BOOKING_FIELDS = ['experienceId', 'guestName', 'email', 'phone', 'date', 'participants'];
+const EXPERIENCE_BOOKING_FIELDS = ['id', 'experienceId', 'guestName', 'email', 'phone', 'date', 'participants'];
 
 function pick(source, fields) {
   return Object.fromEntries(fields.filter((f) => source[f] !== undefined).map((f) => [f, source[f]]));

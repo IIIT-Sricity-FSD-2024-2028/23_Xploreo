@@ -167,5 +167,13 @@ export function mapBackendTrip(raw) {
     progressPercentage: typeof raw.progressPercentage === 'number' ? raw.progressPercentage : (Number(raw.progressPercentage) || 0),
     lastUpdatedAt: raw.lastUpdatedAt || new Date().toISOString(),
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? raw.itinerary : {},
+    ...(raw.guide ? { guide: raw.guide } : {}),
+    ...(raw.refundEligibility !== undefined ? { refundEligibility: raw.refundEligibility } : {}),
+    ...(raw.refundStatus !== undefined ? { refundStatus: raw.refundStatus } : {}),
+    ...(raw.refundAmount !== undefined ? { refundAmount: raw.refundAmount } : {}),
+    ...(raw.refundReference !== undefined ? { refundReference: raw.refundReference } : {}),
+    ...(raw.cancellationPolicyNote !== undefined ? { cancellationPolicyNote: raw.cancellationPolicyNote } : {}),
+    ...(raw.cancelledAt !== undefined ? { cancelledAt: raw.cancelledAt } : {}),
+    ...(raw.cancellationReason !== undefined ? { cancellationReason: raw.cancellationReason } : {}),
   };
 }

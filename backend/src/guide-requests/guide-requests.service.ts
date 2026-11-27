@@ -89,16 +89,19 @@ export class GuideRequestsService {
       }
     }
 
+    const targetStatus = dto.status ?? request.status;
+    const assignedGuideId = nextGuideId ?? request.guideId;
+
+    if (targetStatus === GuideRequestStatus.ACCEPTED && assignedGuideId) {
+      this.tripsService.assignGuide(request.tripId, assignedGuideId);
+    }
+
     const updated = this.repository.update(id, {
-      status: dto.status ?? request.status,
-      guideId: nextGuideId ?? request.guideId,
+      status: targetStatus,
+      guideId: assignedGuideId,
     });
 
     if (!updated) throw new NotFoundException(`Guide request ${id} not found`);
-
-    if (updated.status === GuideRequestStatus.ACCEPTED && updated.guideId) {
-      this.tripsService.assignGuide(updated.tripId, updated.guideId);
-    }
 
     return updated;
   }

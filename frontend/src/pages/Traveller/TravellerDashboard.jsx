@@ -1,8 +1,28 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useInRouterContext } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
-import { apiRequest, getSavedUser } from '../../services/api.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
+import {
+  calculateBookingStats,
+  fetchDashboardSummary,
+  selectBookingStats,
+  selectReviewStats,
+  selectTripStats,
+} from '../../features/dashboardSlice.js';
+import {
+  fetchBrowseExperiences,
+  fetchBrowseHotels,
+  fetchBrowsePlans,
+  selectBrowseExperiences,
+  selectBrowseHotels,
+  selectBrowsePlans,
+  setBrowseCategory,
+  setBrowseFilters,
+} from '../../features/browseSlice.js';
+import { setCheckoutItem } from '../../features/checkoutSlice.js';
+import { selectAuthUser } from '../../features/authSlice.js';
+import { BROWSE_CATEGORIES } from '../../utils/browseUtils.js';
 
 // Day 2 — Traveller Bookings
 import TravellerBookingsList from './TravellerBookingsList.jsx';
@@ -74,7 +94,7 @@ const DESTINATIONS = [
   },
 ];
 
-export const DESTINATION_OPTIONS = ['Mumbai', 'Delhi', 'Goa', 'Jaipur', 'Kerala'];
+const DESTINATION_OPTIONS = ['Mumbai', 'Delhi', 'Goa', 'Jaipur', 'Kerala'];
 
 const HOW_IT_WORKS_STEPS = [
   {
@@ -97,23 +117,8 @@ const HOW_IT_WORKS_STEPS = [
   },
 ];
 
-function calculateBookingStats(list = []) {
-  const safeList = Array.isArray(list) ? list : [];
-  const total = safeList.length;
-  const confirmed = safeList.filter((b) => (b.status || '').toUpperCase() === 'CONFIRMED').length;
-  const cancelled = safeList.filter((b) => (b.status || '').toUpperCase() === 'CANCELLED').length;
-  const confirmedSpend = safeList.reduce((sum, b) => {
-    if ((b.status || '').toUpperCase() === 'CONFIRMED') {
-      return sum + (Number(b.totalAmount) || 0);
-    }
-    return sum;
-  }, 0);
-
-  return { total, count: total, confirmed, cancelled, confirmedSpend };
-}
-
-export default function TravellerDashboard({
-  user,
+function TravellerDashboardCore({
+  user: propUser,
   bookings = [],
   trips = [],
   reviews = [],
@@ -127,73 +132,91 @@ export default function TravellerDashboard({
   logAction,
   useFixtures = false,
   showNavbar = true,
+  inRouter = false,
+  navigate = null,
 }) {
+  const dispatch = useDispatch();
+  const authUser = useSelector(selectAuthUser);
+  const user = propUser || (authUser && authUser.role !== 'default' ? authUser : null);
+  const reduxBookingStats = useSelector(selectBookingStats);
+  const reduxTripStats = useSelector(selectTripStats);
+  const reduxReviewStats = useSelector(selectReviewStats);
+
   const [activeSection, setActiveSection] = useState(SECTION.HOME);
   const [searchTab, setSearchTab] = useState('hotels');
 
-  // Live statistics state for authenticated traveller
-  const [bookingStats, setBookingStats] = useState(() => {
+  const bookingStats = useMemo(() => {
     if (bookings && bookings.length > 0) {
-      const stats = calculateBookingStats(bookings);
-      return {
-        loading: false,
-        error: false,
-        ...stats,
-      };
+      return { loading: false, error: false, ...calculateBookingStats(bookings) };
     }
-    return {
-      loading: !useFixtures,
-      error: false,
-      total: 0,
-      count: 0,
-      confirmed: 0,
-      cancelled: 0,
-      confirmedSpend: 0,
-    };
-  });
-  const [tripStats, setTripStats] = useState({
-    loading: !useFixtures && trips.length === 0,
-    error: false,
-    count: trips.length > 0 ? trips.length : 0,
-  });
-  const [reviewStats, setReviewStats] = useState({
-    loading: !useFixtures && reviews.length === 0,
-    error: false,
-    count: reviews.length > 0 ? reviews.length : 0,
-  });
-  const [dynamicDestinations, setDynamicDestinations] = useState(DESTINATION_OPTIONS);
+    if (useFixtures) {
+      return { loading: false, error: false, total: 0, count: 0, confirmed: 0, cancelled: 0, confirmedSpend: 0 };
+    }
+    return reduxBookingStats;
+  }, [bookings, useFixtures, reduxBookingStats]);
+
+  const browseHotels = useSelector(selectBrowseHotels);
+  const browseExperiences = useSelector(selectBrowseExperiences);
+  const browsePlans = useSelector(selectBrowsePlans);
 
   useEffect(() => {
     if (useFixtures) return;
-    let mounted = true;
-    Promise.all([
-      apiRequest('/hotels').catch(() => []),
-      apiRequest('/experiences').catch(() => []),
-      apiRequest('/plans').catch(() => []),
-    ]).then(([hotelsRes, expRes, plansRes]) => {
-      if (!mounted) return;
-      const set = new Set(DESTINATION_OPTIONS);
-      const addCity = (val) => {
-        const clean = String(val || '').trim();
-        if (clean) set.add(clean);
-      };
-      (Array.isArray(hotelsRes) ? hotelsRes : hotelsRes?.data || []).forEach((h) =>
-        addCity(h?.city || h?.destination || h?.location)
-      );
-      (Array.isArray(expRes) ? expRes : expRes?.data || []).forEach((e) =>
-        addCity(e?.destination || e?.city || e?.location)
-      );
-      (Array.isArray(plansRes) ? plansRes : plansRes?.data || []).forEach((p) =>
-        addCity(p?.destination)
-      );
-      setDynamicDestinations(Array.from(set));
-    });
-    return () => {
-      mounted = false;
-    };
-  }, [useFixtures]);
+    if (!browseHotels.loaded && !browseHotels.loading && !browseHotels.error) {
+      dispatch(fetchBrowseHotels());
+    }
+    if (!browseExperiences.loaded && !browseExperiences.loading && !browseExperiences.error) {
+      dispatch(fetchBrowseExperiences());
+    }
+    if (!browsePlans.loaded && !browsePlans.loading && !browsePlans.error) {
+      dispatch(fetchBrowsePlans());
+    }
+  }, [
+    dispatch,
+    useFixtures,
+    browseHotels.loaded,
+    browseHotels.loading,
+    browseHotels.error,
+    browseExperiences.loaded,
+    browseExperiences.loading,
+    browseExperiences.error,
+    browsePlans.loaded,
+    browsePlans.loading,
+    browsePlans.error,
+  ]);
 
-  // Resolve all valid identifier aliases for the authenticated traveller
+  const dynamicDestinations = useMemo(() => {
+    const set = new Set(DESTINATION_OPTIONS);
+    const addCity = (val) => {
+      const clean = String(val || '').trim();
+      if (clean) set.add(clean);
+    };
+    (browseHotels.items || []).forEach((h) => addCity(h?.city || h?.destination || h?.location));
+    (browseExperiences.items || []).forEach((e) => addCity(e?.destination || e?.city || e?.location));
+    (browsePlans.items || []).forEach((p) => addCity(p?.destination));
+    return Array.from(set);
+  }, [browseHotels.items, browseExperiences.items, browsePlans.items]);
+
+  const tripStats = useMemo(() => {
+    if (trips && trips.length > 0) {
+      return { loading: false, error: false, count: trips.length };
+    }
+    if (useFixtures) {
+      return { loading: false, error: false, count: 0 };
+    }
+    return reduxTripStats;
+  }, [trips, useFixtures, reduxTripStats]);
+
+  const reviewStats = useMemo(() => {
+    if (reviews && reviews.length > 0) {
+      return { loading: false, error: false, count: reviews.length };
+    }
+    if (useFixtures) {
+      return { loading: false, error: false, count: 0 };
+    }
+    return reduxReviewStats;
+  }, [reviews, useFixtures, reduxReviewStats]);
+
+  // Resolve all valid identifier aliases for the authenticated traveller from Redux/props
   const userIdentifiers = useMemo(() => {
     const ids = new Set();
     if (user?.userId) ids.add(String(user.userId).trim().toLowerCase());
@@ -201,12 +224,8 @@ export default function TravellerDashboard({
     if (user?.username) ids.add(String(user.username).trim().toLowerCase());
     if (currentTravellerId) ids.add(String(currentTravellerId).trim().toLowerCase());
 
-    const saved = typeof getSavedUser === 'function' ? getSavedUser() : null;
-    if (saved?.userId) ids.add(String(saved.userId).trim().toLowerCase());
-    if (saved?.id) ids.add(String(saved.id).trim().toLowerCase());
-
-    const userEmail = (user?.email || saved?.email || '').toLowerCase();
-    const userName = (user?.name || saved?.name || '').toLowerCase();
+    const userEmail = (user?.email || '').toLowerCase();
+    const userName = (user?.name || '').toLowerCase();
     if (
       userEmail === 'anjali@xploreo.com' ||
       userName.includes('anjali') ||
@@ -222,161 +241,33 @@ export default function TravellerDashboard({
     return ids;
   }, [user, currentTravellerId]);
 
-  const isUserMatch = useCallback(
-    (targetId) => {
-      if (targetId == null) return false;
-      const str = String(targetId).trim().toLowerCase();
-      if (userIdentifiers.has(str)) return true;
-      const numeric = str.replace(/\D/g, '');
-      if (numeric && userIdentifiers.has(numeric)) return true;
-      return false;
-    },
-    [userIdentifiers]
-  );
-
   useEffect(() => {
     if (useFixtures) return;
+    if (bookings.length > 0 && trips.length > 0 && reviews.length > 0) return;
 
-    let isCancelled = false;
+    const candidateTripIds = [
+      user?.userId,
+      currentTravellerId,
+      ...Array.from(userIdentifiers),
+    ].filter(Boolean);
 
-    async function loadStats() {
-      // 1. Bookings: count the traveller's actual bookings (experiences + hotel adapter fallback)
-      if (bookings && bookings.length > 0) {
-        const stats = calculateBookingStats(bookings);
-        if (!isCancelled) {
-          setBookingStats({
-            loading: false,
-            error: false,
-            ...stats,
-          });
-        }
-      } else {
-        try {
-          setBookingStats((prev) => ({ ...prev, loading: true, error: false }));
-
-          // 1. Fetch live experience bookings
-          let expList = [];
-          let expError = null;
-          try {
-            const expData = await apiRequest('/experience-bookings');
-            expList = Array.isArray(expData) ? expData : expData?.data || [];
-          } catch (expErr) {
-            expError = expErr;
-          }
-
-          // 2. Fetch live hotel bookings from the backend API
-          let hotelList = [];
-          let hotelError = null;
-          try {
-            const hotelData = await apiRequest('/bookings');
-            hotelList = (Array.isArray(hotelData) ? hotelData : hotelData?.data || []).map((b) => ({
-              ...b,
-              bookingType: 'hotel',
-            }));
-          } catch (hErr) {
-            hotelError = hErr;
-            hotelList = [];
-          }
-
-          if (expError && hotelError && expList.length === 0 && hotelList.length === 0) {
-            throw new Error('Failed to load bookings from all sources');
-          }
-
-          const combinedBookings = [...expList, ...hotelList];
-          const userBookings = combinedBookings.filter((b) => {
-            if (!b.travellerId) return true;
-            if (isUserMatch(b.travellerId)) return true;
-            if (b.travellerId === currentTravellerId) return true;
-            return false;
-          });
-
-          const stats = calculateBookingStats(userBookings);
-
-          if (!isCancelled) {
-            setBookingStats({
-              loading: false,
-              error: false,
-              ...stats,
-            });
-          }
-        } catch (err) {
-          if (!isCancelled) {
-            setBookingStats({
-              loading: false,
-              error: true,
-              total: null,
-              count: null,
-              confirmed: null,
-              cancelled: null,
-              confirmedSpend: null,
-            });
-          }
-        }
-      }
-
-      // 2. Trips: count the traveller's actual trips, including active and completed trips
-      try {
-        setTripStats((prev) => ({ ...prev, loading: true, error: false }));
-        const candidateTripIds = [
-          user?.userId,
-          currentTravellerId,
-          ...Array.from(userIdentifiers),
-        ].filter(Boolean);
-
-        const uniqueCandidateTripIds = [...new Set(candidateTripIds)];
-
-        let tripsList = [];
-        let fetchedSuccessfully = false;
-
-        for (const candId of uniqueCandidateTripIds) {
-          try {
-            const rawData = await apiRequest(`/trips/traveller/${encodeURIComponent(candId)}`);
-            const mapped = Array.isArray(rawData) ? rawData : rawData?.data || [];
-            fetchedSuccessfully = true;
-            if (mapped.length > 0) {
-              tripsList = mapped;
-              break;
-            }
-          } catch {
-            // Continue trying remaining candidate identifiers
-          }
-        }
-
-        if (!isCancelled) {
-          if (fetchedSuccessfully) {
-            setTripStats({ loading: false, error: false, count: tripsList.length });
-          } else {
-            setTripStats({ loading: false, error: true, count: null });
-          }
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          setTripStats({ loading: false, error: true, count: null });
-        }
-      }
-
-      // 3. Reviews: count reviews submitted by the traveller
-      try {
-        setReviewStats((prev) => ({ ...prev, loading: true, error: false }));
-        const revData = await apiRequest('/reviews');
-        const revList = Array.isArray(revData) ? revData : revData?.data || [];
-        const userReviews = revList.filter((r) => isUserMatch(r.userId) || isUserMatch(r.travellerId));
-        if (!isCancelled) {
-          setReviewStats({ loading: false, error: false, count: userReviews.length });
-        }
-      } catch (err) {
-        if (!isCancelled) {
-          setReviewStats({ loading: false, error: true, count: null });
-        }
-      }
-    }
-
-    loadStats();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [useFixtures, userIdentifiers, isUserMatch, user?.userId, currentTravellerId]);
+    dispatch(
+      fetchDashboardSummary({
+        userIdentifiers: Array.from(userIdentifiers),
+        candidateTripIds,
+        currentTravellerId,
+      }),
+    );
+  }, [
+    dispatch,
+    useFixtures,
+    bookings.length,
+    trips.length,
+    reviews.length,
+    userIdentifiers,
+    user?.userId,
+    currentTravellerId,
+  ]);
 
   // Hotel search form state
   const [hotelDestination, setHotelDestination] = useState('');
@@ -401,45 +292,51 @@ export default function TravellerDashboard({
   const [experienceErrors, setExperienceErrors] = useState({});
 
   const validateHotelSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!hotelDestination || !hotelDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!hotelCheckIn) {
       errors.checkIn = 'Please select a check-in date';
+    } else if (hotelCheckIn < todayStr) {
+      errors.checkIn = 'Check-in date cannot be in the past';
     }
     if (!hotelCheckOut) {
       errors.checkOut = 'Please select a check-out date';
-    } else if (hotelCheckIn && hotelCheckOut < hotelCheckIn) {
+    } else if (hotelCheckIn && hotelCheckOut <= hotelCheckIn) {
       errors.checkOut = 'Check-out date must be after check-in date';
     }
     return errors;
   };
 
   const validatePackageSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!packageDestination || !packageDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!packageDeparture) {
       errors.departure = 'Please select a departure date';
+    } else if (packageDeparture < todayStr) {
+      errors.departure = 'Departure date cannot be in the past';
     }
     return errors;
   };
 
   const validateExperienceSearch = () => {
+    const todayStr = new Date().toISOString().slice(0, 10);
     const errors = {};
     if (!experienceDestination || !experienceDestination.trim()) {
       errors.destination = 'Please select a destination';
     }
     if (!experienceDate) {
       errors.date = 'Please select an activity date';
+    } else if (experienceDate < todayStr) {
+      errors.date = 'Activity date cannot be in the past';
     }
     return errors;
   };
-
-  const inRouter = useInRouterContext();
-  const navigate = inRouter ? useNavigate() : null;
 
   const isPreviewContext = useFixtures || bookings.length > 0 || trips.length > 0 || reviews.length > 0;
 
@@ -448,7 +345,7 @@ export default function TravellerDashboard({
   };
 
   const handleEnterSection = (sectionId) => {
-    log(`Dashboard: navigated to section`, sectionId);
+    log('Dashboard: navigated to section', sectionId);
     setActiveSection(sectionId);
   };
 
@@ -473,16 +370,26 @@ export default function TravellerDashboard({
       return;
     }
     setHotelErrors({});
+    const dest = hotelDestination.trim();
     log('Dashboard: search hotels', {
-      destination: hotelDestination.trim(),
+      destination: dest,
       checkIn: hotelCheckIn,
       checkOut: hotelCheckOut,
       rooms: hotelRooms,
       guests: hotelGuests,
     });
+    dispatch(setBrowseCategory(BROWSE_CATEGORIES.HOTELS));
+    dispatch(setBrowseFilters({
+      searchQuery: dest,
+      locationQuery: dest,
+      checkInDate: hotelCheckIn,
+      checkOutDate: hotelCheckOut,
+      roomCount: hotelRooms,
+      guestCount: hotelGuests,
+    }));
     const params = new URLSearchParams();
     params.set('category', 'hotels');
-    params.set('search', hotelDestination.trim());
+    params.set('search', dest);
     params.set('checkIn', hotelCheckIn);
     params.set('checkOut', hotelCheckOut);
     params.set('rooms', hotelRooms);
@@ -498,15 +405,24 @@ export default function TravellerDashboard({
       return;
     }
     setPackageErrors({});
+    const dest = packageDestination.trim();
     log('Dashboard: search packages', {
-      destination: packageDestination.trim(),
+      destination: dest,
       departureDate: packageDeparture,
       rooms: packageRooms,
       guests: packageGuests,
     });
+    dispatch(setBrowseCategory(BROWSE_CATEGORIES.PLANS));
+    dispatch(setBrowseFilters({
+      searchQuery: dest,
+      locationQuery: dest,
+      checkInDate: packageDeparture,
+      roomCount: packageRooms,
+      guestCount: packageGuests,
+    }));
     const params = new URLSearchParams();
     params.set('category', 'packages');
-    params.set('search', packageDestination.trim());
+    params.set('search', dest);
     params.set('checkIn', packageDeparture);
     params.set('rooms', packageRooms);
     params.set('guests', packageGuests);
@@ -521,19 +437,27 @@ export default function TravellerDashboard({
       return;
     }
     setExperienceErrors({});
+    const dest = experienceDestination.trim();
     log('Dashboard: search experiences', {
-      destination: experienceDestination.trim(),
+      destination: dest,
       activityDate: experienceDate,
     });
+    dispatch(setBrowseCategory(BROWSE_CATEGORIES.EXPERIENCES));
+    dispatch(setBrowseFilters({
+      searchQuery: dest,
+      locationQuery: dest,
+      checkInDate: experienceDate,
+    }));
     const params = new URLSearchParams();
     params.set('category', 'experiences');
-    params.set('search', experienceDestination.trim());
+    params.set('search', dest);
     params.set('checkIn', experienceDate);
     handleNavigate(`/Traveller/browse?${params.toString()}`, SECTION.BROWSE);
   };
 
   const handleSelectDestination = (destName) => {
     log('Dashboard: destination selected', destName);
+    dispatch(setBrowseFilters({ searchQuery: destName, locationQuery: destName }));
     const params = new URLSearchParams();
     params.set('search', destName);
     handleNavigate(`/Traveller/browse?${params.toString()}`, SECTION.BROWSE);
@@ -1166,6 +1090,7 @@ export default function TravellerDashboard({
           }}
           onBookItem={(item, category) => {
             log('Browse: book action', { category, name: item?.name || item?.title });
+            dispatch(setCheckoutItem(item));
             if (typeof onBookItem === 'function') {
               onBookItem(item, category);
             } else if (navigate) {
@@ -1310,4 +1235,16 @@ export default function TravellerDashboard({
       <p>Unknown section. <button type="button" onClick={handleBack}>Return to Dashboard</button></p>
     </div>
   );
+}
+
+function TravellerDashboardWithRouter(props) {
+  const navigate = useNavigate();
+  return <TravellerDashboardCore {...props} inRouter={true} navigate={navigate} />;
+}
+
+export default function TravellerDashboard(props) {
+  const inRouter = useInRouterContext();
+  return inRouter
+    ? <TravellerDashboardWithRouter {...props} />
+    : <TravellerDashboardCore {...props} inRouter={false} navigate={null} />;
 }

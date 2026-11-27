@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -30,12 +30,16 @@ const SELF_SIGNUP_ROLES = ["traveller", "guide", "hotel", "experience"];
 const PARTNER_ROLES = ["guide", "hotel", "experience"];
 const PHONE_PATTERN = /^(?:\+?91[\s-]?|0)?[6-9]\d{9}$/;
 
-export default function Register({ user: propUser }) {
+export default function Register({ user: propUser, onAuthenticated }) {
   const navigate = useNavigate();
   const { user: authUser, isAuthenticated, loading: authLoading, error: authError, register, clearError } = useAuth();
   const activeUser = propUser && propUser.role !== "default" ? propUser : authUser;
   const [form, setForm] = useState(initialForm);
   const [localError, setLocalError] = useState("");
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   if (isAuthenticated && activeUser?.role) {
     const normalizedRole = String(activeUser.role || "").trim().toLowerCase();
@@ -110,6 +114,7 @@ export default function Register({ user: propUser }) {
         details.location = trimmedLocation;
       }
       const authenticatedUser = await register(details);
+      onAuthenticated?.(authenticatedUser);
       const normalizedRole = String(authenticatedUser.role || "").trim().toLowerCase();
       navigate(destinationForRole[normalizedRole] || "/", { replace: true });
     } catch (requestError) {

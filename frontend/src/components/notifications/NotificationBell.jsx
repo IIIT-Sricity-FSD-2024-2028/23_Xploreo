@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  getNotifications,
-  getUnreadNotificationCount,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-} from '../../services/notifications.api.js';
+import { useDispatch, useSelector } from 'react-redux';
 import { useHotelAction, usePartnerNotifications } from '@/store/hotel/hooks.js';
 import { readAllPartnerNotifications, readPartnerNotification } from '@/store/hotel/notificationsSlice.js';
 import { useHotelState } from '@/store/hotel/useHotelState.js';
+import {
+  fetchNotifications,
+  markAllNotificationsRead,
+  markNotificationRead,
+  selectNotificationsList,
+  selectUnreadNotificationCount,
+} from '../../features/notificationsSlice.js';
 import './notifications.css';
 
 function formatRelativeTime(dateInput) {
@@ -37,8 +39,8 @@ function getNotificationIcon(type, refundStatus) {
 
 const EMPTY_NOTIFICATIONS = [];
 
-export default function NotificationBell({ hotelPartner = false }) {
-  return hotelPartner ? <HotelNotificationBell /> : <StandardNotificationBell />;
+export default function NotificationBell({ hotelPartner = false, userId = null }) {
+  return hotelPartner ? <HotelNotificationBell /> : <StandardNotificationBell userId={userId} />;
 }
 
 function HotelNotificationBell() {
@@ -70,23 +72,15 @@ function HotelNotificationBell() {
   );
 }
 
-function StandardNotificationBell() {
+function StandardNotificationBell({ userId = null }) {
+  const dispatch = useDispatch();
+  const notifications = useSelector(selectNotificationsList);
+  const unreadCount = useSelector(selectUnreadNotificationCount);
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotificationData = useCallback(async () => {
-    try {
-      const [list, count] = await Promise.all([
-        getNotifications(),
-        getUnreadNotificationCount(),
-      ]);
-      setNotifications(Array.isArray(list) ? list : []);
-      setUnreadCount(typeof count === 'number' ? count : 0);
-    } catch {
-      // Ignore background fetch failure
-    }
-  }, []);
+  const fetchNotificationData = useCallback(() => {
+    dispatch(fetchNotifications(userId || null));
+  }, [dispatch, userId]);
 
   // Poll for notifications every 10 seconds or on window focus
   useEffect(() => {
@@ -103,9 +97,7 @@ function StandardNotificationBell() {
 
   const markRead = async (notification) => {
     try {
-      await markNotificationAsRead(notification.id);
-      setNotifications((prev) => prev.map((item) => item.id === notification.id ? { ...item, read: true } : item));
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      await dispatch(markNotificationRead(notification.id)).unwrap();
     } catch {
       // Keep the last known notification state.
     }
@@ -113,16 +105,23 @@ function StandardNotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await markAllNotificationsAsRead();
-      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
-      setUnreadCount(0);
+      await dispatch(markAllNotificationsRead()).unwrap();
     } catch {
       // Keep the last known notification state.
     }
   };
 
-  return <NotificationBellView {...{ isOpen, setIsOpen, notifications, unreadCount }}
-    refresh={fetchNotificationData} onRead={markRead} onReadAll={markAllRead} />;
+  return (
+    <NotificationBellView
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
+      notifications={notifications}
+      unreadCount={unreadCount}
+      refresh={fetchNotificationData}
+      onRead={markRead}
+      onReadAll={markAllRead}
+    />
+  );
 }
 
 function NotificationBellView({ isOpen, setIsOpen, notifications, unreadCount, refresh, onRead, onReadAll }) {
@@ -150,7 +149,9 @@ function NotificationBellView({ isOpen, setIsOpen, notifications, unreadCount, r
     setIsOpen((prev) => !prev);
   };
 
-  const handleItemClick = (notification) => { if (!notification.read) onRead(notification); };
+  const handleItemClick = (notification) => {
+    if (!notification.read) onRead(notification);
+  };
 
   return (
     <div className="notif-bell-container" ref={containerRef} data-testid="notification-bell-container">

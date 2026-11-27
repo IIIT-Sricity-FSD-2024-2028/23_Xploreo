@@ -1,27 +1,40 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { GuidePicker } from './TripGuidePanel.jsx';
 import {
-  cancelExperienceGuide,
-  listExperienceGuides,
-  requestExperienceGuide,
-} from '../../services/tripGuides.api.js';
+  cancelGuideForExperienceBooking,
+  fetchExperienceAvailableGuides,
+  requestGuideForExperienceBooking,
+  selectBookingsList,
+  selectExperienceAvailableGuides,
+  selectExperienceGuidesError,
+  selectExperienceGuidesLoading,
+  selectSelectedBookingDetail,
+} from '../../features/bookingsSlice.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
 
-/**
- * "Do you want a guide for this experience?" — shown right after booking and on the booking card.
- *  - no guide yet    -> ask: "Add a guide" / (when `askFirst`) "No thanks"
- *  - requested       -> waiting note + cancel
- *  - confirmed       -> confirmed note with the guide fee
- *  - declined        -> red "guide not confirmed" note + choose another
- * Guides offered are NTA-approved for the experience's region and free on the session date.
- */
 export default function ExperienceGuidePanel({ booking: initial, askFirst = false, onChanged }) {
-  const [booking, setBooking] = useState(initial);
+  const dispatch = useDispatch();
+  const bookingsList = useSelector(selectBookingsList);
+  const selectedDetail = useSelector(selectSelectedBookingDetail);
+  const reduxBooking = bookingsList.find((b) => b.id === initial?.id)
+    || (selectedDetail?.id === initial?.id ? selectedDetail : null);
+  const booking = reduxBooking || initial;
+
+  const availableGuides = useSelector((state) => selectExperienceAvailableGuides(state, booking?.id));
+  const guidesLoading = useSelector((state) => selectExperienceGuidesLoading(state, booking?.id));
+  const guidesError = useSelector((state) => selectExperienceGuidesError(state, booking?.id));
+
   const [picking, setPicking] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const loadGuidesFromRedux = useCallback(async (id) => {
+    const res = await dispatch(fetchExperienceAvailableGuides(id)).unwrap();
+    return res?.guides || [];
+  }, [dispatch]);
 
   const status = booking.guideStatus;
   const upcoming = String(booking.date).slice(0, 10) >= new Date().toISOString().slice(0, 10);
@@ -38,15 +51,19 @@ export default function ExperienceGuidePanel({ booking: initial, askFirst = fals
     setBusy(true);
     setError('');
     try {
-      await apiCancel(booking.id);
-      setBooking((prev) => ({ ...prev, guideId: undefined, guideName: undefined, guideStatus: undefined, guideFee: undefined, guidePricePerPerson: undefined }));
+      await dispatch(cancelGuideForExperienceBooking(booking.id)).unwrap();
       await onChanged?.();
     } catch (err) {
-      setError(err.message || 'Could not cancel the request.');
+      setError((typeof err === 'string' ? err : err?.message) || 'Could not cancel the request.');
     } finally {
       setBusy(false);
     }
   }
+
+  const handleRequestGuide = async (entityId, guideId) => {
+    const res = await dispatch(requestGuideForExperienceBooking({ bookingId: entityId, guideId })).unwrap();
+    return res?.updated;
+  };
 
   const noGuide = !status || status === 'declined';
   if (askFirst && noGuide && dismissed && status !== 'declined') return null;
@@ -100,13 +117,15 @@ export default function ExperienceGuidePanel({ booking: initial, askFirst = fals
       {picking ? (
         <GuidePicker
           entityId={booking.id}
-          list={listExperienceGuides}
-          send={requestExperienceGuide}
+          list={loadGuidesFromRedux}
+          guidesData={availableGuides}
+          loadingData={guidesLoading}
+          loadErrorData={guidesError}
+          send={handleRequestGuide}
           feeLabel="Guide fee"
           onClose={() => setPicking(false)}
-          onRequested={async (updated) => {
+          onRequested={async () => {
             setPicking(false);
-            if (updated) setBooking((prev) => ({ ...prev, ...updated }));
             await onChanged?.();
           }}
         />
@@ -114,8 +133,6 @@ export default function ExperienceGuidePanel({ booking: initial, askFirst = fals
     </div>
   );
 }
-
-const apiCancel = (id) => cancelExperienceGuide(id);
 
 // Only rendered once the booking has a confirmed guide — the traveller earned this contact info
 // by picking an NTA-approved guide, so the server already attaches it to the booking response.

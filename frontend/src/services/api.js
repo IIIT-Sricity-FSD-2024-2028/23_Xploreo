@@ -39,7 +39,9 @@ export async function apiRequest(path, options = {}) {
       notifyUnauthorized();
     }
     const message = Array.isArray(payload.message) ? payload.message[0] : payload.message || "Something went wrong. Please try again.";
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = response.status;
+    throw err;
   }
   return payload.data ?? payload;
 }
@@ -73,7 +75,9 @@ export async function fetchData(url, options = {}) {
     const message = Array.isArray(payload.message)
       ? payload.message[0]
       : payload.message || `HTTP error! status: ${response.status}`;
-    throw new Error(message);
+    const err = new Error(message);
+    err.status = response.status;
+    throw err;
   }
 
   const json = await response.json();

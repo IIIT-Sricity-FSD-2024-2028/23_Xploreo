@@ -1,7 +1,7 @@
 import { Provider } from "react-redux";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
-import { useAuth } from "./context/AuthContext.jsx";
+import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { store } from "./store/index.js";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import Login from "./pages/Auth/login";
@@ -156,9 +156,11 @@ function AppRoutes() {
 function App() {
   return (
     <Provider store={store}>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </Provider>
   );
 }

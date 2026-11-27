@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
-import { retryTripRefund } from '../../services/tripGuides.api.js';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
+import { retryTravellerTripRefund } from '../../features/tripsSlice.js';
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 import './travellerTrips.css';
 
@@ -17,6 +19,7 @@ export default function TravellerTripDetailsView({
   onCancelClick,
   onTripUpdated,
 }) {
+  const dispatch = useDispatch();
   const [retrying, setRetrying] = useState(false);
   const [retryMessage, setRetryMessage] = useState(null);
 
@@ -64,13 +67,21 @@ export default function TravellerTripDetailsView({
     setRetrying(true);
     setRetryMessage(null);
     try {
-      const res = await retryTripRefund(id);
-      setRetryMessage({ type: 'success', text: `Refund retried: ${res.refund?.status || res.refundStatus || 'Success'}` });
+      const res = await dispatch(retryTravellerTripRefund(id)).unwrap();
+      const result = res?.result;
+      setRetryMessage({
+        type: 'success',
+        text: `Refund retried: ${result?.refund?.status || result?.refundStatus || 'Success'}`,
+      });
+      dispatch(fetchNotifications());
       if (onTripUpdated) {
         onTripUpdated();
       }
     } catch (err) {
-      setRetryMessage({ type: 'error', text: err?.message || 'Failed to retry refund.' });
+      setRetryMessage({
+        type: 'error',
+        text: (typeof err === 'string' ? err : err?.message) || 'Failed to retry refund.',
+      });
     } finally {
       setRetrying(false);
     }

@@ -31,8 +31,23 @@ function hotelTodayIso() {
   return `${year}-${month}-${day}`;
 }
 
+function isValidCalendarDate(value: unknown): value is string {
+  const str = String(value ?? '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+  const [y, m, d] = str.split('-').map(Number);
+  const parsed = new Date(Date.UTC(y, m - 1, d));
+  return (
+    parsed.getUTCFullYear() === y &&
+    parsed.getUTCMonth() === m - 1 &&
+    parsed.getUTCDate() === d
+  );
+}
+
 @Injectable()
 export class BookingsService {
+  private readonly baselineHotelOccupied = new Map<string, number>();
+  private readonly baselineRoomOccupied = new Map<string, number>();
+
   constructor(
     private readonly bookingsRepository: BookingsRepository,
     private readonly hotelsRepository: HotelsRepository,
@@ -40,11 +55,50 @@ export class BookingsService {
     private readonly hotelsService: HotelsService,
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
-  ) {}
+  ) {
+    this.captureSeedBaselines();
+  }
+
+  /**
+   * Preserve pre-booked seed inventory offsets (e.g. rooms marked occupied in seed JSON
+   * without corresponding seed booking rows) while tracking subsequent live reservations.
+   */
+  private captureSeedBaselines() {
+    for (const hotel of this.hotelsRepository.findAll()) {
+      const hotelBookings = this.bookingsRepository
+        .findByHotelIds([hotel.id])
+        .filter((b) => b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.CHECKED_IN);
+      const activeHotelRooms = hotelBookings.reduce((sum, b) => sum + (b.rooms ?? 1), 0);
+      this.baselineHotelOccupied.set(
+        hotel.id,
+        Math.max(0, (hotel.totalRooms - hotel.availableRooms) - activeHotelRooms),
+      );
+
+      for (const room of this.hotelsService.listRooms(hotel.id)) {
+        const activeTypeRooms = hotelBookings
+          .filter((b) => b.roomType?.toLowerCase() === room.type.toLowerCase())
+          .reduce((sum, b) => sum + (b.rooms ?? 1), 0);
+        this.baselineRoomOccupied.set(
+          room.id,
+          Math.max(0, (room.totalRooms - room.availableRooms) - activeTypeRooms),
+        );
+      }
+    }
+  }
 
   create(travellerId: string | undefined, dto: CreateBookingDto) {
     if (!travellerId) {
       throw new ForbiddenException('x-user-id header is required for TRAVELLER');
+    }
+
+    if (dto.id) {
+      const existing = this.bookingsRepository.findRawById(dto.id);
+      if (existing) {
+        if (existing.travellerId !== travellerId || existing.hotelId !== dto.hotelId) {
+          throw new BadRequestException('Booking reference ID already exists.');
+        }
+        return { ...existing, hotel: this.hotelsRepository.findById(existing.hotelId) };
+      }
     }
 
     const hotel = this.hotelsRepository.findById(dto.hotelId);
@@ -52,11 +106,11 @@ export class BookingsService {
       throw new NotFoundException(`Hotel ${dto.hotelId} not found or is unavailable`);
     }
 
-    const checkIn = new Date(`${dto.checkIn}T00:00:00.000Z`);
-    const checkOut = new Date(`${dto.checkOut}T00:00:00.000Z`);
-    if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+    if (!isValidCalendarDate(dto.checkIn) || !isValidCalendarDate(dto.checkOut)) {
       throw new BadRequestException('Invalid check-in or check-out date');
     }
+    const checkIn = new Date(`${dto.checkIn}T00:00:00.000Z`);
+    const checkOut = new Date(`${dto.checkOut}T00:00:00.000Z`);
     if (checkOut <= checkIn) {
       throw new BadRequestException('checkOut must be after checkIn');
     }
@@ -68,16 +122,45 @@ export class BookingsService {
     }
 
     const rooms = dto.rooms ?? 1;
-    const roomType = this.hotelsService.findRoomByTypeName(dto.hotelId, dto.roomType);
-    if (roomType && roomType.availableRooms < rooms) {
-      throw new BadRequestException(
-        `Room type "${dto.roomType}" has no availability for the requested dates.`,
-      );
+    if (!Number.isInteger(rooms) || rooms < 1) {
+      throw new BadRequestException('At least 1 room must be selected');
+    }
+    if (!Number.isInteger(dto.guests) || dto.guests < 1) {
+      throw new BadRequestException('At least 1 guest is required');
     }
 
-    if (roomType && dto.guests > roomType.maxOccupancy * rooms) {
+    const hotelRooms = this.hotelsService.listRooms(dto.hotelId);
+    const roomType = this.hotelsService.findRoomByTypeName(dto.hotelId, dto.roomType);
+
+    if (hotelRooms.length > 0) {
+      if (!roomType) {
+        throw new BadRequestException(
+          `Room type "${dto.roomType}" is not offered at ${hotel.name}.`,
+        );
+      }
+      if (roomType.status === 'inactive') {
+        throw new BadRequestException(
+          `Room type "${roomType.type}" is currently unavailable for booking.`,
+        );
+      }
+      if (roomType.availableRooms < rooms) {
+        throw new BadRequestException(
+          roomType.availableRooms <= 0
+            ? `Room type "${roomType.type}" is currently sold out.`
+            : `Only ${roomType.availableRooms} "${roomType.type}" room(s) are currently available.`,
+        );
+      }
+      const maxAllowedGuests = roomType.maxOccupancy * rooms;
+      if (dto.guests > maxAllowedGuests) {
+        throw new BadRequestException(
+          `"${roomType.type}" accommodates a maximum of ${roomType.maxOccupancy} guest(s) per room (${maxAllowedGuests} guests max for ${rooms} room(s)). Select additional rooms or reduce guests.`,
+        );
+      }
+    } else if (hotel.availableRooms < rooms) {
       throw new BadRequestException(
-        `"${dto.roomType}" fits at most ${roomType.maxOccupancy * rooms} guest(s) for ${rooms} room(s)`,
+        hotel.availableRooms <= 0
+          ? `${hotel.name} is currently sold out.`
+          : `Only ${hotel.availableRooms} room(s) are currently available.`,
       );
     }
 
@@ -96,7 +179,7 @@ export class BookingsService {
       checkIn: dto.checkIn,
       checkOut: dto.checkOut,
       guests: dto.guests,
-      roomType: dto.roomType,
+      roomType: roomType ? roomType.type : dto.roomType,
       rooms,
       guestNames: dto.guestNames ?? [dto.guestName],
       notes: dto.notes,
@@ -105,7 +188,7 @@ export class BookingsService {
       totalAmount: pricing.total,
     });
 
-    this.refreshAvailability(hotel.id, dto.roomType);
+    this.refreshAvailability(hotel.id, roomType ? roomType.type : dto.roomType);
     return { ...booking, hotel: this.hotelsRepository.findById(hotel.id) };
   }
 
@@ -398,22 +481,24 @@ export class BookingsService {
   }
 
   private refreshAvailability(hotelId: string, roomTypeName: string) {
-    const occupiedForHotel = this.bookingsRepository
+    const activeHotelRooms = this.bookingsRepository
       .findByHotelIds([hotelId])
       .filter((b) => b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.CHECKED_IN)
       .reduce((sum, b) => sum + (b.rooms ?? 1), 0);
+    const occupiedForHotel = (this.baselineHotelOccupied.get(hotelId) ?? 0) + activeHotelRooms;
     this.hotelsService.recomputeHotelAvailability(hotelId, occupiedForHotel);
 
     const room = this.hotelsService.findRoomByTypeName(hotelId, roomTypeName);
     if (room) {
-      const occupiedForRoom = this.bookingsRepository
+      const activeRoomCount = this.bookingsRepository
         .findByHotelIds([hotelId])
         .filter(
           (b) =>
-            b.roomType === room.type &&
+            b.roomType?.toLowerCase() === room.type.toLowerCase() &&
             (b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.CHECKED_IN),
         )
         .reduce((sum, b) => sum + (b.rooms ?? 1), 0);
+      const occupiedForRoom = (this.baselineRoomOccupied.get(room.id) ?? 0) + activeRoomCount;
       this.hotelsService.recomputeRoomAvailability(room.id, occupiedForRoom);
     }
   }

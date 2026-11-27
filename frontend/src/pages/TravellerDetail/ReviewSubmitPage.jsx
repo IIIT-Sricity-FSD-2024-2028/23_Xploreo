@@ -1,10 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { createReview, listReviews } from '@/services/reviews.api.js';
-import { getHotel } from '@/services/hotels.api.js';
-import { getExperience } from '@/services/partners.api.js';
-import { apiRequest, getSavedUser } from '@/services/api.js';
-import { getUser } from '@/services/session.js';
+import { selectAuthUser } from '@/features/authSlice.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
+import {
+  clearReviewSubmitState,
+  fetchReviews,
+  selectLastSubmittedReview,
+  selectReviewsList,
+  selectReviewsLoading,
+  selectReviewSubmitError,
+  selectReviewSubmitting,
+  submitReview,
+} from '@/features/reviewsSlice.js';
+import {
+  fetchTravellerTrips,
+  selectTripsList,
+  selectTripsLoading,
+} from '@/features/tripsSlice.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
@@ -17,17 +30,27 @@ const RATING_LABELS = {
 };
 
 export default function ReviewSubmitPage() {
+  const dispatch = useDispatch();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  const authUser = useSelector(selectAuthUser);
+  const browseDetail = useSelector(selectBrowseDetail);
+  const rawTrips = useSelector(selectTripsList);
+  const tripsLoading = useSelector(selectTripsLoading);
+  const rawReviews = useSelector(selectReviewsList);
+  const reviewsLoading = useSelector(selectReviewsLoading);
+  const submitting = useSelector(selectReviewSubmitting);
+  const reduxSubmitError = useSelector(selectReviewSubmitError);
+  const submittedReview = useSelector(selectLastSubmittedReview);
 
   const targetTypeParam = searchParams.get('targetType') || (searchParams.get('hotelId') ? 'hotel' : searchParams.get('experienceId') ? 'experience' : 'hotel');
   const targetIdParam = searchParams.get('targetId') || searchParams.get('hotelId') || searchParams.get('experienceId') || '';
   const targetNameParam = searchParams.get('targetName') || '';
+  const paramTripId = searchParams.get('tripId') || '';
 
   const [targetType, setTargetType] = useState(targetTypeParam);
   const [targetId, setTargetId] = useState(targetIdParam);
-  const [targetEntity, setTargetEntity] = useState(null);
-  const [loadingTarget, setLoadingTarget] = useState(false);
 
   // Form fields
   const [rating, setRating] = useState(5);
@@ -37,120 +60,76 @@ export default function ReviewSubmitPage() {
   const [authorName, setAuthorName] = useState('');
   const [tripType, setTripType] = useState('Couple');
 
-  // Status & Validation
+  // Temporary UI form validation & selection state
   const [fieldErrors, setFieldErrors] = useState({});
-  const [submitError, setSubmitError] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [submittedReview, setSubmittedReview] = useState(null);
+  const [validationError, setValidationError] = useState(null);
+  const [manualSelectedTripId, setManualSelectedTripId] = useState(paramTripId);
 
-  const [targetNotFound, setTargetNotFound] = useState(false);
-
-  // Trips & eligibility validation
-  const [eligibleTrips, setEligibleTrips] = useState([]);
-  const [loadingTrips, setLoadingTrips] = useState(true);
-  const [selectedTripId, setSelectedTripId] = useState(searchParams.get('tripId') || '');
-
-  // Fetch target preview if targetId is given
   useEffect(() => {
-    if (!targetId) return;
+    dispatch(clearReviewSubmitState());
+    return () => {
+      dispatch(clearReviewSubmitState());
+    };
+  }, [dispatch]);
 
-    setLoadingTarget(true);
-    setTargetNotFound(false);
-    if (targetType === 'hotel') {
-      getHotel(targetId)
-        .then((data) => {
-          if (!data) setTargetNotFound(true);
-          setTargetEntity(data);
-        })
-        .catch(() => {
-          setTargetNotFound(true);
-          setTargetEntity(null);
-        })
-        .finally(() => setLoadingTarget(false));
-    } else if (targetType === 'experience') {
-      getExperience(targetId)
-        .then((data) => {
-          if (!data) setTargetNotFound(true);
-          setTargetEntity(data);
-        })
-        .catch(() => {
-          setTargetNotFound(true);
-          setTargetEntity(null);
-        })
-        .finally(() => setLoadingTarget(false));
-    } else {
-      setLoadingTarget(false);
+  const expectedDetailKey = targetId && (targetType === 'hotel' || targetType === 'experience')
+    ? `${targetType}:${targetId}`
+    : null;
+  const hasMatchingDetail = Boolean(expectedDetailKey && browseDetail.key === expectedDetailKey);
+  const loadingTarget = Boolean(expectedDetailKey && (!hasMatchingDetail || browseDetail.loading));
+  const targetEntity = hasMatchingDetail ? browseDetail.item : null;
+  const targetNotFound = Boolean(
+    expectedDetailKey &&
+    hasMatchingDetail &&
+    !browseDetail.loading &&
+    (browseDetail.error || !browseDetail.item)
+  );
+
+  // Fetch target preview via browseSlice if targetId is given
+  useEffect(() => {
+    if (!targetId || (targetType !== 'hotel' && targetType !== 'experience')) return;
+    dispatch(fetchBrowseItemDetail({ type: targetType, id: targetId }));
+  }, [dispatch, targetId, targetType]);
+
+  // Load traveller's completed trips and reviews via Redux to validate eligibility
+  useEffect(() => {
+    const activeAuthUser = authUser && authUser.role !== 'default' ? authUser : null;
+    const saved = activeAuthUser || {};
+    const userId = saved?.userId || saved?.id || saved?.username;
+    if (userId) {
+      dispatch(fetchTravellerTrips(userId));
     }
-  }, [targetId, targetType]);
+    dispatch(fetchReviews());
+  }, [dispatch, authUser]);
 
-  // Load traveller's completed trips to validate eligibility
-  useEffect(() => {
-    let isCancelled = false;
-    async function loadEligibility() {
-      setLoadingTrips(true);
-      try {
-        const user = getUser() || getSavedUser() || {};
-        const userId = user?.userId || user?.id || user?.username;
-        if (!userId) {
-          setEligibleTrips([]);
-          return;
-        }
+  const { eligibleTrips, eligibilityError } = useMemo(() => {
+    const completed = (rawTrips || []).filter(
+      (t) => (t.status || '').toLowerCase() === 'completed' || (t.trackingStatus || '').toLowerCase() === 'completed'
+    );
+    const reviewedIds = new Set((rawReviews || []).map((r) => r.tripId).filter(Boolean));
+    const available = completed.filter((t) => !reviewedIds.has(t.id));
 
-        const [tripsData, reviewsData] = await Promise.allSettled([
-          apiRequest(`/trips/traveller/${encodeURIComponent(userId)}`),
-          listReviews(),
-        ]);
-
-        const rawTrips = tripsData.status === 'fulfilled' && Array.isArray(tripsData.value)
-          ? tripsData.value
-          : [];
-        const rawReviews = reviewsData.status === 'fulfilled' && Array.isArray(reviewsData.value)
-          ? reviewsData.value
-          : [];
-
-        if (isCancelled) return;
-
-        // Trips that are completed
-        const completed = rawTrips.filter(
-          (t) => (t.status || '').toLowerCase() === 'completed' || (t.trackingStatus || '').toLowerCase() === 'completed'
-        );
-
-        // Trips already reviewed
-        const reviewedIds = new Set(rawReviews.map((r) => r.tripId).filter(Boolean));
-        const available = completed.filter((t) => !reviewedIds.has(t.id));
-
-        setEligibleTrips(available);
-
-        // Validate query tripId if present
-        const paramTripId = searchParams.get('tripId');
-        if (paramTripId) {
-          const match = completed.find((t) => t.id === paramTripId);
-          if (!match) {
-            setSubmitError(`Trip #${paramTripId} is not a completed trip. Reviews can only be submitted for completed trips.`);
-          } else if (reviewedIds.has(paramTripId)) {
-            setSubmitError(`A review has already been submitted for Trip #${paramTripId}. Duplicate reviews are not allowed.`);
-          } else {
-            setSelectedTripId(paramTripId);
-          }
-        } else if (available.length > 0) {
-          setSelectedTripId((prev) => prev || available[0].id);
-        }
-      } catch (err) {
-        console.warn('Error checking review eligibility:', err);
-      } finally {
-        if (!isCancelled) setLoadingTrips(false);
+    let nextError = null;
+    if (paramTripId && !tripsLoading && !reviewsLoading) {
+      const match = completed.find((t) => t.id === paramTripId);
+      if (!match) {
+        nextError = `Trip #${paramTripId} is not a completed trip. Reviews can only be submitted for completed trips.`;
+      } else if (reviewedIds.has(paramTripId)) {
+        nextError = `A review has already been submitted for Trip #${paramTripId}. Duplicate reviews are not allowed.`;
       }
     }
 
-    loadEligibility();
-    return () => {
-      isCancelled = true;
-    };
-  }, [searchParams]);
+    return { eligibleTrips: available, eligibilityError: nextError };
+  }, [rawTrips, rawReviews, paramTripId, tripsLoading, reviewsLoading]);
+
+  const loadingTrips = tripsLoading || reviewsLoading;
+  const selectedTripId = manualSelectedTripId || eligibleTrips[0]?.id || '';
+  const submitError = validationError || reduxSubmitError || eligibilityError;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitError(null);
+    setValidationError(null);
+    dispatch(clearReviewSubmitState());
 
     // 400 Validation rules
     const errors = {};
@@ -175,16 +154,19 @@ export default function ReviewSubmitPage() {
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setSubmitError('Please address the form validation errors below.');
+      setValidationError('Please address the form validation errors below.');
       return;
     }
 
     setFieldErrors({});
-    setSubmitting(true);
 
     try {
-      // Conforms strictly to CreateReviewDto: { rating, comment, authorName, targetType, targetId, tripId }
+      const activeUserId = authUser && authUser.role !== 'default'
+        ? (authUser.userId || authUser.id || authUser.username)
+        : undefined;
+      // Conforms strictly to CreateReviewDto: { userId?, rating, comment, authorName, targetType, targetId, tripId }
       const payload = {
+        ...(activeUserId ? { userId: String(activeUserId) } : {}),
         rating: Number(rating),
         comment: comment.trim(),
         authorName: authorName.trim() || undefined,
@@ -193,17 +175,11 @@ export default function ReviewSubmitPage() {
         tripId: selectedTripId,
       };
 
-      const result = await createReview(payload);
-      setSubmittedReview(result || payload);
+      await dispatch(submitReview(payload)).unwrap();
     } catch (err) {
-      const status = err?.status || err?.response?.status || 500;
-      const message = err?.message || 'Failed to submit review. Please try again.';
-      setSubmitError(message);
       if (err?.errors && typeof err.errors === 'object') {
         setFieldErrors(err.errors);
       }
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -245,7 +221,7 @@ export default function ReviewSubmitPage() {
   }
 
   // 3. General Error State
-  if (submitError && submitError.includes('Network') || submitError?.includes('500')) {
+  if (submitError && (submitError.includes('Network') || submitError.includes('500'))) {
     return (
       <div className="trav-page-container">
         <TravellerHeader title="Submission Error" />
@@ -254,7 +230,14 @@ export default function ReviewSubmitPage() {
             <span className="trav-error-icon">⚠️</span>
             <h2 className="trav-error-title">Unable to Save Review</h2>
             <p className="trav-error-desc">{submitError}</p>
-            <button type="button" onClick={() => setSubmitError(null)} className="trav-btn trav-btn-primary">
+            <button
+              type="button"
+              onClick={() => {
+                setValidationError(null);
+                dispatch(clearReviewSubmitState());
+              }}
+              className="trav-btn trav-btn-primary"
+            >
               Try Again
             </button>
           </div>
@@ -335,9 +318,10 @@ export default function ReviewSubmitPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setSubmittedReview(null);
                     setComment('');
                     setTitle('');
+                    setValidationError(null);
+                    dispatch(clearReviewSubmitState());
                   }}
                   className="trav-btn trav-btn-secondary"
                 >
@@ -435,7 +419,7 @@ export default function ReviewSubmitPage() {
                   id="trav-review-trip"
                   className={`trav-select ${fieldErrors.tripId ? 'has-error' : ''}`}
                   value={selectedTripId}
-                  onChange={(e) => setSelectedTripId(e.target.value)}
+                  onChange={(e) => setManualSelectedTripId(e.target.value)}
                   disabled={Boolean(searchParams.get('tripId'))}
                 >
                   {eligibleTrips.map((t) => (

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../../components/Navbar/navbar";
 import { useAuth } from "../../context/AuthContext.jsx";
@@ -38,7 +38,7 @@ function resolvePostLoginTarget(role, fromPath) {
   return fallback;
 }
 
-export default function Login({ user: propUser }) {
+export default function Login({ user: propUser, onAuthenticated }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: authUser, isAuthenticated, loading: authLoading, error: authError, login, clearError } = useAuth();
@@ -47,6 +47,10 @@ export default function Login({ user: propUser }) {
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
   const fromPath = location.state?.from?.pathname;
+
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   if (isAuthenticated && activeUser?.role) {
     return <Navigate to={resolvePostLoginTarget(activeUser.role, fromPath)} replace />;
@@ -75,6 +79,7 @@ export default function Login({ user: propUser }) {
         username: trimmedUsername,
         password: form.password,
       });
+      onAuthenticated?.(authenticatedUser);
       navigate(resolvePostLoginTarget(authenticatedUser.role, fromPath), { replace: true });
     } catch (requestError) {
       setLocalError(requestError?.message || "Login failed. Please check your credentials.");

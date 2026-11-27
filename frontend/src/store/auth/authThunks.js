@@ -34,6 +34,7 @@ function normalizeAuthenticatedUser(result) {
 
   const user = {
     ...account,
+    ...(token ? { token } : {}),
     id: account.id ?? account.userId ?? account.username,
     partnerType: account.role,
     region: region ?? account.region,

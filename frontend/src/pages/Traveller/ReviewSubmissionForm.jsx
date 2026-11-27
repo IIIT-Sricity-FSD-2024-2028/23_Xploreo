@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useSelector } from 'react-redux';
 import {
   validateReviewForm,
   REVIEW_TARGET_TYPES,
   VALID_TARGET_TYPES,
 } from '../../utils/reviewUtils.js';
-import { getUser } from '../../services/session.js';
+import { selectAuthUser } from '../../features/authSlice.js';
 
 /**
  * ReviewSubmissionForm
@@ -36,8 +37,8 @@ export default function ReviewSubmissionForm({
   completedTrips = [],
   selectedTripId = '',
 }) {
-  const sessionUser = getUser();
-  const rawUserId = currentUserId ?? (sessionUser && sessionUser.role !== 'default' ? (sessionUser.userId ?? sessionUser.id) : null);
+  const authUser = useSelector(selectAuthUser);
+  const rawUserId = currentUserId ?? (authUser && authUser.role !== 'default' ? (authUser.userId ?? authUser.id) : null);
   const authenticatedUserId = rawUserId !== null && rawUserId !== undefined ? String(rawUserId).trim() : '';
   const hasValidUserId = authenticatedUserId.length > 0;
 
@@ -173,7 +174,7 @@ export default function ReviewSubmissionForm({
         >
           {hasValidUserId ? (
             <span>
-              Traveller: <strong>{sessionUser?.name || sessionUser?.username || authenticatedUserId}</strong> ({authenticatedUserId})
+              Traveller: <strong>{authUser?.name || authUser?.username || authenticatedUserId}</strong> ({authenticatedUserId})
             </span>
           ) : (
             <span>

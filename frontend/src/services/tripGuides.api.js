@@ -6,6 +6,29 @@ import { apiRequest } from './api.js';
 
 const enc = encodeURIComponent;
 
+export async function getTravellerTrips(travellerId) {
+  const res = await apiRequest(`/trips/traveller/${enc(travellerId)}`);
+  return Array.isArray(res) ? res : res?.data || [];
+}
+
+export function getTripById(tripId) {
+  return apiRequest(`/trips/${enc(tripId)}`);
+}
+
+export function createTrip(payload) {
+  return apiRequest('/trips', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTrip(tripId, patch) {
+  return apiRequest(`/trips/${enc(tripId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
 export async function listAvailableGuides(tripId) {
   const res = await apiRequest(`/trips/${enc(tripId)}/available-guides`);
   return Array.isArray(res) ? res : [];

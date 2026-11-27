@@ -1,7 +1,22 @@
-import { useState } from 'react';
-import { cancelBooking } from '../../services/hotels.api.js';
-import { cancelExperienceBooking } from '../../services/partners.api.js';
-import { cancelTrip } from '../../services/tripGuides.api.js';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  cancelTravellerBooking,
+  clearBookingActionError,
+  clearBookingCancellationResult,
+  selectBookingActionError,
+  selectBookingActionLoading,
+  selectBookingCancellationResult,
+} from '../../features/bookingsSlice.js';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
+import {
+  cancelTravellerTrip,
+  clearTripActionError,
+  clearTripCancellationResult,
+  selectTripActionError,
+  selectTripActionLoading,
+  selectTripCancellationResult,
+} from '../../features/tripsSlice.js';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 
 const REASON_OPTIONS = [
@@ -20,17 +35,39 @@ export default function CancellationModal({
   onClose,
   onSuccess,
 }) {
+  const dispatch = useDispatch();
   const [reason, setReason] = useState(REASON_OPTIONS[0]);
   const [customReason, setCustomReason] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [cancellationResult, setCancellationResult] = useState(null);
+
+  const bookingCancellation = useSelector(selectBookingCancellationResult);
+  const tripCancellation = useSelector(selectTripCancellationResult);
+  const bookingLoading = useSelector(selectBookingActionLoading);
+  const tripLoading = useSelector(selectTripActionLoading);
+  const bookingError = useSelector(selectBookingActionError);
+  const tripError = useSelector(selectTripActionError);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearBookingCancellationResult());
+      dispatch(clearTripCancellationResult());
+      dispatch(clearBookingActionError());
+      dispatch(clearTripActionError());
+    };
+  }, [dispatch]);
 
   if (!isOpen || !booking) return null;
 
   const isHotel = bookingType === 'hotel' || !!booking.hotel;
   const isTrip = bookingType === 'trip' || (!isHotel && (booking.planId || booking.itinerary));
   const isExperience = !isHotel && !isTrip;
+
+  const loading = isTrip ? tripLoading : bookingLoading;
+  const error = isTrip ? tripError : bookingError;
+  const activeCancellation = isTrip ? tripCancellation : bookingCancellation;
+  const cancellationResult =
+    activeCancellation && String(activeCancellation.id) === String(booking.id)
+      ? activeCancellation.result
+      : null;
 
   const title = isHotel
     ? (booking.hotel?.name || 'Hotel Reservation')
@@ -42,34 +79,39 @@ export default function CancellationModal({
   const dateStr = isHotel ? booking.checkIn : isTrip ? (booking.itinerary?.day1?.hotel?.checkInDate || booking.date) : booking.date;
 
   const handleConfirmCancel = async () => {
-    setLoading(true);
-    setError(null);
     const selectedReason = reason === 'Other reasons' && customReason.trim() ? customReason.trim() : reason;
 
     try {
-      let result;
-      if (isHotel) {
-        result = await cancelBooking(booking.id, { reason: selectedReason });
-      } else if (isExperience) {
-        result = await cancelExperienceBooking(booking.id, { reason: selectedReason });
-      } else {
-        result = await cancelTrip(booking.id, { reason: selectedReason });
-      }
+      const actionResult = isTrip
+        ? await dispatch(cancelTravellerTrip({ id: booking.id, reason: selectedReason })).unwrap()
+        : await dispatch(
+            cancelTravellerBooking({
+              id: booking.id,
+              bookingType: isHotel ? 'hotel' : 'experience',
+              reason: selectedReason,
+            }),
+          ).unwrap();
 
-      setCancellationResult(result);
+      const result = actionResult?.result ?? actionResult;
+      dispatch(fetchNotifications());
       if (onSuccess) {
         onSuccess(result);
       }
-    } catch (err) {
-      setError(err?.message || 'Failed to cancel booking. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch {
+      // Redux slices store the meaningful cancellation error for display.
     }
   };
 
   const handleClose = () => {
-    setError(null);
-    setCancellationResult(null);
+    setReason(REASON_OPTIONS[0]);
+    setCustomReason('');
+    if (isTrip) {
+      dispatch(clearTripActionError());
+      dispatch(clearTripCancellationResult());
+    } else {
+      dispatch(clearBookingActionError());
+      dispatch(clearBookingCancellationResult());
+    }
     onClose();
   };
 
