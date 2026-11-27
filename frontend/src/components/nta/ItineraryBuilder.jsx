@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { apiRequest } from '../../services/api.js';
 import { getExperiencesByDestination } from '../../mocks/plans/experiences.fixture.js';
 import './nta.css';
 
@@ -38,9 +39,55 @@ export default function ItineraryBuilder({
   };
 
   const experienceDays = Array.isArray(itinerary?.days) ? itinerary.days : [];
+  const [liveExperiences, setLiveExperiences] = useState([]);
 
-  // Available catalog experiences filtered by current package destination
-  const availableCatalog = getExperiencesByDestination(destination);
+  useEffect(() => {
+    let mounted = true;
+    apiRequest('/experiences')
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setLiveExperiences(list);
+      })
+      .catch(() => {
+        // Keep fixture fallback
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Available catalog experiences filtered by current package destination (live + fixture)
+  const availableCatalog = useMemo(() => {
+    const destNorm = String(destination || '').trim().toLowerCase();
+    const mappedLive = liveExperiences
+      .filter((e) => {
+        if (!e || (e.status && e.status !== 'active' && e.status !== 'available')) return false;
+        const city = String(e.destination || e.city || e.location || '').trim().toLowerCase();
+        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
+      })
+      .map((e) => ({
+        id: e.id,
+        experienceId: e.id,
+        title: e.title || e.name,
+        category: e.category || 'Experience',
+        pricePerPerson: Number(e.pricePerPerson ?? e.price) || 0,
+        defaultStartTime: e.defaultStartTime || '10:00',
+        defaultEndTime: e.defaultEndTime || '13:00',
+      }));
+
+    const fixtureCatalog = getExperiencesByDestination(destination);
+    const seen = new Set(mappedLive.map((e) => String(e.experienceId || e.title).toLowerCase()));
+    const merged = [...mappedLive];
+    fixtureCatalog.forEach((e) => {
+      const key = String(e.experienceId || e.title).toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(e);
+      }
+    });
+    return merged;
+  }, [destination, liveExperiences]);
 
   // Per-day selected experience picker state
   const [activeExpSelectors, setActiveExpSelectors] = useState({});

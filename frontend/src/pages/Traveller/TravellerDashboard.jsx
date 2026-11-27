@@ -161,6 +161,37 @@ export default function TravellerDashboard({
     error: false,
     count: reviews.length > 0 ? reviews.length : 0,
   });
+  const [dynamicDestinations, setDynamicDestinations] = useState(DESTINATION_OPTIONS);
+
+  useEffect(() => {
+    if (useFixtures) return;
+    let mounted = true;
+    Promise.all([
+      apiRequest('/hotels').catch(() => []),
+      apiRequest('/experiences').catch(() => []),
+      apiRequest('/plans').catch(() => []),
+    ]).then(([hotelsRes, expRes, plansRes]) => {
+      if (!mounted) return;
+      const set = new Set(DESTINATION_OPTIONS);
+      const addCity = (val) => {
+        const clean = String(val || '').trim();
+        if (clean) set.add(clean);
+      };
+      (Array.isArray(hotelsRes) ? hotelsRes : hotelsRes?.data || []).forEach((h) =>
+        addCity(h?.city || h?.destination || h?.location)
+      );
+      (Array.isArray(expRes) ? expRes : expRes?.data || []).forEach((e) =>
+        addCity(e?.destination || e?.city || e?.location)
+      );
+      (Array.isArray(plansRes) ? plansRes : plansRes?.data || []).forEach((p) =>
+        addCity(p?.destination)
+      );
+      setDynamicDestinations(Array.from(set));
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [useFixtures]);
 
   // Resolve all valid identifier aliases for the authenticated traveller
   const userIdentifiers = useMemo(() => {
@@ -670,7 +701,7 @@ export default function TravellerDashboard({
                           }}
                         >
                           <option value="">Select destination</option>
-                          {DESTINATION_OPTIONS.map((dest) => (
+                          {dynamicDestinations.map((dest) => (
                             <option key={dest} value={dest}>
                               {dest}
                             </option>
@@ -815,7 +846,7 @@ export default function TravellerDashboard({
                           }}
                         >
                           <option value="">Select destination</option>
-                          {DESTINATION_OPTIONS.map((dest) => (
+                          {dynamicDestinations.map((dest) => (
                             <option key={dest} value={dest}>
                               {dest}
                             </option>
@@ -929,7 +960,7 @@ export default function TravellerDashboard({
                           }}
                         >
                           <option value="">Select destination</option>
-                          {DESTINATION_OPTIONS.map((dest) => (
+                          {dynamicDestinations.map((dest) => (
                             <option key={dest} value={dest}>
                               {dest}
                             </option>

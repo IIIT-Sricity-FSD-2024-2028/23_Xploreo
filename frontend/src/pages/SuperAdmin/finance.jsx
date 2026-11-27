@@ -19,15 +19,18 @@ import {
   selectSuperAdminLoading,
 } from '@/store/superadmin/index.js';
 import LiveFinancePanel from '../../components/finance/LiveFinancePanel.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import '../../components/superadmin/superadmin.css';
 
 /**
  * SuperAdmin Finance & Reports Page.
  * Displays financial KPI metrics, platform commission vs partner payout charts,
- * and partner disbursement/payout queues with mock action triggers.
+ * and partner disbursement/payout queues.
  */
-export default function SuperAdminFinancePage() {
+export default function SuperAdminFinancePage({ user = null }) {
   const dispatch = useDispatch();
+  const { user: authUser } = useAuth();
+  const session = useMemo(() => user || authUser, [user, authUser]);
   // Finance Data States from Redux
   const metrics = useSelector(selectFinanceMetrics);
   const earningsData = useSelector(selectEarningsSeries);
@@ -50,17 +53,17 @@ export default function SuperAdminFinancePage() {
 
   // Load initial data
   const loadFinanceData = useCallback(() => {
-    dispatch(fetchFinanceDataThunk({ timeframe }));
-  }, [dispatch, timeframe]);
+    dispatch(fetchFinanceDataThunk({ timeframe, session }));
+  }, [dispatch, timeframe, session]);
 
   useEffect(() => {
-    dispatch(fetchFinanceDataThunk({ timeframe }));
-  }, [dispatch, timeframe]);
+    dispatch(fetchFinanceDataThunk({ timeframe, session }));
+  }, [dispatch, timeframe, session]);
 
   // Handle timeframe change for earnings chart
   const handleTimeframeChange = (newTimeframe) => {
     setTimeframe(newTimeframe);
-    dispatch(fetchEarningsSeriesThunk(newTimeframe));
+    dispatch(fetchEarningsSeriesThunk({ timeframe: newTimeframe, session }));
   };
 
   // Filtered payouts
@@ -88,13 +91,14 @@ export default function SuperAdminFinancePage() {
         processPayoutThunk({
           payoutId: confirmPayoutModal.payout.payoutId,
           action: confirmPayoutModal.action,
+          session,
         })
       ).unwrap();
 
       setFeedbackMessage(
         confirmPayoutModal.action === 'retry'
-          ? `Payout #${updated.payoutId} moved back to pending authorization queue (Mock Simulation).`
-          : `Payout #${updated.payoutId} successfully marked as PAID to ${updated.recipientName} (Mock Simulation).`
+          ? `Payout #${updated.payoutId} moved back to pending authorization queue.`
+          : `Payout #${updated.payoutId} successfully marked as PAID to ${updated.recipientName}.`
       );
       setConfirmPayoutModal(null);
       setTimeout(() => setFeedbackMessage(null), 4000);

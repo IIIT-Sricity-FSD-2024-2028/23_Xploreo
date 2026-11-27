@@ -6,6 +6,7 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { SuperadminService } from './superadmin.service';
@@ -28,6 +29,41 @@ import {
 @Controller('superadmin')
 export class SuperadminController {
   constructor(private readonly superadminService: SuperadminService) {}
+
+  @Get('payouts')
+  @ApiOperation({ summary: 'List partner payouts for SuperAdmin' })
+  @ApiReadEndpoint()
+  getPayouts(
+    @Query('status') status?: string,
+    @Query('partnerType') partnerType?: string,
+  ) {
+    return this.superadminService.getPayouts(status, partnerType);
+  }
+
+  @Patch('payouts/:payoutId')
+  @ApiOperation({ summary: 'Authorize or retry a partner payout' })
+  processPayout(
+    @Param('payoutId', NonEmptyStringPipe) payoutId: string,
+    @Body() body: { action?: 'pay' | 'retry' },
+  ) {
+    return this.superadminService.processPayout(payoutId, body?.action ?? 'pay');
+  }
+
+  @Get('disputes')
+  @ApiOperation({ summary: 'List customer/partner disputes for SuperAdmin' })
+  @ApiReadEndpoint()
+  getDisputes(@Query('status') status?: string) {
+    return this.superadminService.getDisputes(status);
+  }
+
+  @Patch('disputes/:disputeId/resolve')
+  @ApiOperation({ summary: 'Resolve a dispute with arbitration summary' })
+  resolveDispute(
+    @Param('disputeId', NonEmptyStringPipe) disputeId: string,
+    @Body() body: { resolutionSummary?: string },
+  ) {
+    return this.superadminService.resolveDispute(disputeId, body?.resolutionSummary);
+  }
 
   @Post()
   @ApiOperation({ summary: 'Create a superadmin' })

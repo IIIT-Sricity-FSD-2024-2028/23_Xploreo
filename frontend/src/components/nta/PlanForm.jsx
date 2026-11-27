@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPlan, updatePlan } from '../../services/plans.api.js';
+import { apiRequest } from '../../services/api.js';
 import { uploadSingle } from '../../services/upload.api.js';
 import { getHotelsByDestination } from '../../mocks/plans/hotels.fixture.js';
 import ItineraryBuilder from './ItineraryBuilder.jsx';
@@ -51,11 +52,66 @@ export default function PlanForm({
       ? initialPlan.durationNights
       : (initialPlan?.duration || 3)
   );
+  const [liveHotels, setLiveHotels] = useState([]);
 
-  // Available partner hotels for the selected destination
+  useEffect(() => {
+    let mounted = true;
+    apiRequest('/hotels')
+      .then((res) => {
+        if (!mounted) return;
+        const list = Array.isArray(res) ? res : res?.data || [];
+        setLiveHotels(list);
+      })
+      .catch(() => {
+        // Keep fixture fallback if backend call fails
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const destinationOptions = useMemo(() => {
+    const set = new Set(SUPPORTED_DESTINATIONS);
+    if (assignedRegion) set.add(assignedRegion);
+    if (initialPlan?.destination) set.add(initialPlan.destination);
+    liveHotels.forEach((h) => {
+      const city = String(h?.city || h?.destination || h?.location || '').trim();
+      if (city) set.add(city);
+    });
+    return Array.from(set);
+  }, [assignedRegion, initialPlan, liveHotels]);
+
+  // Available partner hotels for the selected destination (live backend + fixture fallback)
   const availableHotels = useMemo(() => {
-    return getHotelsByDestination(destination);
-  }, [destination]);
+    const destNorm = String(destination || '').trim().toLowerCase();
+    const mappedLive = liveHotels
+      .filter((h) => {
+        if (!h || (h.status && h.status !== 'active')) return false;
+        const city = String(h.city || h.destination || h.location || '').trim().toLowerCase();
+        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
+      })
+      .map((h) => ({
+        id: h.id,
+        hotelId: h.id,
+        name: h.name,
+        destination: h.city || h.location || destination,
+        stars: Number(h.stars) || 4,
+        pricePerNight: Number(h.pricePerNight) || 3500,
+        roomType: h.roomType || 'Standard Room',
+      }));
+
+    const fixtureHotels = getHotelsByDestination(destination);
+    const seen = new Set(mappedLive.map((h) => String(h.hotelId || h.name).toLowerCase()));
+    const merged = [...mappedLive];
+    fixtureHotels.forEach((h) => {
+      const key = String(h.hotelId || h.name).toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(h);
+      }
+    });
+    return merged;
+  }, [destination, liveHotels]);
 
   // Selected partner hotel record
   const [selectedHotel, setSelectedHotel] = useState(() => {
@@ -268,7 +324,23 @@ export default function PlanForm({
     setDestination(newDest);
     setRegionSwitchNotice(`Destination changed to ${newDest}. Previous hotel and experience selections have been reset to match ${newDest}.`);
 
-    const newHotels = getHotelsByDestination(newDest);
+    const destNorm = String(newDest || '').trim().toLowerCase();
+    const mappedLive = liveHotels
+      .filter((h) => {
+        if (!h || (h.status && h.status !== 'active')) return false;
+        const city = String(h.city || h.destination || h.location || '').trim().toLowerCase();
+        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
+      })
+      .map((h) => ({
+        id: h.id,
+        hotelId: h.id,
+        name: h.name,
+        destination: h.city || h.location || newDest,
+        stars: Number(h.stars) || 4,
+        pricePerNight: Number(h.pricePerNight) || 3500,
+        roomType: h.roomType || 'Standard Room',
+      }));
+    const newHotels = mappedLive.length > 0 ? mappedLive : getHotelsByDestination(newDest);
     const firstHotel = newHotels[0] || null;
     setSelectedHotel(firstHotel);
 
@@ -638,7 +710,7 @@ export default function PlanForm({
                   onChange={(e) => handleDestinationChange(e.target.value)}
                   disabled={isSubmitting}
                 >
-                  {SUPPORTED_DESTINATIONS.map((d) => (
+                  {destinationOptions.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>

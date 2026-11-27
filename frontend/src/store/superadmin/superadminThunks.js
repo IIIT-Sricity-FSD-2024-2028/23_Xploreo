@@ -192,12 +192,12 @@ export const updateStaffRegionThunk = createAsyncThunk(
 
 export const fetchFinanceDataThunk = createAsyncThunk(
   'superadmin/fetchFinanceData',
-  async ({ timeframe = 'weekly' } = {}, { rejectWithValue }) => {
+  async ({ timeframe = 'weekly', session } = {}, { rejectWithValue }) => {
     try {
       const [metrics, earningsSeries, payouts] = await Promise.all([
-        getFinanceMetrics(),
-        getEarningsSeries(timeframe),
-        getPayouts(),
+        getFinanceMetrics(session),
+        getEarningsSeries(timeframe, session),
+        getPayouts({}, session),
       ]);
       return {
         metrics,
@@ -212,9 +212,9 @@ export const fetchFinanceDataThunk = createAsyncThunk(
 
 export const fetchEarningsSeriesThunk = createAsyncThunk(
   'superadmin/fetchEarningsSeries',
-  async (timeframe = 'weekly', { rejectWithValue }) => {
+  async ({ timeframe = 'weekly', session } = {}, { rejectWithValue }) => {
     try {
-      const data = await getEarningsSeries(timeframe);
+      const data = await getEarningsSeries(timeframe, session);
       return Array.isArray(data) ? data : [];
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to load earnings series.');
@@ -224,9 +224,9 @@ export const fetchEarningsSeriesThunk = createAsyncThunk(
 
 export const processPayoutThunk = createAsyncThunk(
   'superadmin/processPayout',
-  async ({ payoutId, action }, { rejectWithValue }) => {
+  async ({ payoutId, action, session }, { rejectWithValue }) => {
     try {
-      return await processPayoutAction(payoutId, action);
+      return await processPayoutAction(payoutId, action, session);
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to process payout authorization.');
     }
@@ -245,7 +245,7 @@ export const fetchOperationsDataThunk = createAsyncThunk(
         getOperationsMetrics(session),
         getLedgerTransactions({}, session),
         getRefundRequests(session),
-        getDisputes(),
+        getDisputes(session),
       ]);
       return {
         metrics,
@@ -274,9 +274,9 @@ export const processRefundThunk = createAsyncThunk(
 
 export const resolveDisputeThunk = createAsyncThunk(
   'superadmin/resolveDispute',
-  async ({ disputeId, summary }, { rejectWithValue }) => {
+  async ({ disputeId, summary, session }, { rejectWithValue }) => {
     try {
-      return await resolveDisputeAction(disputeId, summary);
+      return await resolveDisputeAction(disputeId, summary, session);
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to resolve dispute.');
     }

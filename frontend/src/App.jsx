@@ -1,5 +1,5 @@
 import { Provider } from "react-redux";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./App.css";
 import { useAuth } from "./context/AuthContext.jsx";
 import { store } from "./store/index.js";
@@ -33,8 +33,18 @@ import TravellerSupportTicketsPage from "./pages/Traveller/TravellerSupportTicke
 import TravellerCheckoutPage from "./pages/Traveller/TravellerCheckoutPage";
 
 function AppRoutes() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, role } = useAuth();
   const travellerId = user?.userId || user?.id || user?.username || '20001';
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  const homeForRole = {
+    traveller: "/Traveller/dashboard",
+    guide: "/guide/dashboard",
+    hotel: "/hotel/dashboard",
+    experience: "/experience/home",
+    superadmin: "/superadmin/dashboard",
+    nontechadmin: "/nta/dashboard",
+    techadmin: "/tech-admin/dashboard",
+  }[normalizedRole] || "/";
 
   return (
     <Routes>
@@ -48,6 +58,8 @@ function AppRoutes() {
       {/* Authentication Routes */}
       <Route path="/Auth/login" element={<Login user={user} />} />
       <Route path="/Auth/register" element={<Register user={user} />} />
+      <Route path="/login" element={<Navigate to="/Auth/login" replace />} />
+      <Route path="/register" element={<Navigate to="/Auth/register" replace />} />
       <Route path="/Auth/forgot-password" element={<ForgotPassword user={user} />} />
       <Route path="/Auth/reset-password" element={<ResetPassword user={user} />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
@@ -132,6 +144,11 @@ function AppRoutes() {
           element={<TravellerCheckoutPage user={user} />}
         />
       </Route>
+
+      {/* Route Aliases & Catch-all */}
+      <Route path="/Traveller" element={<Navigate to="/Traveller/dashboard" replace />} />
+      <Route path="/superadmin/opsbook" element={<Navigate to="/superadmin/operations" replace />} />
+      <Route path="*" element={<Navigate to={isAuthenticated ? homeForRole : "/"} replace />} />
     </Routes>
   );
 }

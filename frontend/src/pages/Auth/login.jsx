@@ -14,6 +14,30 @@ const destinationForRole = {
   techadmin: "/tech-admin/dashboard",
 };
 
+const portalPrefixForRole = {
+  traveller: "/Traveller",
+  guide: "/guide",
+  hotel: "/hotel",
+  experience: "/experience",
+  superadmin: "/superadmin",
+  nontechadmin: "/nta",
+  techadmin: "/tech-admin",
+};
+
+function resolvePostLoginTarget(role, fromPath) {
+  const normalizedRole = String(role || "").trim().toLowerCase();
+  const fallback = destinationForRole[normalizedRole] || "/";
+  const allowedPrefix = portalPrefixForRole[normalizedRole];
+  if (
+    fromPath &&
+    allowedPrefix &&
+    fromPath.toLowerCase().startsWith(allowedPrefix.toLowerCase())
+  ) {
+    return fromPath;
+  }
+  return fallback;
+}
+
 export default function Login({ user: propUser }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,9 +46,10 @@ export default function Login({ user: propUser }) {
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState("");
+  const fromPath = location.state?.from?.pathname;
 
   if (isAuthenticated && activeUser?.role) {
-    return <Navigate to={destinationForRole[activeUser.role] || "/"} replace />;
+    return <Navigate to={resolvePostLoginTarget(activeUser.role, fromPath)} replace />;
   }
 
   const error = localError || authError || "";
@@ -50,12 +75,7 @@ export default function Login({ user: propUser }) {
         username: trimmedUsername,
         password: form.password,
       });
-      const fromPath = location.state?.from?.pathname;
-      const target =
-        fromPath && !fromPath.startsWith("/Auth/") && fromPath !== "/unauthorized"
-          ? fromPath
-          : destinationForRole[authenticatedUser.role] || "/";
-      navigate(target, { replace: true });
+      navigate(resolvePostLoginTarget(authenticatedUser.role, fromPath), { replace: true });
     } catch (requestError) {
       setLocalError(requestError?.message || "Login failed. Please check your credentials.");
     }

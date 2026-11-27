@@ -331,11 +331,12 @@ export default function SuperAdminOpsBookPage({ user = null }) {
         resolveDisputeThunk({
           disputeId: disputeModal.dispute.disputeId,
           summary: disputeModal.summary,
+          session,
         })
       ).unwrap();
 
       setFeedbackMessage(
-        `Dispute #${updated.disputeId} successfully marked as resolved (Mock Simulation).`
+        `Dispute #${updated.disputeId} successfully marked as resolved.`
       );
       setDisputeModal(null);
       setTimeout(() => setFeedbackMessage(null), 4000);

@@ -57,6 +57,14 @@ export default function PlanList({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
 
+  const destinationOptions = useMemo(() => {
+    const set = new Set(SUPPORTED_DESTINATIONS);
+    plans.forEach((p) => {
+      if (p?.destination) set.add(String(p.destination).trim());
+    });
+    return Array.from(set);
+  }, [plans]);
+
   // Keep selectedDestination in sync with assignedRegion
   useEffect(() => {
     if (assignedRegion) {
@@ -231,7 +239,7 @@ export default function PlanList({
                 <span className="nta-dest-pill-dot" title="Assigned Region" />
               </button>
             ) : (
-              SUPPORTED_DESTINATIONS.map((dest) => {
+              destinationOptions.map((dest) => {
                 const isSelected = selectedDestination.toLowerCase() === dest.toLowerCase();
                 return (
                   <button

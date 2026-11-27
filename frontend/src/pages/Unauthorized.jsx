@@ -10,12 +10,13 @@ const destinationForRole = {
   guide: "/guide/dashboard",
   hotel: "/hotel/dashboard",
   experience: "/experience/home",
-  traveller: "/",
+  traveller: "/Traveller/dashboard",
 };
 
 export default function UnauthorizedPage() {
   const { user, logout } = useAuth();
-  const portalUrl = destinationForRole[user?.role] || "/";
+  const normalizedRole = String(user?.role || "").trim().toLowerCase();
+  const portalUrl = destinationForRole[normalizedRole] || "/";
 
   return (
     <div className="auth-page">

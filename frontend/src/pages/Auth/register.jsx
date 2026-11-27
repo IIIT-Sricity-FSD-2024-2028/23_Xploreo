@@ -38,7 +38,8 @@ export default function Register({ user: propUser }) {
   const [localError, setLocalError] = useState("");
 
   if (isAuthenticated && activeUser?.role) {
-    return <Navigate to={destinationForRole[activeUser.role] || "/"} replace />;
+    const normalizedRole = String(activeUser.role || "").trim().toLowerCase();
+    return <Navigate to={destinationForRole[normalizedRole] || "/"} replace />;
   }
 
   const error = localError || authError || "";
@@ -109,7 +110,8 @@ export default function Register({ user: propUser }) {
         details.location = trimmedLocation;
       }
       const authenticatedUser = await register(details);
-      navigate(destinationForRole[authenticatedUser.role] || "/", { replace: true });
+      const normalizedRole = String(authenticatedUser.role || "").trim().toLowerCase();
+      navigate(destinationForRole[normalizedRole] || "/", { replace: true });
     } catch (requestError) {
       setLocalError(requestError?.message || "Registration failed. Please try again.");
     }

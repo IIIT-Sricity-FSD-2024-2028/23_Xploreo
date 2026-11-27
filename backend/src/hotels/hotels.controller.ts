@@ -35,9 +35,9 @@ export class HotelsController {
   }
 
   @Get()
-  @Roles(Role.TRAVELLER, Role.HOTEL)
+  @Roles(Role.TRAVELLER, Role.HOTEL, Role.NONTECHADMIN, Role.SUPERADMIN)
   @ApiOperation({
-    summary: 'Traveller searches active hotels; partner lists own hotels',
+    summary: 'Traveller/Admin searches active hotels; partner lists own hotels',
   })
   @ApiQuery({ name: 'location', required: false, example: 'Goa' })
   @ApiReadEndpoint()
