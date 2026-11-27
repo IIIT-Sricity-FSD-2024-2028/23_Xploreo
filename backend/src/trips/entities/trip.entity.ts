@@ -25,6 +25,7 @@ export class Trip {
   guideId?: string;
   status!: TripStatus;
   itinerary!: StructuredItinerary;
+  travellers?: number;
   totalAmount!: number;
   currentDay!: number;
   currentStop!: string;

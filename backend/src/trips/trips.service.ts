@@ -126,6 +126,7 @@ export class TripsService {
       planId: plan.id,
       status: TripStatus.CONFIRMED,
       itinerary,
+      travellers: travellersCount,
       totalAmount: this.calculateTotalAmount(itinerary, plan.pricePerPerson, travellersCount),
       currentDay: 1,
       currentStop: 'Not started',
@@ -342,15 +343,25 @@ export class TripsService {
       this.assertGuideAvailableForTrip(dto.guideId, trip);
     }
 
+    if (actor?.role === 'guide' && dto.itinerary) {
+      throw new ForbiddenException('Guides cannot modify trip itinerary');
+    }
+
     const itinerary = dto.itinerary
       ? mergeStructuredItineraryPatch(trip.itinerary, dto.itinerary)
       : trip.itinerary;
+
+    let totalAmount = trip.totalAmount;
+    if (dto.itinerary) {
+      const travellersCount = this.resolveTravellerCount(trip, plan.pricePerPerson);
+      totalAmount = this.calculateTotalAmount(itinerary, plan.pricePerPerson, travellersCount);
+    }
 
     const updated = this.tripsRepository.update(id, {
       guideId: dto.guideId ?? trip.guideId,
       status: dto.status ?? trip.status,
       itinerary,
-      totalAmount: dto.totalAmount ?? this.calculateTotalAmount(itinerary, plan.pricePerPerson),
+      totalAmount,
     });
 
     if (!updated) throw new NotFoundException(`Trip ${id} not found`);
@@ -481,6 +492,17 @@ export class TripsService {
     const deleted = this.tripsRepository.delete(id);
     if (!deleted) throw new NotFoundException(`Trip ${id} not found`);
     return { message: `Trip ${id} deleted` };
+  }
+
+  private resolveTravellerCount(trip: Trip, basePrice: number): number {
+    if (typeof trip.travellers === 'number' && trip.travellers >= 1) {
+      return trip.travellers;
+    }
+    const perPersonBefore = this.calculateTotalAmount(trip.itinerary, basePrice, 1);
+    if (perPersonBefore > 0 && trip.totalAmount > 0) {
+      return Math.max(1, Math.round(trip.totalAmount / perPersonBefore));
+    }
+    return 1;
   }
 
   private calculateTotalAmount(

@@ -22,6 +22,7 @@ export class TripsRepository {
       guideId: data.guideId,
       status: data.status || TripStatus.CONFIRMED,
       itinerary: data.itinerary,
+      travellers: data.travellers,
       totalAmount: data.totalAmount,
       currentDay: data.currentDay ?? 1,
       currentStop: data.currentStop ?? 'Not started',
