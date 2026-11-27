@@ -89,6 +89,16 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
     travellerToken = await login('T001', 'TRA@123');
     superAdminToken = await login('SA001', 'SA@123');
 
+    const expEntity = experiencesRepo.findById('exp-3')!;
+    experiencesRepo.update('exp-3', {
+      slots: [
+        ...(expEntity.slots ?? []),
+        { id: 'slot-p1-11', date: futureIso(11), time: '07:00', booked: 0, capacity: 15, available: true },
+        { id: 'slot-p1-13', date: futureIso(13), time: '09:00', booked: 0, capacity: 15, available: true },
+        { id: 'slot-p1-20', date: futureIso(20), time: '09:00', booked: 0, capacity: 15, available: true },
+      ],
+    });
+
     // Second Jaipur NTA token to test cross-NTA isolation in the same region
     ntaOtherJaipurToken = jwt.sign(
       {
@@ -138,8 +148,8 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
             flight: null,
             transport: {
               id: 'tr-qa-1',
-              mode: 'car',
               provider: 'Xploreo Cabs',
+              vehicleType: 'SUV',
               pickupLocation: 'Jaipur Airport',
               dropoffLocation: 'HP-JAI-001',
               pickupAt: `${futureIso(10)}T10:00:00.000Z`,
@@ -148,10 +158,10 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
             hotel: {
               id: 'ht-qa-1',
               hotelId: 'HP-JAI-001',
-              name: 'Royal Heritage Haveli',
+              name: 'The Heritage Haveli & Spa, Jaipur',
               checkInDate: futureIso(10),
               checkOutDate: futureIso(13),
-              roomType: 'Deluxe Room',
+              roomType: 'Maharaja Suite',
               status: 'planned',
             },
           },
@@ -161,8 +171,8 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
               experiences: [
                 {
                   id: 'ex-qa-1',
-                  experienceId: 'exp-1',
-                  title: 'Amber Fort Sunrise Walk',
+                  experienceId: 'exp-3',
+                  title: 'Jaipur Heritage Walk',
                   location: 'Jaipur',
                   startsAt: `${futureIso(11)}T07:00:00.000Z`,
                   endsAt: `${futureIso(11)}T10:00:00.000Z`,
@@ -191,7 +201,30 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
         durationNights: 2,
         pricePerPerson: 15000,
         createdByNtaId: 'NTA-SPOOFED',
-        itinerary: [{ day: 'Day 1', title: 'Arrival', detail: 'Check in' }],
+        itinerary: {
+          day1: {
+            flight: null,
+            transport: {
+              id: 'tr-sp',
+              provider: 'Xploreo',
+              vehicleType: 'SUV',
+              pickupLocation: 'Jaipur',
+              dropoffLocation: 'HP-JAI-001',
+              pickupAt: `${futureIso(10)}T09:00:00.000Z`,
+              status: 'planned',
+            },
+            hotel: {
+              id: 'ht-sp',
+              hotelId: 'HP-JAI-001',
+              name: 'The Heritage Haveli & Spa, Jaipur',
+              checkInDate: futureIso(10),
+              checkOutDate: futureIso(12),
+              roomType: 'Maharaja Suite',
+              status: 'planned',
+            },
+          },
+          days: [],
+        },
       })
       .expect(400);
   });
@@ -240,7 +273,7 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
     });
     expect(ownBooking!.experienceComponents).toHaveLength(1);
     expect(ownBooking!.experienceComponents[0]).toMatchObject({
-      experienceId: 'exp-1',
+      experienceId: 'exp-3',
       assignmentStatus: 'unassigned',
       bookingId: null,
     });
@@ -267,81 +300,80 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
       .expect(403);
   });
 
-  it('7 & 8. Packages without hotel components or without experience components remain valid', async () => {
-    // Package without hotelId (only experience)
-    const expOnlyPlanRes = await request(app.getHttpServer())
-      .post('/api/plans')
-      .set(nta1Headers())
-      .send({
-        id: 'plan-qa-exp-only',
-        title: 'QA Jaipur Experience Only',
-        description: 'No hotel component',
-        originCity: 'Jaipur',
-        destination: 'Jaipur',
-        durationNights: 2,
-        pricePerPerson: 8000,
-        includesFlight: false,
-        itinerary: {
-          day1: {
-            flight: null,
-            transport: {
-              id: 'tr-qa-exp',
-              mode: 'car',
-              provider: 'Xploreo',
-              pickupLocation: 'City Center',
-              dropoffLocation: 'Amber',
-              pickupAt: `${futureIso(12)}T09:00:00.000Z`,
-              status: 'planned',
-            },
-            hotel: {
-              id: 'ht-empty',
-              hotelId: '',
-              name: 'None',
-              checkInDate: futureIso(12),
-              checkOutDate: futureIso(14),
-              roomType: 'None',
-              status: 'planned',
-            },
+  it('7 & 8. Packages without hotel components (legacy/direct repo) or without experience components remain valid', async () => {
+    // 239dfeed's assertBookableItinerary requires a partner hotel on POST /api/plans;
+    // TripsService.toNtaPackageBooking still handles legacy/direct trips without hotelId.
+    const expOnlyPlan = plansRepo.create({
+      id: 'plan-qa-exp-only',
+      title: 'QA Jaipur Experience Only',
+      description: 'No hotel component',
+      originCity: 'Jaipur',
+      destination: 'Jaipur',
+      durationNights: 2,
+      pricePerPerson: 8000,
+      includesFlight: false,
+      createdByNtaId: 'NTA001',
+      itinerary: {
+        day1: {
+          flight: null,
+          transport: {
+            id: 'tr-qa-exp',
+            provider: 'Xploreo',
+            vehicleType: 'SUV',
+            pickupLocation: 'City Center',
+            dropoffLocation: 'Amber',
+            pickupAt: `${futureIso(12)}T09:00:00.000Z`,
+            status: 'planned',
           },
-          days: [
-            {
-              dayNumber: 2,
-              experiences: [
-                {
-                  id: 'ex-only-1',
-                  experienceId: 'exp-1',
-                  title: 'Amber Walk',
-                  location: 'Jaipur',
-                  startsAt: `${futureIso(13)}T09:00:00.000Z`,
-                  endsAt: `${futureIso(13)}T11:00:00.000Z`,
-                  status: 'planned',
-                },
-              ],
-            },
-          ],
+          hotel: {
+            id: 'ht-empty',
+            hotelId: '',
+            name: 'None',
+            checkInDate: futureIso(12),
+            checkOutDate: futureIso(14),
+            roomType: 'None',
+            status: 'planned',
+          },
         },
-      })
-      .expect(201);
+        days: [
+          {
+            dayNumber: 2,
+            experiences: [
+              {
+                id: 'ex-only-1',
+                experienceId: 'exp-3',
+                title: 'Amber Walk',
+                location: 'Jaipur',
+                startsAt: `${futureIso(13)}T09:00:00.000Z`,
+                endsAt: `${futureIso(13)}T11:00:00.000Z`,
+                status: 'planned',
+              },
+            ],
+          },
+        ],
+      },
+    });
 
-    const expOnlyTrip = await request(app.getHttpServer())
-      .post('/api/trips')
-      .set(travellerHeaders())
-      .send({
-        id: 'trip-qa-exp-only',
-        travellerId: 'T001',
-        planId: expOnlyPlanRes.body.id,
-        travellers: 1,
-      })
-      .expect(201);
+    const expOnlyTrip = tripsRepo.create({
+      id: 'trip-qa-exp-only',
+      travellerId: 'T001',
+      planId: expOnlyPlan.id,
+      itinerary: expOnlyPlan.itinerary,
+      travellers: 1,
+      totalAmount: 8000,
+      currentDay: 1,
+      currentStop: 'Not started',
+      currentLocation: 'Jaipur',
+    } as any);
 
     const expOnlyDetail = await request(app.getHttpServer())
-      .get(`/api/trips/nta/packages/${expOnlyTrip.body.id}`)
+      .get(`/api/trips/nta/packages/${expOnlyTrip.id}`)
       .set(nta1Headers())
       .expect(200);
     expect(expOnlyDetail.body.hotelComponents).toEqual([]);
     expect(expOnlyDetail.body.experienceComponents).toHaveLength(1);
 
-    // Package without experiences (legacy array itinerary -> empty days experiences)
+    // Package without experiences (valid hotel + empty days) via HTTP POST /api/plans + POST /api/trips
     const hotelOnlyPlanRes = await request(app.getHttpServer())
       .post('/api/plans')
       .set(nta1Headers())
@@ -354,14 +386,32 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
         durationNights: 2,
         pricePerPerson: 12000,
         includesFlight: false,
-        itinerary: [{ day: 'Day 1', title: 'Stay', detail: 'Relax at hotel' }],
+        itinerary: {
+          day1: {
+            flight: null,
+            transport: {
+              id: 'tr-qa-ho',
+              provider: 'Xploreo',
+              vehicleType: 'SUV',
+              pickupLocation: 'Jaipur Airport',
+              dropoffLocation: 'HP-JAI-001',
+              pickupAt: `${futureIso(14)}T09:00:00.000Z`,
+              status: 'planned',
+            },
+            hotel: {
+              id: 'ht-qa-ho',
+              hotelId: 'HP-JAI-001',
+              name: 'The Heritage Haveli & Spa, Jaipur',
+              checkInDate: futureIso(14),
+              checkOutDate: futureIso(16),
+              roomType: 'Maharaja Suite',
+              status: 'planned',
+            },
+          },
+          days: [],
+        },
       })
       .expect(201);
-
-    const hotelOnlyIt = structuredClone(hotelOnlyPlanRes.body.itinerary);
-    hotelOnlyIt.day1.hotel.checkInDate = futureIso(14);
-    hotelOnlyIt.day1.hotel.checkOutDate = futureIso(16);
-    plansRepo.update(hotelOnlyPlanRes.body.id, { itinerary: hotelOnlyIt });
 
     const hotelOnlyTrip = await request(app.getHttpServer())
       .post('/api/trips')
@@ -403,9 +453,9 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
     expect(hotelRes.body.id).toBe('qa-standalone-hotel-001');
     expect(hotelRes.body.isPackageComponent).toBeUndefined();
 
-    const expEntity = experiencesRepo.findById('exp-1')!;
+    const expEntity = experiencesRepo.findById('exp-3')!;
     const futureExpDate = futureIso(20);
-    experiencesRepo.update('exp-1', {
+    experiencesRepo.update('exp-3', {
       slots: [
         ...(expEntity.slots ?? []),
         { id: 'slot-qa-future', date: futureExpDate, time: '09:00', booked: 0, capacity: 15, available: true },
@@ -417,7 +467,7 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
       .set(travellerHeaders())
       .send({
         id: 'qa-standalone-exp-001',
-        experienceId: 'exp-1',
+        experienceId: 'exp-3',
         guestName: 'Anjali Sharma',
         email: 'anjali@example.com',
         phone: '+91 9876543210',
@@ -444,7 +494,7 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
       checkIn: futureIso(10),
       checkOut: futureIso(13),
       guests: 2,
-      roomType: 'Deluxe Room',
+      roomType: 'Maharaja Suite',
       rooms: 1,
       guestNames: ['Anjali Sharma'],
       totalAmount: 15000,
@@ -455,7 +505,7 @@ describe('Phase 1 – Backend Foundation for NTA-Centred Package Booking', () =>
 
     const linkedExp = expBookingsRepo.create({
       id: 'qa-pkg-comp-exp-001',
-      experienceId: 'exp-1',
+      experienceId: 'exp-3',
       travellerId: 'T001',
       guestName: 'Anjali Sharma',
       email: 'anjali@example.com',

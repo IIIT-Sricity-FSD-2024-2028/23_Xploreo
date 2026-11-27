@@ -12,6 +12,7 @@ import { BookingsRepository } from '../bookings/bookings.repository';
 import { BookingStatus } from '../bookings/entities/booking.entity';
 import { ExperienceBookingsRepository } from '../experience-bookings/experience-bookings.repository';
 import { ExperienceBookingStatus } from '../experience-bookings/entities/experience-booking.entity';
+import { ExperiencesRepository } from '../experiences/experiences.repository';
 import { FinanceService } from '../finance/finance.service';
 import { HotelsRepository } from '../hotels/hotels.repository';
 import { PlansRepository } from '../plans/plans.repository';
@@ -38,6 +39,7 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
   let tripsRepo: TripsRepository;
   let bookingsRepo: BookingsRepository;
   let expBookingsRepo: ExperienceBookingsRepository;
+  let experiencesRepo: ExperiencesRepository;
   let hotelsRepo: HotelsRepository;
   let financeService: FinanceService;
 
@@ -78,7 +80,18 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
     tripsRepo = moduleRef.get(TripsRepository);
     bookingsRepo = moduleRef.get(BookingsRepository);
     expBookingsRepo = moduleRef.get(ExperienceBookingsRepository);
+    experiencesRepo = moduleRef.get(ExperiencesRepository);
     hotelsRepo = moduleRef.get(HotelsRepository);
+
+    const exp3 = experiencesRepo.findById('exp-3')!;
+    experiencesRepo.update('exp-3', {
+      slots: [
+        ...(exp3.slots ?? []),
+        { id: 'slot-p2-1', date: futureIso(1), time: '07:00', booked: 0, capacity: 15, available: true },
+        { id: 'slot-p2-6', date: futureIso(6), time: '07:00', booked: 0, capacity: 15, available: true },
+        { id: 'slot-p2-7', date: futureIso(7), time: '07:00', booked: 0, capacity: 15, available: true },
+      ],
+    });
     financeService = moduleRef.get(FinanceService);
 
     const login = async (username: string, password: string) => {
@@ -104,7 +117,7 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
       { expiresIn: '1h' },
     );
     expPartnerToken = jwt.sign(
-      { userId: 'XP001', username: 'XP001', role: Role.EXPERIENCE },
+      { userId: exp3.partnerId, username: exp3.partnerId, role: Role.EXPERIENCE },
       JWT_SECRET,
       { expiresIn: '1h' },
     );
@@ -135,8 +148,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             flight: null,
             transport: {
               id: 'tr-p2-1',
-              mode: 'car',
               provider: 'Xploreo',
+              vehicleType: 'SUV',
               pickupLocation: 'Jaipur Airport',
               dropoffLocation: 'HP-JAI-001',
               pickupAt: `${checkIn}T09:00:00.000Z`,
@@ -145,10 +158,10 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             hotel: {
               id: 'ht-p2-1',
               hotelId: 'HP-JAI-001',
-              name: 'Royal Heritage Haveli',
+              name: 'The Heritage Haveli & Spa, Jaipur',
               checkInDate: checkIn,
               checkOutDate: checkOut,
-              roomType: 'Deluxe Room',
+              roomType: 'Maharaja Suite',
               status: 'planned',
             },
           },
@@ -158,8 +171,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
               experiences: [
                 {
                   id: 'ex-p2-1',
-                  experienceId: 'exp-1',
-                  title: 'Amber Fort Trek',
+                  experienceId: 'exp-3',
+                  title: 'Jaipur Heritage Walk',
                   location: 'Jaipur',
                   startsAt: `${futureIso(1)}T07:00:00.000Z`,
                   endsAt: `${futureIso(1)}T10:00:00.000Z`,
@@ -235,8 +248,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
     });
     expect(res1.body.dispatched.experiences).toHaveLength(1);
     expect(res1.body.dispatched.experiences[0]).toMatchObject({
-      experienceId: 'exp-1',
-      partnerId: 'XP001',
+      experienceId: 'exp-3',
+      partnerId: experiencesRepo.findById('exp-3')!.partnerId,
       created: true,
     });
 
@@ -380,8 +393,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             flight: null,
             transport: {
               id: 'tr-p21-s',
-              mode: 'car',
               provider: 'Xploreo',
+              vehicleType: 'SUV',
               pickupLocation: 'Jaipur',
               dropoffLocation: 'HP-JAI-001',
               pickupAt: `${todayIso()}T09:00:00.000Z`,
@@ -390,10 +403,10 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             hotel: {
               id: 'ht-p21-s',
               hotelId: 'HP-JAI-001',
-              name: 'Royal Heritage Haveli',
+              name: 'The Heritage Haveli & Spa, Jaipur',
               checkInDate: todayIso(),
               checkOutDate: futureIso(2),
-              roomType: 'Deluxe Room',
+              roomType: 'Maharaja Suite',
               status: 'planned',
             },
           },
@@ -403,8 +416,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
               experiences: [
                 {
                   id: 'ex-p21-s',
-                  experienceId: 'exp-1',
-                  title: 'Amber Trek',
+                  experienceId: 'exp-3',
+                  title: 'Jaipur Heritage Walk',
                   location: 'Jaipur',
                   startsAt: `${futureIso(1)}T07:00:00.000Z`,
                   endsAt: `${futureIso(1)}T10:00:00.000Z`,
@@ -459,68 +472,71 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
   });
 
   it('Phase 2.1 (5 & 6): Partial dispatch / missing component prevents premature parent trip completion', async () => {
-    const pRes = await request(app.getHttpServer())
-      .post('/api/plans')
-      .set(h(ntaJaipurToken))
-      .send({
-        id: 'plan-qa-p21-partial',
-        title: 'QA P2.1 Partial Dispatch Plan',
-        description: '1 valid hotel + 1 invalid experience',
-        originCity: 'Delhi',
-        destination: 'Jaipur',
-        durationNights: 2,
-        pricePerPerson: 18000,
-        includesFlight: false,
-        itinerary: {
-          day1: {
-            flight: null,
-            transport: {
-              id: 'tr-p21-p',
-              mode: 'car',
-              provider: 'Xploreo',
-              pickupLocation: 'Jaipur',
-              dropoffLocation: 'HP-JAI-001',
-              pickupAt: `${todayIso()}T09:00:00.000Z`,
-              status: 'planned',
-            },
-            hotel: {
-              id: 'ht-p21-p',
-              hotelId: 'HP-JAI-001',
-              name: 'Royal Heritage Haveli',
-              checkInDate: todayIso(),
-              checkOutDate: futureIso(2),
-              roomType: 'Deluxe Room',
-              status: 'planned',
-            },
+    const pPlan = plansRepo.create({
+      id: 'plan-qa-p21-partial',
+      title: 'QA P2.1 Partial Dispatch Plan',
+      description: '1 valid hotel + 1 invalid experience',
+      originCity: 'Delhi',
+      destination: 'Jaipur',
+      durationNights: 2,
+      pricePerPerson: 18000,
+      includesFlight: false,
+      createdByNtaId: 'NTA001',
+      itinerary: {
+        day1: {
+          flight: null,
+          transport: {
+            id: 'tr-p21-p',
+            provider: 'Xploreo',
+            vehicleType: 'SUV',
+            pickupLocation: 'Jaipur',
+            dropoffLocation: 'HP-JAI-001',
+            pickupAt: `${todayIso()}T09:00:00.000Z`,
+            status: 'planned',
           },
-          days: [
-            {
-              dayNumber: 2,
-              experiences: [
-                {
-                  id: 'ex-p21-missing',
-                  experienceId: 'exp-nonexistent-999',
-                  title: 'Missing Experience',
-                  location: 'Jaipur',
-                  startsAt: `${futureIso(1)}T09:00:00.000Z`,
-                  endsAt: `${futureIso(1)}T11:00:00.000Z`,
-                  status: 'planned',
-                },
-              ],
-            },
-          ],
+          hotel: {
+            id: 'ht-p21-p',
+            hotelId: 'HP-JAI-001',
+            name: 'The Heritage Haveli & Spa, Jaipur',
+            checkInDate: todayIso(),
+            checkOutDate: futureIso(2),
+            roomType: 'Maharaja Suite',
+            status: 'planned',
+          },
         },
-      })
-      .expect(201);
+        days: [
+          {
+            dayNumber: 2,
+            experiences: [
+              {
+                id: 'ex-p21-missing',
+                experienceId: 'exp-nonexistent-999',
+                title: 'Missing Experience',
+                location: 'Jaipur',
+                startsAt: `${futureIso(1)}T09:00:00.000Z`,
+                endsAt: `${futureIso(1)}T11:00:00.000Z`,
+                status: 'planned',
+              },
+            ],
+          },
+        ],
+      },
+    });
 
-    const tRes = await request(app.getHttpServer())
-      .post('/api/trips')
-      .set(h(travellerToken))
-      .send({ id: 'trip-qa-p21-partial', travellerId: 'T001', planId: pRes.body.id, travellers: 1 })
-      .expect(201);
+    const pTrip = tripsRepo.create({
+      id: 'trip-qa-p21-partial',
+      travellerId: 'T001',
+      planId: pPlan.id,
+      itinerary: pPlan.itinerary,
+      travellers: 1,
+      totalAmount: 18000,
+      currentDay: 1,
+      currentStop: 'Not started',
+      currentLocation: 'Jaipur',
+    } as any);
 
     const dRes = await request(app.getHttpServer())
-      .post(`/api/trips/nta/packages/${tRes.body.id}/dispatch`)
+      .post(`/api/trips/nta/packages/${pTrip.id}/dispatch`)
       .set(h(ntaJaipurToken))
       .expect(201);
 
@@ -537,7 +553,7 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
       .set(h(hotelPartnerToken))
       .expect(200);
 
-    const partialTrip = tripsRepo.findById(tRes.body.id)!;
+    const partialTrip = tripsRepo.findById(pTrip.id)!;
     expect(partialTrip.status).toBe(TripStatus.STARTED);
     expect(partialTrip.progressPercentage).toBe(50);
   });
@@ -560,20 +576,20 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             flight: null,
             transport: {
               id: 'tr-p21-r',
-              mode: 'car',
               provider: 'Xploreo',
+              vehicleType: 'SUV',
               pickupLocation: 'Jaipur',
-              dropoffLocation: 'Jaipur',
+              dropoffLocation: 'HP-JAI-001',
               pickupAt: `${futureIso(5)}T09:00:00.000Z`,
               status: 'planned',
             },
             hotel: {
-              id: 'ht-p21-none',
-              hotelId: '',
-              name: 'None',
+              id: 'ht-p21-rep',
+              hotelId: 'HP-JAI-001',
+              name: 'The Heritage Haveli & Spa, Jaipur',
               checkInDate: futureIso(5),
               checkOutDate: futureIso(8),
-              roomType: 'None',
+              roomType: 'Maharaja Suite',
               status: 'planned',
             },
           },
@@ -583,8 +599,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
               experiences: [
                 {
                   id: 'ex-p21-d2',
-                  experienceId: 'exp-1',
-                  title: 'Amber Trek Day 2',
+                  experienceId: 'exp-3',
+                  title: 'Jaipur Heritage Walk Day 2',
                   location: 'Jaipur',
                   startsAt: `${futureIso(6)}T07:00:00.000Z`,
                   endsAt: `${futureIso(6)}T10:00:00.000Z`,
@@ -597,8 +613,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
               experiences: [
                 {
                   id: 'ex-p21-d3',
-                  experienceId: 'exp-1',
-                  title: 'Amber Trek Day 3',
+                  experienceId: 'exp-3',
+                  title: 'Jaipur Heritage Walk Day 3',
                   location: 'Jaipur',
                   startsAt: `${futureIso(7)}T07:00:00.000Z`,
                   endsAt: `${futureIso(7)}T10:00:00.000Z`,
@@ -657,8 +673,8 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             flight: null,
             transport: {
               id: 'tr-p21-ho',
-              mode: 'car',
               provider: 'Xploreo',
+              vehicleType: 'SUV',
               pickupLocation: 'Jaipur',
               dropoffLocation: 'HP-JAI-001',
               pickupAt: `${todayIso()}T09:00:00.000Z`,
@@ -667,10 +683,10 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
             hotel: {
               id: 'ht-p21-ho',
               hotelId: 'HP-JAI-001',
-              name: 'Royal Heritage Haveli',
+              name: 'The Heritage Haveli & Spa, Jaipur',
               checkInDate: todayIso(),
               checkOutDate: futureIso(2),
-              roomType: 'Deluxe Room',
+              roomType: 'Maharaja Suite',
               status: 'planned',
             },
           },
@@ -720,69 +736,72 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
       .expect(200);
     expect(tripsRepo.findById(hTripRes.body.id)!.status).toBe(TripStatus.COMPLETED);
 
-    // 2. Experience-only package: dispatch -> cancel -> re-dispatch (new retry ID) -> check-in -> complete -> COMPLETED
-    const ePlanRes = await request(app.getHttpServer())
-      .post('/api/plans')
-      .set(h(ntaJaipurToken))
-      .send({
-        id: 'plan-qa-p21-eonly',
-        title: 'QA P2.1 Exp Only',
-        description: 'Experience only',
-        originCity: 'Jaipur',
-        destination: 'Jaipur',
-        durationNights: 1,
-        pricePerPerson: 5000,
-        includesFlight: false,
-        itinerary: {
-          day1: {
-            flight: null,
-            transport: {
-              id: 'tr-p21-eo',
-              mode: 'car',
-              provider: 'Xploreo',
-              pickupLocation: 'Jaipur',
-              dropoffLocation: 'Jaipur',
-              pickupAt: `${futureIso(5)}T09:00:00.000Z`,
-              status: 'planned',
-            },
-            hotel: {
-              id: 'ht-p21-eo-none',
-              hotelId: '',
-              name: 'None',
-              checkInDate: futureIso(5),
-              checkOutDate: futureIso(6),
-              roomType: 'None',
-              status: 'planned',
-            },
+    // 2. Experience-only package (via repo for legacy hotel-less edge case): dispatch -> cancel -> re-dispatch (new retry ID) -> check-in -> complete -> COMPLETED
+    const ePlan = plansRepo.create({
+      id: 'plan-qa-p21-eonly',
+      title: 'QA P2.1 Exp Only',
+      description: 'Experience only',
+      originCity: 'Jaipur',
+      destination: 'Jaipur',
+      durationNights: 1,
+      pricePerPerson: 5000,
+      includesFlight: false,
+      createdByNtaId: 'NTA001',
+      itinerary: {
+        day1: {
+          flight: null,
+          transport: {
+            id: 'tr-p21-eo',
+            provider: 'Xploreo',
+            vehicleType: 'SUV',
+            pickupLocation: 'Jaipur',
+            dropoffLocation: 'Jaipur',
+            pickupAt: `${futureIso(5)}T09:00:00.000Z`,
+            status: 'planned',
           },
-          days: [
-            {
-              dayNumber: 2,
-              experiences: [
-                {
-                  id: 'ex-p21-eo',
-                  experienceId: 'exp-1',
-                  title: 'Amber Trek',
-                  location: 'Jaipur',
-                  startsAt: `${futureIso(6)}T07:00:00.000Z`,
-                  endsAt: `${futureIso(6)}T10:00:00.000Z`,
-                  status: 'planned',
-                },
-              ],
-            },
-          ],
+          hotel: {
+            id: 'ht-p21-eo-none',
+            hotelId: '',
+            name: 'None',
+            checkInDate: futureIso(5),
+            checkOutDate: futureIso(6),
+            roomType: 'None',
+            status: 'planned',
+          },
         },
-      })
-      .expect(201);
+        days: [
+          {
+            dayNumber: 2,
+            experiences: [
+              {
+                id: 'ex-p21-eo',
+                experienceId: 'exp-3',
+                title: 'Jaipur Heritage Walk',
+                location: 'Jaipur',
+                startsAt: `${futureIso(6)}T07:00:00.000Z`,
+                endsAt: `${futureIso(6)}T10:00:00.000Z`,
+                status: 'planned',
+              },
+            ],
+          },
+        ],
+      },
+    });
 
-    const eTripRes = await request(app.getHttpServer())
-      .post('/api/trips')
-      .set(h(travellerToken))
-      .send({ id: 'trip-qa-p21-eonly', travellerId: 'T001', planId: ePlanRes.body.id, travellers: 1 })
-      .expect(201);
+    const eTrip = tripsRepo.create({
+      id: 'trip-qa-p21-eonly',
+      travellerId: 'T001',
+      planId: ePlan.id,
+      itinerary: ePlan.itinerary,
+      travellers: 1,
+      totalAmount: 5000,
+      currentDay: 1,
+      currentStop: 'Not started',
+      currentLocation: 'Jaipur',
+    } as any);
 
     const ed1 = await request(app.getHttpServer())
-      .post(`/api/trips/nta/packages/${eTripRes.body.id}/dispatch`)
+      .post(`/api/trips/nta/packages/${eTrip.id}/dispatch`)
       .set(h(ntaJaipurToken))
       .expect(201);
     const firstExpId = ed1.body.dispatched.experiences[0].bookingId;
@@ -795,7 +814,7 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
     expect(expBookingsRepo.findById(firstExpId)!.status).toBe(ExperienceBookingStatus.CANCELLED);
 
     const ed2 = await request(app.getHttpServer())
-      .post(`/api/trips/nta/packages/${eTripRes.body.id}/dispatch`)
+      .post(`/api/trips/nta/packages/${eTrip.id}/dispatch`)
       .set(h(ntaJaipurToken))
       .expect(201);
     const retryExpId = ed2.body.dispatched.experiences[0].bookingId;
@@ -813,6 +832,6 @@ describe('Phase 2 – NTA Package Booking Distribution & Partner Status Sync', (
       .set(h(travellerToken))
       .send({ status: ExperienceBookingStatus.COMPLETED })
       .expect(200);
-    expect(tripsRepo.findById(eTripRes.body.id)!.status).toBe(TripStatus.COMPLETED);
+    expect(tripsRepo.findById(eTrip.id)!.status).toBe(TripStatus.COMPLETED);
   });
 });

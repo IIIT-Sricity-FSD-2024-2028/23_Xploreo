@@ -106,12 +106,53 @@ describe('BUG-03 – Trip Price Manipulation Prevention (PATCH /api/trips/:id)',
       });
     otherTravellerToken = regRes.body.token ?? (await login('T-BUG03-OTHER', 'TRA@123'));
 
-    const jaipurPlan = plansRepo
-      .findAll({ page: 1, limit: 100 })
-      .data.find((p) => p.destination === 'Jaipur' && p.status === 'available');
-    expect(jaipurPlan).toBeDefined();
-    jaipurPlanId = jaipurPlan!.id;
-    jaipurPlanPrice = jaipurPlan!.pricePerPerson;
+    const planRes = await request(app.getHttpServer())
+      .post('/api/plans')
+      .set(ntaHeaders())
+      .send({
+        id: 'plan-qa-bug03-jaipur',
+        title: 'QA Jaipur BUG-03 Plan',
+        description: 'Valid bookable Jaipur plan for BUG-03 tests',
+        originCity: 'Delhi',
+        destination: 'Jaipur',
+        durationNights: 3,
+        pricePerPerson: 35000,
+        includesFlight: false,
+        status: 'available',
+        itinerary: {
+          day1: {
+            flight: null,
+            transport: {
+              id: 'tr-bug03-1',
+              provider: 'Xploreo',
+              vehicleType: 'SUV',
+              pickupLocation: 'Jaipur Airport',
+              dropoffLocation: 'HP-JAI-001',
+              pickupAt: `${futureIso(10)}T10:00:00.000Z`,
+              status: 'planned',
+            },
+            hotel: {
+              id: 'ht-bug03-1',
+              hotelId: 'HP-JAI-001',
+              name: 'The Heritage Haveli & Spa, Jaipur',
+              checkInDate: futureIso(10),
+              checkOutDate: futureIso(13),
+              roomType: 'Maharaja Suite',
+              status: 'planned',
+            },
+          },
+          days: [
+            {
+              dayNumber: 2,
+              experiences: [],
+            },
+          ],
+        },
+      })
+      .expect(201);
+
+    jaipurPlanId = planRes.body.id;
+    jaipurPlanPrice = planRes.body.pricePerPerson;
   });
 
   afterAll(async () => {
