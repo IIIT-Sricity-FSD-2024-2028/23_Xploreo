@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useAuth } from '@/foundation';
 import {
@@ -14,6 +14,7 @@ import {
   selectNtaDashboardLoading,
   selectNtaPlansError,
   selectNtaPlansLoading,
+  selectNtaBookingById,
   selectNtaPricingChartData,
   selectNtaRecentBookings,
 } from '../../store/nta/index.js';
@@ -64,12 +65,16 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
   // As before, the KPI cards have no metrics (and show their fallback values) when loading failed.
   const metrics = loadError ? null : kpis;
 
-  // Load dashboard data once per session; returning here (or from Manage Packages, which shares
-  // the plans) reuses what is already in the store.
+  // Plans load once per session (shared with Manage Packages). Bookings are made by travellers
+  // elsewhere, so they are reloaded on each visit (a request already in flight is reused).
   useEffect(() => {
     dispatch(fetchNtaPlans({ session }));
-    dispatch(fetchNtaTripActivity({ session }));
+    dispatch(fetchNtaTripActivity({ session, force: true }));
   }, [dispatch, session]);
+
+  // Booking whose details (booked hotel and experiences) are open in the modal.
+  const [detailBookingId, setDetailBookingId] = useState(null);
+  const detailBooking = useSelector((state) => selectNtaBookingById(state, detailBookingId));
 
   // Refresh / Retry buttons: always reload from the server
   const loadDashboardData = useCallback(() => {
@@ -223,9 +228,9 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
 
         {/* Recent Bookings — Purple (purple) */}
         <SAMetricCard
-          title="Recent Bookings"
-          value={isLoading ? '...' : (metrics?.recentBookingsCount ?? 38)}
-          subtitle="Platform booking activity"
+          title="Active Bookings"
+          value={isLoading ? '...' : (metrics?.recentBookingsCount ?? '—')}
+          subtitle="Upcoming & in-progress trips (excl. cancelled, completed)"
           trend={metrics?.recentBookingsTrend}
           variant="purple"
           icon={
@@ -306,20 +311,23 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
                 <th style={{ padding: '10px 14px', backgroundColor: '#f8fafc', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>
                   Price
                 </th>
+                <th style={{ padding: '10px 14px', backgroundColor: '#f8fafc', fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>
+                  Details
+                </th>
               </tr>
             </thead>
 
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={9} style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
                     <div className="sa-table-spinner" style={{ margin: '0 auto 8px' }} />
                     <p style={{ margin: 0, fontSize: 13 }}>Loading recent bookings queue...</p>
                   </td>
                 </tr>
               ) : recentBookings.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: 48, textAlign: 'center', color: '#64748b' }}>
+                  <td colSpan={9} style={{ padding: 48, textAlign: 'center', color: '#64748b' }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#334155', margin: '0 0 4px' }}>
                       No recent bookings found
                     </p>
@@ -336,35 +344,24 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
                       <span className="admin-ticket-id-badge" style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 12, color: '#2563eb' }}>
                         #{b.bookingId || b.id?.substring(0, 8)}
                       </span>
-                      {b.isDirectTripActivity && (
-                        <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
-                          Trip Activity
-                        </div>
-                      )}
                     </td>
 
-                    {/* Traveller */}
+                    {/* Traveller (the NTA sees the traveller's account id) */}
                     <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#1e293b', fontSize: 13 }}>
-                        {b.travellerName}
+                        {b.travellerId || b.travellerName || '—'}
                       </div>
-                      {b.travellerEmail && (
-                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
-                          {b.travellerEmail}
-                        </div>
-                      )}
                     </td>
 
-                    {/* Package Title */}
+                    {/* Package Title, guests and booked hotel */}
                     <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
-                      <div style={{ fontWeight: 500, color: '#0f172a', fontSize: 13 }} title={b.packageTitle}>
-                        {b.packageTitle}
+                      <div style={{ fontWeight: 500, color: '#0f172a', fontSize: 13 }} title={b.packageTitle || ''}>
+                        {b.packageTitle || '—'}
                       </div>
-                      {b.guests && (
-                        <div style={{ fontSize: 11, color: '#64748b' }}>
-                          {b.guests} {b.guests === 1 ? 'Guest' : 'Guests'}
-                        </div>
-                      )}
+                      <div style={{ fontSize: 11, color: '#64748b' }}>
+                        {b.guests ? `${b.guests} ${b.guests === 1 ? 'Guest' : 'Guests'}` : 'Guests not recorded'}
+                        {b.hotel?.name ? ` · ${b.hotel.name}` : ''}
+                      </div>
                     </td>
 
                     {/* Destination */}
@@ -393,11 +390,24 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
                     <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {b.price ? (
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>
-                          ₹{Number(b.price).toLocaleString()}
+                          ₹{Number(b.price).toLocaleString('en-IN')}
                         </span>
                       ) : (
                         <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>
                       )}
+                    </td>
+
+                    {/* Booked hotel & experiences */}
+                    <td style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <button
+                        type="button"
+                        className="nta-form-btn-secondary"
+                        style={{ padding: '5px 10px', fontSize: 12 }}
+                        onClick={() => setDetailBookingId(b.bookingId)}
+                        aria-label={`View booking ${b.bookingId}`}
+                      >
+                        View
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -406,6 +416,76 @@ export default function NtaDashboardPage({ user = null, onNavigatePlans = null }
           </table>
         </div>
       </section>
+
+      {detailBooking && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="nta-booking-detail-title"
+          onClick={() => setDetailBookingId(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', padding: 24, boxShadow: '0 20px 50px rgba(0,0,0,0.2)' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
+              <div>
+                <h3 id="nta-booking-detail-title" style={{ margin: 0, fontSize: 18, color: '#0f172a' }}>
+                  {detailBooking.packageTitle || 'Package booking'}
+                </h3>
+                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#2563eb', marginTop: 4 }}>#{detailBooking.bookingId}</div>
+              </div>
+              <SABadge status={detailBooking.status} />
+            </div>
+
+            <dl style={{ display: 'grid', gridTemplateColumns: '140px 1fr', rowGap: 8, columnGap: 12, margin: '0 0 18px', fontSize: 13 }}>
+              <dt style={{ color: '#64748b' }}>Traveller</dt><dd style={{ margin: 0, color: '#0f172a', fontWeight: 600 }}>{detailBooking.travellerId || '—'}</dd>
+              <dt style={{ color: '#64748b' }}>Guests</dt><dd style={{ margin: 0 }}>{detailBooking.guests ?? 'Not recorded'}</dd>
+              <dt style={{ color: '#64748b' }}>Destination</dt><dd style={{ margin: 0 }}>{detailBooking.destination || '—'}</dd>
+              <dt style={{ color: '#64748b' }}>Travel dates</dt><dd style={{ margin: 0 }}>{formatDate(detailBooking.travelDate)} → {formatDate(detailBooking.returnDate)}</dd>
+              <dt style={{ color: '#64748b' }}>Booked on</dt><dd style={{ margin: 0 }}>{formatDate(detailBooking.bookingDate)}</dd>
+              <dt style={{ color: '#64748b' }}>Amount</dt><dd style={{ margin: 0, fontWeight: 700 }}>{detailBooking.price != null ? `₹${Number(detailBooking.price).toLocaleString('en-IN')}` : '—'}</dd>
+              {detailBooking.guideName && (<><dt style={{ color: '#64748b' }}>Guide</dt><dd style={{ margin: 0 }}>{detailBooking.guideName}</dd></>)}
+              {detailBooking.refundStatus && (<><dt style={{ color: '#64748b' }}>Refund</dt><dd style={{ margin: 0 }}>{detailBooking.refundStatus}</dd></>)}
+            </dl>
+
+            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Booked hotel</h4>
+            {detailBooking.hotel ? (
+              <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '10px 12px', marginBottom: 16, fontSize: 13 }}>
+                <div style={{ fontWeight: 700, color: '#0f172a' }}>{detailBooking.hotel.name}</div>
+                <div style={{ color: '#64748b', marginTop: 2 }}>
+                  {detailBooking.hotel.roomType} · {formatDate(detailBooking.hotel.checkInDate)} → {formatDate(detailBooking.hotel.checkOutDate)} · ID {detailBooking.hotel.id}
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 16px' }}>No hotel on this booking.</p>
+            )}
+
+            <h4 style={{ margin: '0 0 8px', fontSize: 13, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Booked experiences ({detailBooking.experiences?.length || 0})
+            </h4>
+            {detailBooking.experiences?.length ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 18px', display: 'grid', gap: 8 }}>
+                {detailBooking.experiences.map((exp) => (
+                  <li key={`${exp.id}-${exp.dayNumber}`} style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 12px', fontSize: 13 }}>
+                    <div style={{ fontWeight: 600, color: '#0f172a' }}>Day {exp.dayNumber}: {exp.title}</div>
+                    <div style={{ color: '#64748b', marginTop: 2 }}>{formatDate(exp.startsAt)} · ID {exp.id}</div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ fontSize: 13, color: '#94a3b8', margin: '0 0 18px' }}>No experiences on this booking.</p>
+            )}
+
+            <div style={{ textAlign: 'right' }}>
+              <button type="button" className="nta-form-btn-secondary" onClick={() => setDetailBookingId(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. Section C: Package Pricing Distribution Chart */}
       <section

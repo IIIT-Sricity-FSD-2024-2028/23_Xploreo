@@ -5,15 +5,22 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { StructuredItinerary, ItineraryItemStatus } from '../common/entities/itinerary.entity';
+import { HotelsRepository } from '../hotels/hotels.repository';
+import { RoomTypesRepository } from '../hotels/room-types.repository';
+import { ExperiencesRepository } from '../experiences/experiences.repository';
+import { Plan } from '../plans/entities/plan.entity';
+import {
+  computePackageCapacity,
+  InventoryLookups,
+  PackageCapacity,
+} from '../plans/package-inventory';
+import { ItineraryItemStatus, StructuredItinerary } from '../common/entities/itinerary.entity';
 import { mergeStructuredItineraryPatch } from '../common/utils/itinerary-mapper';
 import { AuthRepository } from '../auth/auth.repository';
 import { PlansRepository } from '../plans/plans.repository';
 import { GuideRepository } from '../guide/guide.repository';
-import { HotelsRepository } from '../hotels/hotels.repository';
 import { BookingsRepository } from '../bookings/bookings.repository';
 import { BookingStatus } from '../bookings/entities/booking.entity';
-import { ExperiencesRepository } from '../experiences/experiences.repository';
 import { ExperienceBookingsRepository } from '../experience-bookings/experience-bookings.repository';
 import { ExperienceBookingStatus } from '../experience-bookings/entities/experience-booking.entity';
 import { CreateTripDto } from './dto/create-trip.dto';
@@ -44,11 +51,76 @@ export class TripsService {
     private readonly refundService: RefundService,
     private readonly notificationsService: NotificationsService,
     @Optional() private readonly hotelsRepository?: HotelsRepository,
-    @Optional() private readonly bookingsRepository?: BookingsRepository,
+    @Optional() private readonly roomTypesRepository?: RoomTypesRepository,
     @Optional() private readonly experiencesRepository?: ExperiencesRepository,
+    @Optional() private readonly bookingsRepository?: BookingsRepository,
     @Optional() private readonly experienceBookingsRepository?: ExperienceBookingsRepository,
     @Optional() private readonly authRepository?: AuthRepository,
   ) {}
+
+  private inventoryLookups(): InventoryLookups | null {
+    if (!this.hotelsRepository || !this.roomTypesRepository || !this.experiencesRepository) return null;
+    return {
+      findHotel: (id) => this.hotelsRepository!.findById(id),
+      roomTypesFor: (hotelId) => this.roomTypesRepository!.findByHotelId(hotelId),
+      findExperience: (id) => this.experiencesRepository!.findById(id),
+    };
+  }
+
+  // Trips that still hold their hotel and experience places (not cancelled, not finished).
+  private tripsHoldingInventory(excludeId?: string): Trip[] {
+    return this.tripsRepository
+      .findAll()
+      .filter(
+        (t) =>
+          t.id !== excludeId &&
+          t.status !== TripStatus.CANCELLED &&
+          t.status !== TripStatus.COMPLETED,
+      );
+  }
+
+  private packageCapacity(plan: Plan, itinerary: StructuredItinerary): PackageCapacity | null {
+    const lookups = this.inventoryLookups();
+    if (!lookups) return null;
+    return computePackageCapacity(itinerary, plan.destination, lookups, this.tripsHoldingInventory());
+  }
+
+  /**
+   * GET /plans/:id/capacity — what the traveller can book on a package right now: maximum guests
+   * (and which resource limits it), whether it is bookable, and the per-person amount a booking
+   * records (the same calculation create() uses).
+   */
+  quoteForPlan(planId: string, actor?: { userId?: string; role?: string; region?: string }) {
+    const plan = this.plansRepository.findById(planId);
+    const status = (plan?.status || 'available').toLowerCase();
+    const isStaff = actor?.role === 'nontechadmin' || actor?.role === 'superadmin';
+    if (!plan || (!isStaff && (status === 'draft' || status === 'unavailable'))) {
+      throw new NotFoundException(`Plan ${planId} not found`);
+    }
+    if (actor?.role === 'nontechadmin') {
+      const ntaRegion = (actor.region || '').trim().toLowerCase();
+      if (ntaRegion && plan.destination.trim().toLowerCase() !== ntaRegion) {
+        throw new ForbiddenException(
+          `Cannot access package in destination '${plan.destination}': outside your assigned region '${actor.region}'`,
+        );
+      }
+    }
+    const capacity = this.packageCapacity(plan, plan.itinerary) ?? {
+      maxGuests: null,
+      bookable: false,
+      issues: ['Capacity information is not available for this package.'],
+      limits: [],
+    };
+    const issues = [...capacity.issues];
+    if (status !== 'available') issues.unshift(`This package is ${status.replace('_', ' ')}.`);
+    return {
+      planId: plan.id,
+      ...capacity,
+      bookable: issues.length === 0,
+      issues,
+      pricePerPerson: this.calculateTotalAmount(plan.itinerary, plan.pricePerPerson, 1),
+    };
+  }
 
   // Once a guideId is attached to a trip (the traveller legitimately picked that guide), expose
   // their contact info on the trip itself — bypasses the stricter traveller-contact redaction
@@ -132,6 +204,25 @@ export class TripsService {
     const effectiveTravellerId =
       actor?.role === 'traveller' && actor.userId ? actor.userId : dto.travellerId;
     const travellersCount = Math.max(1, Number(dto.travellers ?? 1));
+
+    // Whatever hotel and experiences the booking carries (the package's own, or ones the
+    // traveller selected) must still exist, be active, belong to the package destination, sit on
+    // coherent bookable dates, and have room for this many guests.
+    const capacity = this.packageCapacity(plan, itinerary);
+    if (capacity) {
+      if (capacity.issues.length > 0) {
+        throw new BadRequestException(
+          `Cannot book '${plan.title}': ${capacity.issues.join(' ')}`,
+        );
+      }
+      if (capacity.maxGuests !== null && travellersCount > capacity.maxGuests) {
+        const tightest = capacity.limits.find((l) => l.capacity === capacity.maxGuests);
+        throw new BadRequestException(
+          `Only ${capacity.maxGuests} guest(s) can be booked on '${plan.title}'` +
+            (tightest ? ` (limited by ${tightest.kind} "${tightest.name}": ${tightest.basis}).` : '.'),
+        );
+      }
+    }
 
     const trip = this.tripsRepository.create({
       id: dto.id,
@@ -281,15 +372,20 @@ export class TripsService {
     if (actor?.role === 'nontechadmin') {
       const ntaRegion = (actor.region || '').trim().toLowerCase();
       if (!ntaRegion) return [];
+      // The NTA's booking view also needs the package title and destination of each trip.
       return allTrips
-        .filter((t) => {
-          const plan = this.plansRepository.findById(t.planId);
-          const destination = plan?.destination || t.currentLocation || '';
+        .map((t) => ({ trip: t, plan: this.plansRepository.findById(t.planId) }))
+        .filter(({ trip, plan }) => {
+          const destination = plan?.destination || trip.currentLocation || '';
           if (destination.trim().toLowerCase() !== ntaRegion) return false;
           if (plan?.createdByNtaId && plan.createdByNtaId !== actor.userId) return false;
           return true;
         })
-        .map((t) => this.withGuide(t));
+        .map(({ trip, plan }) => ({
+          ...this.withGuide(trip),
+          planTitle: plan?.title,
+          destination: plan?.destination || trip.currentLocation,
+        }));
     }
     return allTrips.map((t) => this.withGuide(t));
   }
@@ -915,13 +1011,23 @@ export class TripsService {
     dto: UpdateTripTrackingDto,
     actor?: { userId?: string; role?: string },
   ) {
-    const trip = this.findOne(id);
     const role = actor?.role;
+    // An NTA may only touch trips in their own region (findOne enforces it with the actor).
+    const trip = role === 'nontechadmin' ? this.findOne(id, actor) : this.findOne(id);
     const isAdmin = role === 'superadmin' || role === 'nontechadmin';
     const isAssignedGuide = role === 'guide' && trip.guideId === actor?.userId;
 
     if (!isAdmin && !isAssignedGuide) {
       throw new ForbiddenException('Only the assigned guide can update tracking');
+    }
+    // Starting, pausing and completing a tour (which also moves the trip to started/completed)
+    // belong to the assigned guide, not to the NTA.
+    if (
+      role === 'nontechadmin' &&
+      dto.trackingStatus !== undefined &&
+      dto.trackingStatus !== trip.trackingStatus
+    ) {
+      throw new ForbiddenException('Only the assigned guide can start, pause or complete a tour.');
     }
 
     if (role === 'guide') {

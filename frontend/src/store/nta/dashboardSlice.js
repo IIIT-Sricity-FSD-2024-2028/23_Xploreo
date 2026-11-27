@@ -1,11 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { fetchNtaTripActivity } from './dashboardThunks.js';
 
-// Dashboard data that no other NTA slice already holds: the region's trip activity.
-// Package KPIs and the pricing chart are derived from state.nta.plans by selectors.
+// Dashboard data that no other NTA slice already holds: the region's package bookings.
+// The booking KPI, recent-bookings table and booking details are derived by selectors; package
+// KPIs and the pricing chart come from state.nta.plans.
 const initialState = {
-  tripCount: 0, // every region trip from GET /trips (the "Recent Bookings" KPI)
-  recentBookings: [], // table rows, already mapped by nta.api.js (max 15)
+  bookings: [], // every region trip from GET /trips, as nta.api.js#toBookingRecord maps it
   status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
   error: null, // { status, message } from the last failed load
   requestId: null,
@@ -30,8 +30,7 @@ const dashboardSlice = createSlice({
         // Ignore a response that arrives after logout (the root reducer reset this slice) or
         // after a newer request was started.
         if (state.requestId !== meta.requestId) return;
-        state.tripCount = payload.tripCount;
-        state.recentBookings = payload.recentBookings;
+        state.bookings = payload.bookings;
         state.status = 'succeeded';
         state.requestId = null;
       })

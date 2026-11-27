@@ -56,17 +56,26 @@ export class ExperiencesService {
     return this.expRepository.findByLocation(locationId);
   }
 
-  private async ownExperience(id: string, actor?: { userId?: string; role?: string }) {
+  private async ownExperience(id: string, actor?: { userId?: string; role?: string; region?: string }) {
     const isAdmin = actor?.role === 'superadmin' || actor?.role === 'nontechadmin';
     const exp = await this.expRepository.findById(id);
     if (!exp) throw new NotFoundException(`Experience ${id} not found`);
     if (!isAdmin && exp.partnerId !== actor?.userId) {
       throw new ForbiddenException('This experience belongs to another partner.');
     }
+    // An NTA administers only their own region's experiences.
+    if (actor?.role === 'nontechadmin') {
+      const ntaRegion = (actor.region || '').trim().toLowerCase();
+      if (!ntaRegion || String(exp.destination || '').trim().toLowerCase() !== ntaRegion) {
+        throw new ForbiddenException(
+          `Cannot modify experience in '${exp.destination}': outside your assigned region '${actor.region}'`,
+        );
+      }
+    }
     return exp;
   }
 
-  async update(id: string, dto: UpdateExperienceDto, actor?: { userId?: string; role?: string }) {
+  async update(id: string, dto: UpdateExperienceDto, actor?: { userId?: string; role?: string; region?: string }) {
     await this.ownExperience(id, actor);
     // Capacity stays a live derived total of slot capacities — recomputed any time slots change,
     // never accepted directly from the request body.

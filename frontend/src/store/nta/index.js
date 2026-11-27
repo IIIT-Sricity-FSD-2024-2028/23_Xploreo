@@ -3,6 +3,7 @@ import dashboardReducer from './dashboardSlice.js';
 import guideApplicationsReducer from './guideApplicationsSlice.js';
 import packageBookingsReducer from './packageBookingsSlice.js';
 import plansReducer from './plansSlice.js';
+import inventoryReducer from './inventorySlice.js';
 
 // Non-Technical Admin state, registered in store/index.js as `nta`.
 export const ntaReducer = combineReducers({
@@ -10,6 +11,7 @@ export const ntaReducer = combineReducers({
   guideApplications: guideApplicationsReducer,
   dashboard: dashboardReducer,
   packageBookings: packageBookingsReducer,
+  inventory: inventoryReducer,
 });
 
 export { clearPlanMutation, clearPlansError, planRemoved } from './plansSlice.js';
@@ -27,4 +29,5 @@ export {
   fetchNtaPackageBookingDetail,
   fetchNtaPackageBookings,
 } from './packageBookingsThunks.js';
+export { fetchNtaExperiences, fetchNtaHotelRooms, fetchNtaHotels } from './inventoryThunks.js';
 export * from './selectors.js';

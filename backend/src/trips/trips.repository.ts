@@ -24,6 +24,7 @@ export class TripsRepository {
       itinerary: data.itinerary,
       travellers: data.travellers,
       totalAmount: data.totalAmount,
+      createdAt: data.createdAt ?? new Date().toISOString(),
       currentDay: data.currentDay ?? 1,
       currentStop: data.currentStop ?? 'Not started',
       currentLocation: data.currentLocation ?? '',

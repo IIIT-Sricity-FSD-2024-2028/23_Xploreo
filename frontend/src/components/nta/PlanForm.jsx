@@ -1,11 +1,44 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import { clearPlanMutation, createNtaPlan, updateNtaPlan } from '../../store/nta/index.js';
-import { apiRequest } from '../../services/api.js';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  clearPlanMutation,
+  createNtaPlan,
+  fetchNtaExperiences,
+  fetchNtaHotelRooms,
+  fetchNtaHotels,
+  selectNtaHotelRooms,
+  selectNtaInventoryError,
+  selectNtaInventoryHotels,
+  selectNtaInventoryHotelsStatus,
+  selectNtaRegionExperiences,
+  selectNtaRegionHotels,
+  updateNtaPlan,
+} from '../../store/nta/index.js';
 import { uploadSingle } from '../../services/upload.api.js';
+import { addDaysIso, isPlansMockMode } from '../../services/plans.api.js';
 import { getHotelsByDestination } from '../../mocks/plans/hotels.fixture.js';
 import ItineraryBuilder from './ItineraryBuilder.jsx';
 import './nta.css';
+
+const norm = (value) => String(value || '').trim().toLowerCase();
+const dayOf = (value) => /^(\d{4}-\d{2}-\d{2})/.exec(String(value || ''))?.[1] || '';
+
+/** The form's itinerary draft from a saved plan: day1.hotel references plus experience days. */
+function toFormItinerary(saved) {
+  const hotel = saved?.day1?.hotel;
+  return {
+    day1: {
+      hotel: {
+        hotelId: hotel?.hotelId || '',
+        name: hotel?.name || '',
+        roomType: hotel?.roomType || '',
+        checkInDate: dayOf(hotel?.checkInDate),
+        checkOutDate: dayOf(hotel?.checkOutDate),
+      },
+    },
+    days: Array.isArray(saved?.days) ? saved.days : [],
+  };
+}
 
 const DEFAULT_STATUS_OPTIONS = [
   { value: 'available', label: 'Available (Active)' },
@@ -58,141 +91,90 @@ export default function PlanForm({
       ? initialPlan.durationNights
       : (initialPlan?.duration || 3)
   );
-  const [liveHotels, setLiveHotels] = useState([]);
-
+  // Partner inventory comes from Redux (state.nta.inventory); fixture hotels only in mock mode.
+  const isMock = isPlansMockMode();
   useEffect(() => {
-    let mounted = true;
-    apiRequest('/hotels')
-      .then((res) => {
-        if (!mounted) return;
-        const list = Array.isArray(res) ? res : res?.data || [];
-        setLiveHotels(list);
-      })
-      .catch(() => {
-        // Keep fixture fallback if backend call fails
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    if (isMock) return;
+    dispatch(fetchNtaHotels());
+    dispatch(fetchNtaExperiences());
+  }, [dispatch, isMock]);
+  const allHotels = useSelector(selectNtaInventoryHotels);
+  const hotelsStatus = useSelector(selectNtaInventoryHotelsStatus);
+  const inventoryError = useSelector(selectNtaInventoryError);
+  const regionHotels = useSelector((state) => selectNtaRegionHotels(state, destination));
+  const regionExperiences = useSelector((state) => selectNtaRegionExperiences(state, destination));
 
   const destinationOptions = useMemo(() => {
     const set = new Set(SUPPORTED_DESTINATIONS);
     if (assignedRegion) set.add(assignedRegion);
     if (initialPlan?.destination) set.add(initialPlan.destination);
-    liveHotels.forEach((h) => {
-      const city = String(h?.city || h?.destination || h?.location || '').trim();
+    allHotels.forEach((h) => {
+      const city = String(h?.city || '').trim();
       if (city) set.add(city);
     });
     return Array.from(set);
-  }, [assignedRegion, initialPlan, liveHotels]);
+  }, [assignedRegion, initialPlan, allHotels]);
 
-  // Available partner hotels for the selected destination (live backend + fixture fallback)
+  // Active partner hotels in the destination — the only ones the backend accepts for it.
   const availableHotels = useMemo(() => {
-    const destNorm = String(destination || '').trim().toLowerCase();
-    const mappedLive = liveHotels
-      .filter((h) => {
-        if (!h || (h.status && h.status !== 'active')) return false;
-        const city = String(h.city || h.destination || h.location || '').trim().toLowerCase();
-        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
-      })
-      .map((h) => ({
-        id: h.id,
-        hotelId: h.id,
-        name: h.name,
-        destination: h.city || h.location || destination,
-        stars: Number(h.stars) || 4,
-        pricePerNight: Number(h.pricePerNight) || 3500,
-        roomType: h.roomType || 'Standard Room',
-      }));
+    if (isMock) return getHotelsByDestination(destination);
+    return regionHotels.map((h) => ({
+      id: h.id,
+      hotelId: h.id,
+      name: h.name,
+      destination: h.city,
+      stars: Number(h.stars) || 0,
+      pricePerNight: Number(h.pricePerNight) || 0,
+      description: h.description,
+    }));
+  }, [isMock, destination, regionHotels]);
 
-    const fixtureHotels = getHotelsByDestination(destination);
-    const seen = new Set(mappedLive.map((h) => String(h.hotelId || h.name).toLowerCase()));
-    const merged = [...mappedLive];
-    fixtureHotels.forEach((h) => {
-      const key = String(h.hotelId || h.name).toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(h);
-      }
-    });
-    return merged;
-  }, [destination, liveHotels]);
+  // Multi-day itinerary state: the hotel reference (id, name, room type, dates) and experience days.
+  const [itinerary, setItinerary] = useState(() => toFormItinerary(initialPlan?.itinerary));
+  const hotelDraft = itinerary.day1.hotel;
 
-  // Selected partner hotel record
-  const [selectedHotel, setSelectedHotel] = useState(() => {
-    const existingHotel = initialPlan?.itinerary?.day1?.hotel;
-    if (existingHotel) {
-      // Find matching in catalog or adopt existing
-      const inCat = availableHotels.find(
-        (h) => h.hotelId === existingHotel.hotelId || h.name.toLowerCase() === existingHotel.name.toLowerCase()
-      );
-      if (inCat) return inCat;
-      return {
-        id: existingHotel.hotelId || 'hotel-custom',
-        hotelId: existingHotel.hotelId || 'HP-PARTNER',
-        name: existingHotel.name,
-        destination,
-        stars: existingHotel.stars || initialPlan?.hotelStars || 4,
-        pricePerNight: existingHotel.pricePerNight || 3500,
-        roomType: existingHotel.roomType || 'Standard Room',
-      };
+  // The selected hotel is the one the itinerary references, if it is still an active hotel here.
+  const selectedHotel = availableHotels.find((h) => h.hotelId === hotelDraft.hotelId) || null;
+  const staleHotel = Boolean(hotelDraft.hotelId && !selectedHotel && (isMock || hotelsStatus === 'succeeded'));
+
+  // Room types of the selected hotel (GET /hotels/:id/rooms via Redux).
+  useEffect(() => {
+    if (!isMock && selectedHotel?.hotelId) dispatch(fetchNtaHotelRooms({ hotelId: selectedHotel.hotelId }));
+  }, [dispatch, isMock, selectedHotel?.hotelId]);
+  const roomsEntry = useSelector((state) => selectNtaHotelRooms(state, selectedHotel?.hotelId));
+  const roomOptions = useMemo(() => {
+    if (isMock) {
+      return selectedHotel?.roomType
+        ? [{ id: `${selectedHotel.hotelId}-room`, type: selectedHotel.roomType, pricePerNight: selectedHotel.pricePerNight }]
+        : [];
     }
-    return availableHotels[0] || null;
-  });
-
-  // Multi-day itinerary state
-  const [itinerary, setItinerary] = useState(() => {
-    if (initialPlan?.itinerary) {
-      return {
-        day1: {
-          hotel: initialPlan.itinerary.day1?.hotel || {
-            name: selectedHotel?.name || '',
-            hotelId: selectedHotel?.hotelId || '',
-            roomType: selectedHotel?.roomType || 'Standard Room',
-            checkInDate: '',
-            checkOutDate: '',
-            stars: selectedHotel?.stars || 4,
-            pricePerNight: selectedHotel?.pricePerNight || 0,
-          },
-        },
-        days: Array.isArray(initialPlan.itinerary.days) ? initialPlan.itinerary.days : [],
-      };
-    }
-    return {
-      day1: {
-        hotel: {
-          name: selectedHotel?.name || '',
-          hotelId: selectedHotel?.hotelId || '',
-          roomType: selectedHotel?.roomType || 'Standard Room',
-          checkInDate: '',
-          checkOutDate: '',
-          stars: selectedHotel?.stars || 4,
-          pricePerNight: selectedHotel?.pricePerNight || 0,
-        },
-      },
-      days: [],
-    };
-  });
+    return roomsEntry.items.filter((r) => r.status !== 'inactive');
+  }, [isMock, selectedHotel, roomsEntry.items]);
+  const selectedRoom = roomOptions.find((r) => norm(r.type) === norm(hotelDraft.roomType)) || null;
+  const staleRoomType = Boolean(
+    hotelDraft.roomType && selectedHotel && !selectedRoom && (isMock || roomsEntry.status === 'succeeded'),
+  );
 
   // --- DYNAMIC PRICING ENGINE ---
-  // Hotel Subtotal = selected hotel's price per night * durationNights
-  const hotelPricePerNight = Number(selectedHotel?.pricePerNight || itinerary?.day1?.hotel?.pricePerNight || 0);
+  // Hotel Subtotal = selected room type's price per night (else the hotel's) * durationNights
+  const hotelPricePerNight = Number(selectedRoom?.pricePerNight ?? selectedHotel?.pricePerNight ?? 0);
   const nightsCount = Number(durationNights) || 1;
   const hotelSubtotal = hotelPricePerNight * nightsCount;
 
   // Experience Subtotal = sum of selected experiences' per-person prices across all days
+  // (saved packages do not store prices, so the catalog price is used for them).
   const experienceSubtotal = useMemo(() => {
+    const priceOf = new Map(regionExperiences.map((e) => [e.id, Number(e.price) || 0]));
     let sum = 0;
     const days = Array.isArray(itinerary?.days) ? itinerary.days : [];
     days.forEach((dayGroup) => {
       const exps = Array.isArray(dayGroup?.experiences) ? dayGroup.experiences : [];
       exps.forEach((exp) => {
-        sum += Number(exp.pricePerPerson || 0);
+        sum += Number(exp.pricePerPerson ?? priceOf.get(exp.experienceId) ?? 0);
       });
     });
     return sum;
-  }, [itinerary]);
+  }, [itinerary, regionExperiences]);
 
   // Suggested Price
   const suggestedPrice = hotelSubtotal + experienceSubtotal;
@@ -330,65 +312,44 @@ export default function PlanForm({
     setDestination(newDest);
     setRegionSwitchNotice(`Destination changed to ${newDest}. Previous hotel and experience selections have been reset to match ${newDest}.`);
 
-    const destNorm = String(newDest || '').trim().toLowerCase();
-    const mappedLive = liveHotels
-      .filter((h) => {
-        if (!h || (h.status && h.status !== 'active')) return false;
-        const city = String(h.city || h.destination || h.location || '').trim().toLowerCase();
-        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
-      })
-      .map((h) => ({
-        id: h.id,
-        hotelId: h.id,
-        name: h.name,
-        destination: h.city || h.location || newDest,
-        stars: Number(h.stars) || 4,
-        pricePerNight: Number(h.pricePerNight) || 3500,
-        roomType: h.roomType || 'Standard Room',
-      }));
-    const newHotels = mappedLive.length > 0 ? mappedLive : getHotelsByDestination(newDest);
-    const firstHotel = newHotels[0] || null;
-    setSelectedHotel(firstHotel);
-
-    // Reset itinerary to match new destination
-    setItinerary({
+    // Hotels and experiences belong to one destination: clear them, keep the dates.
+    setItinerary((prev) => ({
       day1: {
-        hotel: firstHotel
-          ? {
-              name: firstHotel.name,
-              hotelId: firstHotel.hotelId,
-              roomType: firstHotel.roomType,
-              checkInDate: '',
-              checkOutDate: '',
-              stars: firstHotel.stars,
-              pricePerNight: firstHotel.pricePerNight,
-            }
-          : { name: '', roomType: 'Standard Room', stars: 4 },
+        hotel: {
+          hotelId: '',
+          name: '',
+          roomType: '',
+          checkInDate: prev.day1.hotel.checkInDate,
+          checkOutDate: prev.day1.hotel.checkOutDate,
+        },
       },
       days: [],
-    });
+    }));
     setHasManualPriceOverride(false);
   };
 
-  // When Partner Hotel Selection Changes
+  // When Partner Hotel Selection Changes: the room type must be chosen again for the new hotel.
   const handleHotelSelect = (hotelId) => {
     const hotel = availableHotels.find((h) => h.id === hotelId || h.hotelId === hotelId);
-    if (!hotel) return;
-    setSelectedHotel(hotel);
-
     setItinerary((prev) => ({
       ...prev,
       day1: {
         ...prev.day1,
         hotel: {
-          ...prev.day1?.hotel,
-          name: hotel.name,
-          hotelId: hotel.hotelId,
-          roomType: hotel.roomType,
-          stars: hotel.stars,
-          pricePerNight: hotel.pricePerNight,
+          ...prev.day1.hotel,
+          hotelId: hotel?.hotelId || '',
+          name: hotel?.name || '',
+          roomType: '',
         },
       },
+    }));
+  };
+
+  // Room type of the package stay, from the selected hotel's room types.
+  const handleRoomTypeSelect = (roomType) => {
+    setItinerary((prev) => ({
+      ...prev,
+      day1: { ...prev.day1, hotel: { ...prev.day1.hotel, roomType } },
     }));
   };
 
@@ -429,14 +390,7 @@ export default function PlanForm({
       setStatus(initialPlan.status || 'available');
 
       if (initialPlan.itinerary) {
-        setItinerary(initialPlan.itinerary);
-        const existingH = initialPlan.itinerary.day1?.hotel;
-        if (existingH) {
-          const match = getHotelsByDestination(planDest).find(
-            (h) => h.hotelId === existingH.hotelId || h.name.toLowerCase() === existingH.name.toLowerCase()
-          );
-          setSelectedHotel(match || existingH);
-        }
+        setItinerary(toFormItinerary(initialPlan.itinerary));
       }
     }
   }
@@ -483,11 +437,49 @@ export default function PlanForm({
     }
   }
 
-  if (isSubmitting) {
-    if (!selectedHotel && !itinerary?.day1?.hotel?.name) {
-      errors.hotel = 'Please select a Partner Hotel for this package.';
-    }
+  // Package inventory and dates — the same rules the backend enforces on save.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const packageNights = Math.max(1, Number(durationNights) || 1);
+  const inventoryErrors = {};
+  if (!selectedHotel) {
+    inventoryErrors.hotel = staleHotel
+      ? `The package's hotel "${hotelDraft.name || hotelDraft.hotelId}" is no longer an active ${destination} partner hotel. Please select another.`
+      : 'Please select a Partner Hotel for this package.';
+  } else if (!selectedRoom) {
+    inventoryErrors.roomType = staleRoomType
+      ? `Room type "${hotelDraft.roomType}" is not offered by ${selectedHotel.name}. Please select one of its room types.`
+      : 'Please select a room type.';
   }
+  const { checkInDate, checkOutDate } = hotelDraft;
+  if (!checkInDate || !checkOutDate) {
+    inventoryErrors.dates = 'Please set both the hotel check-in and check-out dates.';
+  } else if (checkInDate < todayIso) {
+    inventoryErrors.dates = 'Check-in cannot be in the past.';
+  } else if (checkOutDate <= checkInDate) {
+    inventoryErrors.dates = 'Check-out must be after check-in.';
+  } else if (addDaysIso(checkInDate, packageNights) !== checkOutDate) {
+    inventoryErrors.dates = `Check-out must be ${packageNights} night(s) after check-in (${addDaysIso(checkInDate, packageNights)}) to match the package duration.`;
+  }
+  if (!isMock) {
+    const experienceProblems = [];
+    const catalogById = new Map(regionExperiences.map((e) => [e.id, e]));
+    (itinerary.days || []).forEach((dayGroup) => {
+      (dayGroup.experiences || []).forEach((exp) => {
+        const catalogExp = catalogById.get(exp.experienceId);
+        const date = checkInDate ? addDaysIso(checkInDate, dayGroup.dayNumber - 1) : null;
+        if (dayGroup.dayNumber > packageNights + 1) {
+          experienceProblems.push(`"${exp.title}" is on day ${dayGroup.dayNumber}, after the package ends.`);
+        } else if (!catalogExp) {
+          experienceProblems.push(`"${exp.title}" is not an available ${destination} experience.`);
+        } else if (date && Array.isArray(catalogExp.slots) && catalogExp.slots.length > 0) {
+          const slot = catalogExp.slots.find((s) => dayOf(s.date) === date);
+          if (!slot || !slot.available) experienceProblems.push(`"${exp.title}" has no open session on ${date}.`);
+        }
+      });
+    });
+    if (experienceProblems.length) inventoryErrors.experiences = experienceProblems.join(' ');
+  }
+  if (touched.hotel || isSubmitting) Object.assign(errors, inventoryErrors);
 
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -512,7 +504,6 @@ export default function PlanForm({
     const trimmedDest = destination.trim();
     const nights = Number(durationNights);
     const price = Number(finalPrice);
-    const hotelObj = selectedHotel || itinerary?.day1?.hotel;
 
     if (
       !trimmedTitle ||
@@ -524,9 +515,10 @@ export default function PlanForm({
       nights < 1 ||
       isNaN(price) ||
       price < 0 ||
-      !hotelObj?.name
+      Object.keys(inventoryErrors).length > 0
     ) {
-      setApiError('Please resolve all validation errors before saving the package.');
+      const firstInventoryError = Object.values(inventoryErrors)[0];
+      setApiError(firstInventoryError || 'Please resolve all validation errors before saving the package.');
       return;
     }
 
@@ -559,23 +551,22 @@ export default function PlanForm({
         originCity: trimmedDest,
         durationNights: nights,
         pricePerPerson: price,
-        hotelStars: Number(hotelObj.stars || 4),
+        hotelStars: Number(selectedHotel.stars) || initialPlan?.hotelStars || 3,
         image: finalImageUrl,
         tags: parsedTags,
         status,
+        // plans.api.js#buildBackendItinerary turns this into the backend's StructuredItinerary.
         itinerary: {
-          ...itinerary,
           day1: {
-            ...itinerary.day1,
             hotel: {
-              ...itinerary.day1?.hotel,
-              name: hotelObj.name,
-              hotelId: hotelObj.hotelId || hotelObj.id || 'HP-PARTNER',
-              roomType: hotelObj.roomType || 'Standard Room',
-              stars: Number(hotelObj.stars || 4),
-              pricePerNight: Number(hotelObj.pricePerNight || 0),
+              hotelId: selectedHotel.hotelId,
+              name: selectedHotel.name,
+              roomType: selectedRoom.type,
+              checkInDate,
+              checkOutDate,
             },
           },
+          days: itinerary.days,
         },
       };
 
@@ -767,39 +758,80 @@ export default function PlanForm({
               <span className="nta-form-hint">Filtered strictly by {destination}</span>
             </label>
 
-            {availableHotels.length > 0 ? (
+            {!isMock && hotelsStatus !== 'succeeded' && hotelsStatus !== 'failed' ? (
+              <div style={{ padding: '14px', fontSize: '13px', color: '#64748b' }}>Loading {destination} partner hotels…</div>
+            ) : availableHotels.length > 0 ? (
               <select
                 id="plan-hotel-select"
                 className="nta-form-select"
-                value={selectedHotel?.id || selectedHotel?.hotelId || ''}
+                value={selectedHotel?.hotelId || ''}
                 onChange={(e) => handleHotelSelect(e.target.value)}
+                onBlur={() => handleBlur('hotel')}
                 disabled={isSubmitting}
               >
+                <option value="">Select a partner hotel…</option>
                 {availableHotels.map((h) => (
-                  <option key={h.id} value={h.id}>
-                    {h.name} — {h.stars}★ ({h.roomType}) • ₹{Number(h.pricePerNight).toLocaleString('en-IN')}/night
+                  <option key={h.id} value={h.hotelId}>
+                    {h.name} — {h.stars}★ • from ₹{Number(h.pricePerNight).toLocaleString('en-IN')}/night
                   </option>
                 ))}
               </select>
             ) : (
               <div style={{ padding: '14px', background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
-                No partner hotels are available for {destination} in the preview catalog.
+                {inventoryError
+                  ? `Partner hotels could not be loaded: ${inventoryError.message}`
+                  : `No active partner hotels are available in ${destination}.`}
               </div>
             )}
             {errors.hotel && <p className="nta-form-error-text">{errors.hotel}</p>}
           </div>
 
           {selectedHotel && (
+            <div className="nta-form-group">
+              <label className="nta-form-label" htmlFor="plan-room-type">
+                <span>Room Type <span style={{ color: '#ef4444' }}>*</span></span>
+                <span className="nta-form-hint">From {selectedHotel.name}&apos;s room types</span>
+              </label>
+              {!isMock && roomsEntry.status === 'loading' ? (
+                <div style={{ fontSize: '13px', color: '#64748b' }}>Loading room types…</div>
+              ) : roomOptions.length > 0 ? (
+                <select
+                  id="plan-room-type"
+                  className="nta-form-select"
+                  value={selectedRoom?.type || ''}
+                  onChange={(e) => handleRoomTypeSelect(e.target.value)}
+                  disabled={isSubmitting}
+                >
+                  <option value="">Select a room type…</option>
+                  {roomOptions.map((r) => (
+                    <option key={r.id} value={r.type}>
+                      {r.type}
+                      {r.maxOccupancy ? ` — up to ${r.maxOccupancy} guests/room` : ''}
+                      {r.availableRooms != null ? `, ${r.availableRooms} available` : ''}
+                      {r.pricePerNight ? ` • ₹${Number(r.pricePerNight).toLocaleString('en-IN')}/night` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ fontSize: '13px', color: '#b91c1c' }}>
+                  {roomsEntry.error?.message || `${selectedHotel.name} has no bookable room types.`}
+                </div>
+              )}
+              {errors.roomType && <p className="nta-form-error-text">{errors.roomType}</p>}
+            </div>
+          )}
+
+          {selectedHotel && (
             <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
               <div>
                 <strong style={{ fontSize: '14px', color: '#0f172a' }}>{selectedHotel.name}</strong>
                 <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
-                  {selectedHotel.roomType} • {selectedHotel.description}
+                  {selectedRoom?.type || 'Room type not selected'}{selectedHotel.description ? ` • ${selectedHotel.description}` : ''}
                 </span>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ fontSize: '13px', fontWeight: '800', color: '#2563eb' }}>
-                  ₹{Number(selectedHotel.pricePerNight).toLocaleString('en-IN')}
+                  ₹{hotelPricePerNight.toLocaleString('en-IN')}
                 </span>
                 <span style={{ fontSize: '11px', color: '#64748b' }}> / night</span>
               </div>
@@ -1051,8 +1083,11 @@ export default function PlanForm({
             durationNights={Number(durationNights) || 1}
             destination={destination}
             selectedHotel={selectedHotel}
+            catalog={regionExperiences}
             disabled={isSubmitting}
           />
+          {errors.dates && <p className="nta-form-error-text">{errors.dates}</p>}
+          {errors.experiences && <p className="nta-form-error-text">{errors.experiences}</p>}
         </div>
 
         {/* Actions */}

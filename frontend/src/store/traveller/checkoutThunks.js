@@ -2,7 +2,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { createBooking, getHotel, listRooms } from '@/services/hotels.api.js';
 import { createExperienceBooking, getExperience } from '@/services/partners.api.js';
 import { getPaymentAdapter } from '@/services/paymentService.js';
-import { getPlanById } from '@/services/plans.api.js';
+import { getPlanById, getPlanCapacity } from '@/services/plans.api.js';
 import { createTrip } from '@/services/tripGuides.api.js';
 import {
   validateExperienceBooking,
@@ -151,7 +151,24 @@ export const processCheckoutPayment = createAsyncThunk(
         });
       }
       try {
-        const planRecord = await getPlanById(targetPlanId);
+        // Re-check availability right before payment: inventory or capacity may have changed
+        // since the detail page loaded (the server checks again when the trip is created).
+        const [planRecord, bookingQuote] = await Promise.all([
+          getPlanById(targetPlanId),
+          getPlanCapacity(targetPlanId),
+        ]);
+        if (bookingQuote && bookingQuote.bookable === false) {
+          return rejectWithValue({
+            message: bookingQuote.issues?.[0] || 'This tour package cannot be booked right now.',
+            keepStep: true,
+          });
+        }
+        if (Number.isFinite(bookingQuote?.maxGuests) && Number(guestCount) > bookingQuote.maxGuests) {
+          return rejectWithValue({
+            message: `Only ${bookingQuote.maxGuests} guest(s) can be booked on this package. Please reduce the number of guests.`,
+            keepStep: true,
+          });
+        }
         const startDate =
           selectedItem.checkIn ||
           selectedItem.itinerary?.day1?.hotel?.checkInDate ||

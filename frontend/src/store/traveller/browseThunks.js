@@ -1,7 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { getHotel, getHotelReviews, listHotels, listRooms } from '@/services/hotels.api.js';
 import { getExperience, listMyExperiences } from '@/services/partners.api.js';
-import { getPlanById, getPlans } from '@/services/plans.api.js';
+import { getPlanById, getPlanCapacity, getPlans } from '@/services/plans.api.js';
 import { listReviews } from '@/services/reviews.api.js';
 import { mapBackendExperience, mapBackendHotel, mapBackendPlan } from '@/utils/browseUtils.js';
 
@@ -102,14 +102,26 @@ export const fetchBrowseItemDetail = createAsyncThunk(
         };
       }
 
-      const rawPlan = await getPlanById(id);
+      // A package also loads its booking quote (GET /plans/:id/capacity): maximum guests across its
+      // hotel and experience sessions, whether it is bookable, and the per-person amount recorded.
+      // If the quote cannot be loaded, capacity is unknown and booking stays blocked.
+      const [rawPlan, bookingQuote] = await Promise.all([
+        getPlanById(id),
+        getPlanCapacity(id).catch((err) => ({
+          maxGuests: null,
+          bookable: false,
+          issues: [err?.message || 'Availability for this package could not be loaded.'],
+          limits: [],
+          pricePerPerson: null,
+        })),
+      ]);
       if (!rawPlan) {
         return rejectWithValue({ status: 404, message: `The requested package (#${id}) could not be found.` });
       }
       const mapped = mapBackendPlan(rawPlan);
       return {
         key: `package:${id}`,
-        item: { ...rawPlan, ...mapped },
+        item: { ...rawPlan, ...mapped, bookingQuote, maxGuests: bookingQuote.maxGuests },
         rooms: [],
         reviews: [],
       };

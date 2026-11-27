@@ -66,7 +66,8 @@ export class HotelsController {
 
   // ── Rooms ──────────────────────────────────────────────────────────────────
   @Get(':id/rooms')
-  @Roles(Role.TRAVELLER, Role.HOTEL)
+  // NTA reads room types to pick a package's room type (read-only, same data travellers see).
+  @Roles(Role.TRAVELLER, Role.HOTEL, Role.NONTECHADMIN)
   @ApiOperation({ summary: 'List room types for a hotel' })
   @ApiReadEndpoint()
   listRooms(@Param('id', NonEmptyStringPipe) id: string) {
