@@ -1,6 +1,7 @@
 import { authApi } from '@/services/api.js';
+import { updatePartnerProfile } from '@/services/hotels.api.js';
 import { setSessionToken } from '@/services/session.js';
-import { sessionEnded, sessionStarted } from './sessionSlice.js';
+import { profileUpdated, selectUser, sessionEnded, sessionStarted } from './sessionSlice.js';
 
 function readRegion(token) {
   try {
@@ -39,4 +40,20 @@ export const registerAccount = (values) => startSession(authApi.register, values
 export const signOut = () => (dispatch) => {
   setSessionToken(null);
   dispatch(sessionEnded());
+};
+
+export const saveExperiencePartnerProfile = (userId, body) => async (dispatch, getState) => {
+  const result = await updatePartnerProfile(userId, body);
+  const currentUser = selectUser(getState());
+  const updatedUser = {
+    ...currentUser,
+    ...(result?.user ?? result ?? {}),
+    name: body.name || result?.name || currentUser.name,
+    email: body.email || result?.email || currentUser.email,
+    phone: body.phone || result?.phone || currentUser.phone,
+    location: body.location || result?.location || currentUser.location,
+    businessName: body.businessName || result?.businessName || currentUser.businessName,
+  };
+  dispatch(profileUpdated(updatedUser));
+  return result;
 };

@@ -1,39 +1,40 @@
 // Support tickets for experience partners, built on the exact same M4/M5 ticket components and
 // styling as the Traveller Support Tickets page (TravellerSupportTicketsPage.jsx) — only the
 // copy differs.
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { TicketCreateForm, TicketList } from '@/components/tickets/index.js';
-import { getTickets } from '@/services/tickets.api.js';
+import {
+  fetchExperienceTickets,
+  selectExperienceTickets,
+  selectExperienceTicketsLoading,
+  selectExperienceTicketsError,
+} from '@/store/experience/ticketsSlice.js';
 import '../Traveller/travellerSupportTickets.css';
 
 export default function ExperienceSupport() {
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('list');
-  const [tickets, setTickets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  const fetchTickets = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await getTickets();
-      setTickets(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err?.message || 'Failed to load your support tickets.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const tickets = useSelector(selectExperienceTickets);
+  const isLoading = useSelector(selectExperienceTicketsLoading);
+  const error = useSelector(selectExperienceTicketsError);
 
-  useEffect(() => { fetchTickets(); }, [fetchTickets]);
+  useEffect(() => {
+    dispatch(fetchExperienceTickets());
+  }, [dispatch]);
+
+  const fetchTickets = () => {
+    dispatch(fetchExperienceTickets());
+  };
 
   const handleTicketSubmitted = (createdTicket) => {
     setNotification({
       type: 'success',
       message: `Ticket #${createdTicket?.id?.substring(0, 8) || 'new'} created successfully! Our operations desk has received your request.`,
     });
-    fetchTickets();
+    dispatch(fetchExperienceTickets());
     setActiveTab('list');
   };
 
@@ -93,7 +94,7 @@ export default function ExperienceSupport() {
               </div>
             ) : error ? (
               <div className="trav-tickets-error-card" role="alert">
-                <p>{error}</p>
+                <p>{typeof error === 'string' ? error : error?.message || 'Failed to load your support tickets.'}</p>
                 <button type="button" className="trav-tickets-retry-btn" onClick={fetchTickets}>Try Again</button>
               </div>
             ) : tickets.length === 0 ? (

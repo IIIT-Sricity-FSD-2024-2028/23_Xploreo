@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useAuth } from '@/foundation';
 import { useHotelAction, usePartnerNotifications } from '@/store/hotel/hooks.js';
 import { readAllPartnerNotifications, readPartnerNotification } from '@/store/hotel/notificationsSlice.js';
 import { useHotelState } from '@/store/hotel/useHotelState.js';
@@ -10,6 +11,13 @@ import {
   selectNotificationsList,
   selectUnreadNotificationCount,
 } from '../../features/notificationsSlice.js';
+import {
+  fetchExperienceNotifications,
+  markExperienceNotificationAsRead,
+  markAllExperienceNotificationsAsRead,
+  selectExperienceNotificationsList,
+  selectExperienceNotificationsUnreadCount,
+} from '@/store/experience/notificationsSlice.js';
 import './notifications.css';
 
 function formatRelativeTime(dateInput) {
@@ -40,7 +48,52 @@ function getNotificationIcon(type, refundStatus) {
 const EMPTY_NOTIFICATIONS = [];
 
 export default function NotificationBell({ hotelPartner = false, userId = null }) {
-  return hotelPartner ? <HotelNotificationBell /> : <StandardNotificationBell userId={userId} />;
+  const { user } = useAuth();
+  if (hotelPartner) return <HotelNotificationBell />;
+  if (user?.role === 'experience') return <ExperienceNotificationBell />;
+  return <StandardNotificationBell userId={userId} />;
+}
+
+function ExperienceNotificationBell() {
+  const dispatch = useDispatch();
+  const [isOpen, setIsOpen] = useState(false);
+  const notifications = useSelector(selectExperienceNotificationsList);
+  const unreadCount = useSelector(selectExperienceNotificationsUnreadCount);
+
+  const refresh = useCallback(() => {
+    dispatch(fetchExperienceNotifications());
+  }, [dispatch]);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, 10000);
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [refresh]);
+
+  const markRead = (notification) => {
+    dispatch(markExperienceNotificationAsRead(notification.id));
+  };
+
+  const markAllRead = () => {
+    dispatch(markAllExperienceNotificationsAsRead());
+  };
+
+  return (
+    <NotificationBellView
+      isOpen={isOpen}
+      setIsOpen={setIsOpen}
+      notifications={notifications}
+      unreadCount={unreadCount}
+      refresh={refresh}
+      onRead={markRead}
+      onReadAll={markAllRead}
+    />
+  );
 }
 
 function HotelNotificationBell() {

@@ -18,7 +18,11 @@ import reviewsReducer from '@/features/reviewsSlice.js';
 import supportTicketsReducer from '@/features/supportTicketsSlice.js';
 import tripsReducer from '@/features/tripsSlice.js';
 import experienceBookingsReducer from './experience/bookingsSlice.js';
+import experienceEarningsReducer from './experience/earningsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
+import experienceNotificationsReducer from './experience/notificationsSlice.js';
+import experienceReviewsReducer from './experience/reviewsSlice.js';
+import experienceTicketsReducer from './experience/ticketsSlice.js';
 import { guideReducer } from './guide/index.js';
 import { hotelReducer } from './hotel/index.js';
 import { ntaReducer } from './nta/index.js';
@@ -32,7 +36,8 @@ const reducers = combineReducers({
   hotel: hotelReducer,
   guide: guideReducer,
   superadmin: superadminReducer,
-  experience: combineReducers({ catalog: experiencesReducer, bookings: experienceBookingsReducer }),
+  techadmin: techadminReducer,
+  nta: ntaReducer,
   dashboard: dashboardReducer,
   browse: browseReducer,
   bookings: bookingsReducer,
@@ -41,8 +46,14 @@ const reducers = combineReducers({
   supportTickets: supportTicketsReducer,
   checkout: checkoutReducer,
   notifications: notificationsReducer,
-  techadmin: techadminReducer,
-  nta: ntaReducer,
+  experience: combineReducers({
+    catalog: experiencesReducer,
+    bookings: experienceBookingsReducer,
+    earnings: experienceEarningsReducer,
+    reviews: experienceReviewsReducer,
+    tickets: experienceTicketsReducer,
+    notifications: experienceNotificationsReducer,
+  }),
 });
 
 function isSessionResetAction(action) {

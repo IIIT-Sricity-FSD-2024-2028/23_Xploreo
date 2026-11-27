@@ -1,10 +1,9 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/foundation';
-import { useAsyncData } from '@/hooks/useAsyncData.js';
-import { listReviews } from '@/services/schedule.api.js';
 import { useExperienceBookings } from '@/store/experience/useExperienceBookings.js';
 import { useExperienceCatalog } from '@/store/experience/useExperienceCatalog.js';
+import { useExperienceReviews } from '@/store/experience/useExperienceReviews.js';
 import { compareSlots, formatDate, slotState, timeToMinutes, todayIso } from '@/lib/datetime.js';
 import { ui } from '@/lib/assets.js';
 import ExperiencePage from '@/components/experience/ExperiencePage.jsx';
@@ -36,7 +35,7 @@ export default function ExperienceHome() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const bookingList = useExperienceBookings();
-  const reviewList = useAsyncData(listReviews);
+  const reviewList = useExperienceReviews();
   const catalog = useExperienceCatalog();
   const experiences = catalog.data ?? EMPTY;
   const bookings = bookingList.data ?? EMPTY;

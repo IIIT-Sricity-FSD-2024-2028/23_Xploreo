@@ -25,6 +25,10 @@ const sessionSlice = createSlice({
       state.user = GUEST;
       state.version += 1;
     },
+    profileUpdated(state, { payload }) {
+      state.user = { ...state.user, ...payload };
+      state.version += 1;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -61,7 +65,7 @@ const sessionSlice = createSlice({
   },
 });
 
-export const { sessionStarted, sessionEnded } = sessionSlice.actions;
+export const { sessionStarted, sessionEnded, profileUpdated } = sessionSlice.actions;
 export const selectUser = (state) => state.session.user;
 export const selectSessionVersion = (state) => state.session.version;
 export const selectHotelAccountId = (state) => {
