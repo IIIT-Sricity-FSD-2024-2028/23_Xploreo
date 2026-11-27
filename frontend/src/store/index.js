@@ -11,7 +11,11 @@ import authReducer, {
 } from '@/features/authSlice.js';
 import notificationsReducer from '@/features/notificationsSlice.js';
 import experienceBookingsReducer from './experience/bookingsSlice.js';
+import experienceEarningsReducer from './experience/earningsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
+import experienceNotificationsReducer from './experience/notificationsSlice.js';
+import experienceReviewsReducer from './experience/reviewsSlice.js';
+import experienceTicketsReducer from './experience/ticketsSlice.js';
 import { guideReducer } from './guide/index.js';
 import { hotelReducer } from './hotel/index.js';
 import { ntaReducer } from './nta/index.js';
@@ -26,11 +30,18 @@ const reducers = combineReducers({
   hotel: hotelReducer,
   guide: guideReducer,
   superadmin: superadminReducer,
-  experience: combineReducers({ catalog: experiencesReducer, bookings: experienceBookingsReducer }),
-  notifications: notificationsReducer,
   techadmin: techadminReducer,
   nta: ntaReducer,
   traveller: travellerReducer,
+  notifications: notificationsReducer,
+  experience: combineReducers({
+    catalog: experiencesReducer,
+    bookings: experienceBookingsReducer,
+    earnings: experienceEarningsReducer,
+    reviews: experienceReviewsReducer,
+    tickets: experienceTicketsReducer,
+    notifications: experienceNotificationsReducer,
+  }),
 });
 
 function isSessionResetAction(action) {

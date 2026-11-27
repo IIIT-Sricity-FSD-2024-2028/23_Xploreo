@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/foundation';
+import { saveExperiencePartnerProfile } from '@/store/sessionThunks.js';
 import { useAsyncData } from '@/hooks/useAsyncData.js';
 import { getGuideProfile, updateGuideProfile, updatePartnerProfile } from '@/services/partners.api.js';
 import { PROFILE_CSS } from '@/legacy/styles.js';
@@ -45,6 +47,7 @@ function Field({ label, error, full, children }) {
 }
 
 function ProfileForm({ user, guide, variant }) {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const regionAssigned = Boolean(user.region);
   const initial = () => {
@@ -85,7 +88,11 @@ function ProfileForm({ user, guide, variant }) {
       const body = { name: `${values.firstName.trim()} ${values.lastName.trim()}`.trim(), email: values.email.trim(), phone: `+91 ${values.phone}` };
       if (!regionAssigned) body.location = values.location.trim();
       if (variant.businessLabel) body.businessName = values.businessName.trim();
-      await updatePartnerProfile(user.id, body);
+      if (user?.role === 'experience') {
+        await dispatch(saveExperiencePartnerProfile(user.id, body));
+      } else {
+        await updatePartnerProfile(user.id, body);
+      }
       if (variant.professional) {
         await updateGuideProfile(user.id, {
           years_exp: Number(values.yearsExp),
