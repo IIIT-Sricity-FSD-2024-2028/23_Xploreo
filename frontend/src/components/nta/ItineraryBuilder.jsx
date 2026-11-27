@@ -1,7 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
-import { apiRequest } from '../../services/api.js';
+import { useMemo, useState } from 'react';
 import { getExperiencesByDestination } from '../../mocks/plans/experiences.fixture.js';
+import { addDaysIso, isPlansMockMode } from '../../services/plans.api.js';
 import './nta.css';
+
+const dayOf = (value) => /^(\d{4}-\d{2}-\d{2})/.exec(String(value || ''))?.[1];
+// "HH:MM" from an "HH:MM" value or an ISO date-time (saved packages store ISO).
+const timeOf = (value, fallback) => {
+  const s = String(value || '');
+  return (/^(\d{2}:\d{2})/.exec(s) || /T(\d{2}:\d{2})/.exec(s))?.[1] || fallback;
+};
+
+/** Seats left in an experience's session on `date`, or null when it has no session that day. */
+function sessionSeatsOn(experience, date) {
+  if (!date) return null;
+  const slots = Array.isArray(experience?.slots) ? experience.slots : [];
+  if (slots.length === 0) return Number(experience?.capacity) > 0 ? Number(experience.capacity) : null;
+  const slot = slots.find((s) => dayOf(s.date) === date);
+  if (!slot || !slot.available) return null;
+  return Math.max(0, Number(slot.capacity || 0) - Number(slot.booked || 0));
+}
 
 /**
  * Reusable Multi-Day Itinerary Builder for NTA Travel Packages.
@@ -18,6 +35,8 @@ import './nta.css';
  * @param {number} props.durationNights - Package duration in nights
  * @param {string} props.destination - Destination city (e.g. Jaipur, Goa)
  * @param {Object} [props.selectedHotel] - The package's selected partner hotel record
+ * @param {Array} [props.catalog] - The destination's available partner experiences (from Redux,
+ *   with their sessions). Fixture experiences are used only in mock mode.
  * @param {boolean} [props.disabled] - Disabled state during submission
  */
 export default function ItineraryBuilder({
@@ -26,79 +45,54 @@ export default function ItineraryBuilder({
   durationNights = 3,
   destination = '',
   selectedHotel = null,
+  catalog = [],
   disabled = false,
 }) {
   const day1Hotel = itinerary?.day1?.hotel || {
     name: selectedHotel?.name || '',
     hotelId: selectedHotel?.hotelId || selectedHotel?.id || '',
-    roomType: selectedHotel?.roomType || 'Standard Room',
+    roomType: '',
     checkInDate: '',
     checkOutDate: '',
-    stars: selectedHotel?.stars || 4,
-    pricePerNight: selectedHotel?.pricePerNight || 0,
   };
+  const checkIn = dayOf(day1Hotel.checkInDate);
+  const dateOfDay = (dayNumber) => (checkIn ? addDaysIso(checkIn, dayNumber - 1) : null);
 
   const experienceDays = Array.isArray(itinerary?.days) ? itinerary.days : [];
-  const [liveExperiences, setLiveExperiences] = useState([]);
 
-  useEffect(() => {
-    let mounted = true;
-    apiRequest('/experiences')
-      .then((res) => {
-        if (!mounted) return;
-        const list = Array.isArray(res) ? res : res?.data || [];
-        setLiveExperiences(list);
-      })
-      .catch(() => {
-        // Keep fixture fallback
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Available catalog experiences filtered by current package destination (live + fixture)
+  // The destination's experiences: live partner inventory, or the fixture catalog in mock mode.
   const availableCatalog = useMemo(() => {
-    const destNorm = String(destination || '').trim().toLowerCase();
-    const mappedLive = liveExperiences
-      .filter((e) => {
-        if (!e || (e.status && e.status !== 'active' && e.status !== 'available')) return false;
-        const city = String(e.destination || e.city || e.location || '').trim().toLowerCase();
-        return !destNorm || city === destNorm || city.includes(destNorm) || destNorm.includes(city);
-      })
-      .map((e) => ({
-        id: e.id,
-        experienceId: e.id,
-        title: e.title || e.name,
-        category: e.category || 'Experience',
-        pricePerPerson: Number(e.pricePerPerson ?? e.price) || 0,
-        defaultStartTime: e.defaultStartTime || '10:00',
-        defaultEndTime: e.defaultEndTime || '13:00',
-      }));
+    if (isPlansMockMode()) return getExperiencesByDestination(destination);
+    return catalog.map((e) => ({
+      id: e.id,
+      experienceId: e.id,
+      title: e.title || e.name,
+      category: e.category || 'Experience',
+      pricePerPerson: Number(e.pricePerPerson ?? e.price) || 0,
+      defaultStartTime: timeOf(e.slots?.[0]?.time, '10:00'),
+      defaultEndTime: '13:00',
+      raw: e,
+    }));
+  }, [destination, catalog]);
 
-    const fixtureCatalog = getExperiencesByDestination(destination);
-    const seen = new Set(mappedLive.map((e) => String(e.experienceId || e.title).toLowerCase()));
-    const merged = [...mappedLive];
-    fixtureCatalog.forEach((e) => {
-      const key = String(e.experienceId || e.title).toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(e);
-      }
-    });
-    return merged;
-  }, [destination, liveExperiences]);
+  // Seats left on a day for a catalog experience (null = no session that day). Mock entries
+  // carry no sessions and are always offered.
+  const seatsFor = (catExp, date) => (catExp.raw ? sessionSeatsOn(catExp.raw, date) : Infinity);
 
   // Per-day selected experience picker state
   const [activeExpSelectors, setActiveExpSelectors] = useState({});
 
-  // Update Day 1 Hotel check-in/out dates or room type
+  // Update Day 1 Hotel check-in/out dates. Choosing a check-in sets check-out to the package's
+  // number of nights later (it can still be edited; PlanForm validates that they agree).
   const handleHotelFieldChange = (field, value) => {
     if (!onChange) return;
     const updatedHotel = {
       ...day1Hotel,
       [field]: value,
     };
+    if (field === 'checkInDate' && value) {
+      updatedHotel.checkOutDate = addDaysIso(value, Math.max(1, Number(durationNights) || 1));
+    }
     onChange({
       ...itinerary,
       day1: {
@@ -248,29 +242,39 @@ export default function ItineraryBuilder({
             </div>
 
             <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#64748b' }}>
-              Room Category: <strong>{day1Hotel.roomType || 'Standard Room'}</strong> • Hotel ID: {day1Hotel.hotelId || 'HP-PARTNER'} • Location: {destination}
+              Room Category: <strong>{day1Hotel.roomType || 'not selected'}</strong> • Hotel ID: {day1Hotel.hotelId} • Location: {destination}
             </p>
 
             <div className="nta-form-grid-2col">
               <div className="nta-form-group">
-                <label className="nta-form-label">Check-in Date</label>
+                <label className="nta-form-label" htmlFor="plan-checkin">
+                  <span>Check-in Date <span style={{ color: '#ef4444' }}>*</span></span>
+                </label>
                 <input
+                  id="plan-checkin"
                   type="date"
                   className="nta-form-input"
-                  value={day1Hotel.checkInDate || ''}
+                  min={new Date().toISOString().slice(0, 10)}
+                  value={dayOf(day1Hotel.checkInDate) || ''}
                   onChange={(e) => handleHotelFieldChange('checkInDate', e.target.value)}
                   disabled={disabled}
+                  required
                 />
               </div>
 
               <div className="nta-form-group">
-                <label className="nta-form-label">Check-out Date</label>
+                <label className="nta-form-label" htmlFor="plan-checkout">
+                  <span>Check-out Date <span style={{ color: '#ef4444' }}>*</span></span>
+                </label>
                 <input
+                  id="plan-checkout"
                   type="date"
                   className="nta-form-input"
-                  value={day1Hotel.checkOutDate || ''}
+                  min={checkIn || new Date().toISOString().slice(0, 10)}
+                  value={dayOf(day1Hotel.checkOutDate) || ''}
                   onChange={(e) => handleHotelFieldChange('checkOutDate', e.target.value)}
                   disabled={disabled}
+                  required
                 />
               </div>
             </div>
@@ -286,17 +290,21 @@ export default function ItineraryBuilder({
       {subsequentDayNumbers.map((dayNum) => {
         const dayGroup = experienceDays.find((d) => d.dayNumber === dayNum) || { experiences: [] };
         const experiences = dayGroup.experiences || [];
+        const dayDate = dateOfDay(dayNum);
 
-        // Exclude already added experiences on this day to prevent duplicate selection
-        const availableToAdd = availableCatalog.filter(
-          (catExp) => !experiences.some((e) => e.experienceId === catExp.experienceId || e.id === catExp.id)
-        );
+        // Offer only experiences with an open session (and seats) on this day's date, and not
+        // already scheduled for the day.
+        const availableToAdd = availableCatalog.filter((catExp) => {
+          if (experiences.some((e) => e.experienceId === catExp.experienceId)) return false;
+          const seats = seatsFor(catExp, dayDate);
+          return seats !== null && seats > 0;
+        });
 
         return (
           <div key={`day-${dayNum}`} className="nta-itinerary-day-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span className="nta-itinerary-day-badge">
-                Day {dayNum}: Curated Activities & Experiences
+                Day {dayNum}{dayDate ? ` (${dayDate})` : ''}: Curated Activities & Experiences
               </span>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
                 {experiences.length} {experiences.length === 1 ? 'activity' : 'activities'} scheduled
@@ -328,6 +336,30 @@ export default function ItineraryBuilder({
                       <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
                         📍 {exp.location || destination}
                       </span>
+                      {(() => {
+                        // A scheduled experience must still have a session on this day's date.
+                        const catExp = availableCatalog.find((c) => c.experienceId === exp.experienceId);
+                        if (!catExp) {
+                          return (
+                            <span style={{ fontSize: '12px', color: '#b91c1c', display: 'block', marginTop: '2px' }}>
+                              Not available in the {destination} catalog — remove it.
+                            </span>
+                          );
+                        }
+                        const seats = dayDate ? seatsFor(catExp, dayDate) : Infinity;
+                        if (seats === null || seats === 0) {
+                          return (
+                            <span style={{ fontSize: '12px', color: '#b91c1c', display: 'block', marginTop: '2px' }}>
+                              {seats === 0 ? `Session on ${dayDate} is full` : `No session on ${dayDate}`} — remove it or change the dates.
+                            </span>
+                          );
+                        }
+                        return Number.isFinite(seats) ? (
+                          <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
+                            {seats} seat(s) left on {dayDate}
+                          </span>
+                        ) : null;
+                      })()}
                     </div>
 
                     <button
@@ -347,7 +379,7 @@ export default function ItineraryBuilder({
                       <input
                         type="time"
                         className="nta-form-input"
-                        value={exp.startsAt ? exp.startsAt.slice(0, 5) : '10:00'}
+                        value={timeOf(exp.startsAt, '10:00')}
                         onChange={(e) => handleExperienceChange(dayNum, expIdx, 'startsAt', e.target.value)}
                         disabled={disabled}
                       />
@@ -358,7 +390,7 @@ export default function ItineraryBuilder({
                       <input
                         type="time"
                         className="nta-form-input"
-                        value={exp.endsAt ? exp.endsAt.slice(0, 5) : '13:00'}
+                        value={timeOf(exp.endsAt, '13:00')}
                         onChange={(e) => handleExperienceChange(dayNum, expIdx, 'endsAt', e.target.value)}
                         disabled={disabled}
                       />
@@ -370,7 +402,11 @@ export default function ItineraryBuilder({
 
             {/* Catalog Selector Dropdown for this Day */}
             <div style={{ marginTop: '10px', display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {availableCatalog.length > 0 ? (
+              {!dayDate ? (
+                <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
+                  Set the hotel check-in date to see the experiences scheduled on this day.
+                </div>
+              ) : availableCatalog.length > 0 ? (
                 <>
                   <select
                     className="nta-form-select"
@@ -393,13 +429,13 @@ export default function ItineraryBuilder({
                   </select>
                   {availableToAdd.length === 0 && (
                     <span style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
-                      All available {destination} experiences scheduled for this day.
+                      No other {destination} experience has an open session on {dayDate}.
                     </span>
                   )}
                 </>
               ) : (
                 <div style={{ fontSize: '12px', color: '#64748b', fontStyle: 'italic' }}>
-                  No curated experiences are available for {destination || 'this destination'} in the preview catalog.
+                  No partner experiences are available for {destination || 'this destination'}.
                 </div>
               )}
             </div>

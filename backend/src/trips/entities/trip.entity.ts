@@ -26,6 +26,10 @@ export class Trip {
   status!: TripStatus;
   itinerary!: StructuredItinerary;
   totalAmount!: number;
+  // Number of guests booked on the package, and when the booking was made. Optional because
+  // trips seeded or created before these were recorded do not have them.
+  travellers?: number;
+  createdAt?: string;
   currentDay!: number;
   currentStop!: string;
   currentLocation!: string;

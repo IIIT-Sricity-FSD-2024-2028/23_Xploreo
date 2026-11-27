@@ -23,6 +23,8 @@ export class TripsRepository {
       status: data.status || TripStatus.CONFIRMED,
       itinerary: data.itinerary,
       totalAmount: data.totalAmount,
+      travellers: data.travellers,
+      createdAt: data.createdAt ?? new Date().toISOString(),
       currentDay: data.currentDay ?? 1,
       currentStop: data.currentStop ?? 'Not started',
       currentLocation: data.currentLocation ?? '',

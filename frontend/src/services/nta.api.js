@@ -301,69 +301,77 @@ export async function getNtaRecentBookings(session = {}) {
   const tripsRes = await fetchData(`${BASE_URL}/trips`, { headers });
   const tripsList = Array.isArray(tripsRes) ? tripsRes : [];
 
-  return toRecentBookings(tripsList, targetRegion);
+  return tripsList.map(toBookingRecord);
 }
 
 /**
- * Maps live GET /trips records to the dashboard's recent-booking rows: region filter, first 15.
- * Shared by getNtaRecentBookings and getNtaTripActivity so both produce identical rows.
+ * Maps one GET /trips record (already limited to the NTA's region by the server) to the booking
+ * record the dashboard shows. Every field comes from the trip itself:
+ *   hotel / experiences — the resources actually booked (trip.itinerary), not the package defaults
+ *   guests              — trip.travellers (null for older trips that did not record it)
+ *   price               — trip.totalAmount; packageTitle / destination — added by GET /trips for NTAs
  *
- * @param {Array} tripsList - Trips from GET /trips
- * @param {string} targetRegion - The NTA's region ('' for no filter)
- * @returns {Array} Package booking / trip records
+ * @param {Object} trip - Trip from GET /trips
+ * @returns {Object} Booking record
  */
-function toRecentBookings(tripsList, targetRegion) {
-  if (tripsList.length === 0) {
-    return [];
-  }
-
-  // Map live trips accurately with isDirectTripActivity indicator
-  let mapped = tripsList.map((trip) => ({
+export function toBookingRecord(trip) {
+  const hotel = trip.itinerary?.day1?.hotel || null;
+  const experiences = (trip.itinerary?.days || []).flatMap((day) =>
+    (day.experiences || []).map((exp) => ({
+      id: exp.experienceId,
+      title: exp.title,
+      dayNumber: day.dayNumber,
+      startsAt: exp.startsAt,
+      endsAt: exp.endsAt,
+    })),
+  );
+  return {
     bookingId: trip.id,
-    travellerName: trip.travellerId || 'Traveller',
-    travellerEmail: `${trip.travellerId || 'traveller'}@xploreo.com`,
-    packageTitle: trip.planId ? `Package #${trip.planId}` : 'Regional Itinerary',
-    destination: trip.itinerary?.day1?.hotel?.name || trip.destination || 'Assigned City',
-    bookingDate: trip.createdAt || new Date().toISOString(),
-    travelDate: trip.itinerary?.day1?.hotel?.checkInDate || null,
-    status: trip.status || 'confirmed',
-    price: trip.price || null,
+    travellerId: trip.travellerId || null,
+    packageId: trip.planId || null,
+    packageTitle: trip.planTitle || null,
+    destination: trip.destination || null,
+    bookingDate: trip.createdAt || null,
+    travelDate: hotel?.checkInDate || null,
+    returnDate: hotel?.checkOutDate || null,
+    status: trip.status || null,
+    price: Number.isFinite(Number(trip.totalAmount)) ? Number(trip.totalAmount) : null,
     currency: 'INR',
-    guests: trip.guests || 1,
-    isDirectTripActivity: true, // Accurately flags that this record represents raw trip activity from /trips
-  }));
-
-  if (targetRegion) {
-    mapped = mapped.filter((t) => t.destination?.toLowerCase().includes(targetRegion.toLowerCase()));
-  }
-
-  return mapped.slice(0, 15);
+    guests: Number(trip.travellers) > 0 ? Number(trip.travellers) : null,
+    hotel: hotel
+      ? {
+          id: hotel.hotelId,
+          name: hotel.name,
+          roomType: hotel.roomType,
+          checkInDate: hotel.checkInDate,
+          checkOutDate: hotel.checkOutDate,
+        }
+      : null,
+    experiences,
+    guideName: trip.guideName || trip.guide?.name || null,
+    refundStatus: trip.refundStatus || null,
+  };
 }
 
 /**
- * Fetches the region's trip activity for the dashboard in one request.
- * Live: GET /trips (the server already scopes an NTA to their region) ->
- *   tripCount       — every region trip (the "Recent Bookings" KPI, as getNtaDashboardMetrics counted it)
- *   recentBookings  — the table rows, exactly as getNtaRecentBookings builds them
- * Mock mode: the same rows getNtaRecentBookings returns, with their count.
+ * Fetches the region's package bookings for the dashboard in one request.
+ * Live: GET /trips (the server scopes an NTA to their region) -> one booking record per trip.
+ * Mock mode: the demo rows from getNtaRecentBookings.
+ * Counts, ordering and the "recent" cut are derived by store/nta/selectors.js.
  *
  * @param {Object} [session] - User session identity
- * @returns {Promise<{ tripCount: number, recentBookings: Array }>}
+ * @returns {Promise<{ bookings: Array }>}
  */
 export async function getNtaTripActivity(session = {}) {
   if (isNtaMockMode()) {
-    const recentBookings = await getNtaRecentBookings(session);
-    return { tripCount: recentBookings.length, recentBookings };
+    return { bookings: await getNtaRecentBookings(session) };
   }
 
   const headers = buildNtaHeaders(session);
   const tripsRes = await fetchData(`${BASE_URL}/trips`, { headers });
   const tripsList = Array.isArray(tripsRes) ? tripsRes : [];
 
-  return {
-    tripCount: tripsList.length,
-    recentBookings: toRecentBookings(tripsList, (session.region || '').trim()),
-  };
+  return { bookings: tripsList.map(toBookingRecord) };
 }
 
 /**

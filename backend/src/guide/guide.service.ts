@@ -57,10 +57,26 @@ export class GuideService {
     return this.guideRepository.findByLocation(locationId);
   }
 
-  update(id: string, dto: UpdateGuideDto, actor?: { userId?: string; role?: string }) {
+  update(id: string, dto: UpdateGuideDto, actor?: { userId?: string; role?: string; region?: string }) {
     const isAdmin = actor?.role === 'superadmin' || actor?.role === 'nontechadmin';
     if (!isAdmin && actor?.userId !== id) {
       throw new ForbiddenException('You can only update your own guide profile.');
+    }
+    // An NTA administers only guides based in their own region, and cannot move one elsewhere.
+    if (actor?.role === 'nontechadmin') {
+      const ntaRegion = (actor.region || '').trim().toLowerCase();
+      const guide = this.guideRepository.findById(id);
+      if (!guide) throw new NotFoundException(`Guide ${id} not found`);
+      const inRegion = (location?: string) => String(location || '').trim().toLowerCase() === ntaRegion;
+      if (!ntaRegion || !inRegion(guide.location)) {
+        throw new ForbiddenException(
+          `Cannot modify guide based in '${guide.location}': outside your assigned region '${actor.region}'`,
+        );
+      }
+      const newLocation = (dto as { location?: string }).location;
+      if (newLocation !== undefined && !inRegion(newLocation)) {
+        throw new ForbiddenException(`Cannot move a guide outside your assigned region '${actor.region}'`);
+      }
     }
     const updated = this.guideRepository.update(id, dto);
     if (!updated) throw new NotFoundException(`Guide ${id} not found`);

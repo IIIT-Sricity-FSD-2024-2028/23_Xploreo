@@ -2,12 +2,14 @@ import { combineReducers } from '@reduxjs/toolkit';
 import dashboardReducer from './dashboardSlice.js';
 import guideApplicationsReducer from './guideApplicationsSlice.js';
 import plansReducer from './plansSlice.js';
+import inventoryReducer from './inventorySlice.js';
 
 // Non-Technical Admin state, registered in store/index.js as `nta`.
 export const ntaReducer = combineReducers({
   plans: plansReducer,
   guideApplications: guideApplicationsReducer,
   dashboard: dashboardReducer,
+  inventory: inventoryReducer,
 });
 
 export { clearPlanMutation, clearPlansError, planRemoved } from './plansSlice.js';
@@ -16,4 +18,5 @@ export { clearGuideApplicationMutation, clearGuideApplicationsError } from './gu
 export { decideGuideApplication, fetchGuideApplications } from './guideApplicationsThunks.js';
 export { clearDashboardError } from './dashboardSlice.js';
 export { fetchNtaTripActivity } from './dashboardThunks.js';
+export { fetchNtaExperiences, fetchNtaHotelRooms, fetchNtaHotels } from './inventoryThunks.js';
 export * from './selectors.js';
