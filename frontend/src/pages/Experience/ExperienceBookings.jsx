@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams } from 'react-router-dom';
-import { checkInExperienceBooking, requestExperienceBookingEnd, selectExperienceBooking, selectExperienceBookings } from '@/store/experience/bookingsSlice.js';
+import {
+  cancelExperienceBookingThunk,
+  checkInExperienceBooking,
+  requestExperienceBookingEnd,
+  selectExperienceBooking,
+  selectExperienceBookings,
+} from '@/store/experience/bookingsSlice.js';
 import { useExperienceBookings } from '@/store/experience/useExperienceBookings.js';
 import { compareSlots, formatCurrency, formatDate, todayIso } from '@/lib/datetime.js';
 import { STATUS_FILTERS, bookingStatusMeta } from '@/lib/bookingStatus.js';
@@ -18,6 +24,7 @@ const STATUS_COLORS = {
   pending: { background: '#fef3c7', color: '#92400e' },
   completed: { background: '#dcfce7', color: '#166534' },
   cancelled: { background: '#fee2e2', color: '#991b1b' },
+  concluded: { background: '#f1f5f9', color: '#64748b' },
 };
 const statusStyle = (className) => STATUS_COLORS[className] ?? STATUS_COLORS.cancelled;
 
@@ -27,13 +34,26 @@ export default function ExperienceBookings() {
   const { data, error, loading, reload } = useExperienceBookings();
   const [experienceId, setExperienceId] = useState(params.get('experience') || 'all');
   const [status, setStatus] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [detailsId, setDetailsId] = useState(null);
+  const [confirmCancelBooking, setConfirmCancelBooking] = useState(null);
+  const [cancelReason, setCancelReason] = useState('Cancelled by partner due to operational adjustment');
   const [actionError, setActionError] = useState(null);
   const details = useSelector((state) => selectExperienceBooking(state, detailsId));
   const saving = useSelector((state) => selectExperienceBookings(state).saving);
 
   const bookings = useMemo(() => data ?? [], [data]);
   const today = todayIso();
+
+  const counts = useMemo(() => {
+    const list = bookings;
+    return {
+      total: list.length,
+      confirmed: list.filter((b) => b.status === 'CONFIRMED' && b.date >= today).length,
+      completed: list.filter((b) => b.status === 'COMPLETED').length,
+      revenue: list.filter((b) => b.status === 'COMPLETED').reduce((s, b) => s + (b.totalAmount || 0), 0),
+    };
+  }, [bookings, today]);
 
   const experienceOptions = useMemo(() => {
     const seen = new Map();
@@ -43,9 +63,19 @@ export default function ExperienceBookings() {
 
   // One card per session (experience + date + time), upcoming sessions first, then past ones (newest first).
   const groups = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     const byKey = new Map();
     bookings
-      .filter((b) => (experienceId === 'all' || b.experienceId === experienceId) && (status === 'all' || bookingStatusMeta(b.status).group === status))
+      .filter((b) => {
+        if (experienceId !== 'all' && b.experienceId !== experienceId) return false;
+        if (status !== 'all' && bookingStatusMeta(b.status).group !== status) return false;
+        if (q) {
+          const match = [b.guestName, b.email, b.phone, b.id, b.experience?.title]
+            .some((v) => String(v ?? '').toLowerCase().includes(q));
+          if (!match) return false;
+        }
+        return true;
+      })
       .forEach((b) => {
         const timeVal = b.time || null;
         const key = `${b.experienceId}|${b.date}|${timeVal || 'standard'}`;
@@ -54,12 +84,23 @@ export default function ExperienceBookings() {
       });
     const list = [...byKey.values()].sort(compareSlots);
     return [...list.filter((g) => g.date >= today), ...list.filter((g) => g.date < today).reverse()];
-  }, [bookings, experienceId, status, today]);
+  }, [bookings, experienceId, status, searchQuery, today]);
 
   async function saveStatus(thunk) {
     setActionError(null);
     try {
       await dispatch(thunk);
+    } catch (err) {
+      setActionError(err);
+    }
+  }
+
+  async function handleConfirmCancel() {
+    if (!confirmCancelBooking) return;
+    setActionError(null);
+    try {
+      await dispatch(cancelExperienceBookingThunk(confirmCancelBooking.id, cancelReason));
+      setConfirmCancelBooking(null);
     } catch (err) {
       setActionError(err);
     }
@@ -79,8 +120,68 @@ export default function ExperienceBookings() {
             </div>
           </header>
 
-          <section className="gd-card">
-            <div className="ep-filter-bar">
+          {/* Hotel-quality Summary Metrics Strip */}
+          <section
+            className="gd-card ep-summary-strip"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: '1rem',
+              marginBottom: '1.25rem',
+              padding: '1.15rem 1.4rem',
+              background: '#ffffff',
+              borderRadius: '1rem',
+              border: '1px solid #e2e8f0',
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
+                Total Bookings
+              </span>
+              <strong style={{ display: 'block', fontSize: '1.5rem', color: '#0f172a', marginTop: '0.2rem' }}>
+                {counts.total}
+              </strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
+                Upcoming Confirmed
+              </span>
+              <strong style={{ display: 'block', fontSize: '1.5rem', color: '#2563eb', marginTop: '0.2rem' }}>
+                {counts.confirmed}
+              </strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
+                Completed Stays
+              </span>
+              <strong style={{ display: 'block', fontSize: '1.5rem', color: '#16a34a', marginTop: '0.2rem' }}>
+                {counts.completed}
+              </strong>
+            </div>
+            <div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.04em' }}>
+                Earned Revenue
+              </span>
+              <strong style={{ display: 'block', fontSize: '1.5rem', color: '#0f172a', marginTop: '0.2rem' }}>
+                {formatCurrency(counts.revenue)}
+              </strong>
+            </div>
+          </section>
+
+          <section className="gd-card" style={{ marginBottom: '1.25rem' }}>
+            <div className="ep-filter-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <label className="ep-select-shell" htmlFor="searchQuery" style={{ minWidth: 200, flex: 1 }}>
+                Search Guests
+                <input
+                  id="searchQuery"
+                  type="text"
+                  className="gd-select"
+                  placeholder="Search by name, ID, phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ height: '2.5rem', background: '#fff' }}
+                />
+              </label>
               <label className="ep-select-shell" htmlFor="experienceFilter">
                 Experience
                 <select id="experienceFilter" className="gd-select" value={experienceId} onChange={(event) => setExperienceId(event.target.value)}>
@@ -116,11 +217,19 @@ export default function ExperienceBookings() {
               {groups.length ? (
                 groups.map((group) => {
                   const guests = group.items.reduce((sum, b) => sum + (b.status === 'CANCELLED' ? 0 : b.participants), 0);
+                  const isPastGroup = group.date < today;
                   return (
                     <article key={group.key} className="ep-booking-card" aria-label={`${group.title} on ${group.date}${group.time ? ` at ${group.time}` : ''}`}>
                       <header className="ep-booking-card-header">
                         <div>
-                          <h2>{group.title}</h2>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <h2 style={{ margin: 0 }}>{group.title}</h2>
+                            {isPastGroup ? (
+                              <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: 6, background: '#f1f5f9', color: '#64748b' }}>
+                                Past Session
+                              </span>
+                            ) : null}
+                          </div>
                           <p>{longDate(group.date)}{group.time ? ` • ${group.time}` : ''}</p>
                         </div>
                         <div className="ep-booking-summary">
@@ -134,6 +243,9 @@ export default function ExperienceBookings() {
                       {group.items.map((b) => {
                         const meta = bookingStatusMeta(b.status);
                         const busy = Object.hasOwn(saving, b.id);
+                        const isPast = b.date < today;
+                        const tooEarly = b.date > today;
+                        const isConcluded = isPast && b.status === 'CONFIRMED';
                         return (
                           <div key={b.id} className="ep-booking-user-row">
                             <div>
@@ -159,15 +271,48 @@ export default function ExperienceBookings() {
                               <small>{b.id}{b.isPackageComponent && b.tripId ? ` · Trip #${b.tripId}` : ''}</small>
                             </div>
                             <div>{b.participants} guests</div>
-                            <div><span className="gd-chip" style={{ ...statusStyle(meta.className), borderColor: 'transparent' }}>{meta.label}</span></div>
+                            <div>
+                              <span
+                                className="gd-chip"
+                                style={{
+                                  ...(isConcluded ? statusStyle('concluded') : statusStyle(meta.className)),
+                                  borderColor: 'transparent',
+                                }}
+                              >
+                                {isConcluded ? 'Session Concluded' : meta.label}
+                              </span>
+                            </div>
                             <div className="ep-row-actions">
-                              <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" onClick={() => setDetailsId(b.id)}>View Details</button>
-                              {b.status === 'CONFIRMED' ? (
-                                <button type="button" className="gd-btn gd-btn-primary gd-btn-sm" disabled={busy} onClick={() => saveStatus(checkInExperienceBooking(b.id))}>
-                                  {busy ? 'Saving…' : 'Mark Check-in'}
-                                </button>
+                              <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" onClick={() => setDetailsId(b.id)}>
+                                View Details
+                              </button>
+
+                              {/* Hotel-style guard: Back-dated bookings cannot be checked in today */}
+                              {b.status === 'CONFIRMED' && !isPast ? (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="gd-btn gd-btn-primary gd-btn-sm"
+                                    disabled={busy || tooEarly}
+                                    title={tooEarly ? `Check-in opens on ${longDate(b.date)}` : undefined}
+                                    onClick={() => saveStatus(checkInExperienceBooking(b.id))}
+                                    style={tooEarly ? { opacity: 0.65, cursor: 'not-allowed' } : undefined}
+                                  >
+                                    {busy ? 'Saving…' : tooEarly ? 'Check-in Pending' : 'Mark Check-in'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="gd-btn gd-btn-sm"
+                                    disabled={busy}
+                                    onClick={() => setConfirmCancelBooking(b)}
+                                    style={{ background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
                               ) : null}
-                              {b.status === 'CHECKED_IN' ? (
+
+                              {b.status === 'CHECKED_IN' && !isPast ? (
                                 <button type="button" className="gd-btn gd-btn-secondary gd-btn-sm" disabled={busy} onClick={() => saveStatus(requestExperienceBookingEnd(b.id))}>
                                   {busy ? 'Saving…' : 'Request End'}
                                 </button>
@@ -182,12 +327,13 @@ export default function ExperienceBookings() {
               ) : (
                 <div className="gd-empty">
                   <strong style={{ display: 'block', color: '#0f172a', marginBottom: '0.3rem' }}>No bookings found</strong>
-                  {bookings.length ? 'Try changing your filters.' : 'Once travellers book one of your sessions, they will appear here.'}
+                  {bookings.length ? 'Try changing your filters or search term.' : 'Once travellers book one of your sessions, they will appear here.'}
                 </div>
               )}
             </section>
           ) : null}
 
+          {/* Details Modal */}
           {details ? (
             <ModalFrame id="bookingModal" boxClass="booking-modal-box" labelledBy="modalName" onClose={() => setDetailsId(null)}>
               <div className="modal-header">
@@ -248,6 +394,56 @@ export default function ExperienceBookings() {
                         : 'Paid'}
                   </span>
                 </div>
+              </div>
+            </ModalFrame>
+          ) : null}
+
+          {/* Cancel Confirmation Modal */}
+          {confirmCancelBooking ? (
+            <ModalFrame id="cancelBookingModal" boxClass="booking-modal-box" labelledBy="cancelModalTitle" onClose={() => setConfirmCancelBooking(null)}>
+              <div className="modal-header">
+                <div>
+                  <h2 id="cancelModalTitle" style={{ color: '#991b1b' }}>Cancel Reservation</h2>
+                  <div className="modal-sub">
+                    <span>Booking #{confirmCancelBooking.id}</span>
+                  </div>
+                </div>
+                <CloseButton label="Close cancel dialog" glyph="✕" onClick={() => setConfirmCancelBooking(null)} />
+              </div>
+
+              <hr />
+
+              <div className="section">
+                <p style={{ margin: '0 0 1rem 0', color: '#475569', fontSize: '0.9rem' }}>
+                  Are you sure you want to cancel the reservation for <strong>{confirmCancelBooking.guestName}</strong> ({confirmCancelBooking.participants} guests) on {longDate(confirmCancelBooking.date)}?
+                </p>
+                <label className="ep-select-shell" style={{ width: '100%' }}>
+                  Reason for Cancellation
+                  <input
+                    type="text"
+                    className="gd-select"
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    style={{ width: '100%', marginTop: '0.4rem', height: '2.5rem', background: '#fff' }}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                <button
+                  type="button"
+                  className="gd-btn gd-btn-secondary"
+                  onClick={() => setConfirmCancelBooking(null)}
+                >
+                  Keep Reservation
+                </button>
+                <button
+                  type="button"
+                  className="gd-btn gd-btn-danger"
+                  onClick={handleConfirmCancel}
+                >
+                  Yes, Cancel Reservation
+                </button>
               </div>
             </ModalFrame>
           ) : null}

@@ -420,6 +420,14 @@ export class ExperienceBookingsService {
       throw new ForbiddenException('Not authorized to update this booking status.');
     }
 
+    if (status === ExperienceBookingStatus.CHECKED_IN) {
+      const today = todayIso();
+      const bookingDate = String(booking.date ?? '').slice(0, 10);
+      if (bookingDate && bookingDate < today) {
+        throw new BadRequestException('Cannot check in a booking for a past session that has already concluded.');
+      }
+    }
+
     const updated = this.bookingsRepository.setStatus(id, status);
     if (experience) this.syncExperience(experience.id);
 

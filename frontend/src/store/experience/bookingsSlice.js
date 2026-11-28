@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { ApiError } from '@/services/ApiError.js';
-import { listExperienceBookings, updateExperienceBookingStatus } from '@/services/partners.api.js';
+import { cancelExperienceBooking, listExperienceBookings, updateExperienceBookingStatus } from '@/services/partners.api.js';
 import { selectSessionVersion, selectUser } from '../sessionSlice.js';
 import { refreshExperienceCatalog } from './experiencesSlice.js';
 
@@ -92,5 +92,21 @@ function changeBookingStatus(id, status) {
 
 export const checkInExperienceBooking = (id) => changeBookingStatus(id, 'CHECKED_IN');
 export const requestExperienceBookingEnd = (id) => changeBookingStatus(id, 'END_REQUESTED');
+export const cancelExperienceBookingThunk = (id, reason = 'Cancelled by partner') => async (dispatch, getState) => {
+  const state = getState();
+  if (!isExperiencePartner(state)) throw new ApiError(403);
+  const sessionVersion = selectSessionVersion(state);
+  const isSameSession = () => selectSessionVersion(getState()) === sessionVersion;
+  dispatch(actions.saveStarted(id));
+  try {
+    const updated = await cancelExperienceBooking(id, { reason });
+    if (!isSameSession()) throw new ApiError(401);
+    dispatch(actions.update(updated));
+    dispatch(refreshExperienceCatalog());
+    return updated;
+  } finally {
+    if (isSameSession()) dispatch(actions.saveFinished(id));
+  }
+};
 
 export default bookingsSlice.reducer;
