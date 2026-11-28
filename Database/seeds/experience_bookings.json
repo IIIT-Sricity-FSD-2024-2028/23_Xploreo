@@ -118,5 +118,33 @@
     "totalAmount": 4400,
     "status": "CONFIRMED",
     "createdAt": "2026-11-25T10:00:00.000Z"
+  },
+  {
+    "id": "exp-booking-del-today-1",
+    "experienceId": "EXP-DEL-301",
+    "travellerId": "T001",
+    "guestName": "Anjali Sharma",
+    "email": "anjali@xploreo.com",
+    "phone": "9123456780",
+    "date": "2026-11-28",
+    "time": "17:00",
+    "participants": 2,
+    "totalAmount": 3500,
+    "status": "CONFIRMED",
+    "createdAt": "2026-11-28T09:00:00.000Z"
+  },
+  {
+    "id": "exp-booking-del-today-2",
+    "experienceId": "exp-delhi-1",
+    "travellerId": "T001",
+    "guestName": "Anjali Sharma",
+    "email": "anjali@xploreo.com",
+    "phone": "9123456780",
+    "date": "2026-11-28",
+    "time": "17:00",
+    "participants": 2,
+    "totalAmount": 3200,
+    "status": "CONFIRMED",
+    "createdAt": "2026-11-28T09:00:00.000Z"
   }
 ]

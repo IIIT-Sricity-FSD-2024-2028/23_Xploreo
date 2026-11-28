@@ -323,8 +323,16 @@
     "capacity": 10,
     "booked": 0,
     "image": "https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80",
-    "nextSlot": "2026-12-07 17:00",
+    "nextSlot": "2026-11-28 17:00",
     "slots": [
+      {
+        "id": "slot-exp-delhi-1-live-today",
+        "date": "2026-11-28",
+        "time": "17:00",
+        "booked": 2,
+        "capacity": 10,
+        "available": true
+      },
       {
         "id": "s-d1-1",
         "date": "2026-12-07",
@@ -555,15 +563,23 @@
     "capacity": 12,
     "booked": 5,
     "image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
-    "nextSlot": "2026-10-25 17:00",
+    "nextSlot": "2026-11-28 17:00",
     "slots": [
+      {
+        "id": "slot-del-301-live-today",
+        "date": "2026-11-28",
+        "time": "17:00",
+        "booked": 2,
+        "capacity": 12,
+        "available": true
+      },
       {
         "id": "slot-del-301",
         "date": "2026-10-25",
         "time": "17:00",
         "booked": 5,
         "capacity": 12,
-        "available": true
+        "available": false
       }
     ]
   },
