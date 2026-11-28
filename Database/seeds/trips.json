@@ -316,7 +316,7 @@
     "currentLocation": "Kochi Airport",
     "trackingStatus": "not_started",
     "progressPercentage": 0,
-    "lastUpdatedAt": "2026-11-28T09:30:00.000Z",
+    "lastUpdatedAt": "2026-11-28T07:30:00.000Z",
     "startDate": "2026-11-28",
     "endDate": "2026-12-03"
   },
@@ -393,7 +393,7 @@
     "currentLocation": "Kochi",
     "trackingStatus": "not_started",
     "progressPercentage": 0,
-    "lastUpdatedAt": "2026-11-28T09:45:00.000Z",
+    "lastUpdatedAt": "2026-11-28T07:30:00.000Z",
     "startDate": "2026-11-28",
     "endDate": "2026-12-02"
   }

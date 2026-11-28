@@ -32,15 +32,48 @@ const tabOf = (card) => {
 
 const EXPERIENCE_STATUS_LABEL = { confirmed: 'Confirmed', completed: 'Completed' };
 
-// Flatten itinerary.days[].experiences[] into the ordered list of stops the guide walks through.
+// Flatten itinerary into the ordered list of stops the guide walks through.
+// If Day 1 has hotel check-in or transport, it becomes Stop 1 (Day 1).
 function stopsOf(trip) {
+  const stops = [];
+  const day1 = trip.itinerary?.day1;
+  const day1Hotel = day1?.hotel?.name;
+  const day1Pickup = day1?.transport?.pickupLocation;
+  if (day1Hotel || day1Pickup) {
+    stops.push({
+      id: `${trip.id}-day1-arrival`,
+      title: day1Hotel ? `Check-in: ${day1Hotel}` : `Arrival: ${day1Pickup}`,
+      location: day1?.transport?.dropoffLocation || day1Hotel || trip.currentLocation || 'Kerala',
+      day: 1,
+      startsAt: day1?.transport?.pickupAt || day1?.hotel?.checkInDate || trip.startDate,
+    });
+  }
   const days = trip.itinerary?.days ?? [];
-  return days.flatMap((day) =>
-    (day.experiences ?? []).map((e) => ({ id: e.id, title: e.title, location: e.location, day: day.dayNumber, startsAt: e.startsAt })),
-  );
+  for (const day of days) {
+    for (const e of day.experiences ?? []) {
+      stops.push({
+        id: e.id,
+        title: e.title,
+        location: e.location,
+        day: day.dayNumber,
+        startsAt: e.startsAt,
+      });
+    }
+  }
+  return stops;
 }
 
-const stopIndex = (trip, stops) => Math.max(0, stops.findIndex((s) => s.title === trip.currentStop));
+const stopIndex = (trip, stops) => {
+  if (!trip?.currentStop || trip.currentStop === 'Not started') return 0;
+  const idx = stops.findIndex(
+    (s) =>
+      s.title === trip.currentStop ||
+      s.title.includes(trip.currentStop) ||
+      trip.currentStop.includes(s.title) ||
+      s.id === trip.currentStop
+  );
+  return idx >= 0 ? idx : 0;
+};
 const progressOf = (index, total) => Math.round((index / (total - 1 || 1)) * 100);
 // Assignments are Trips: there's no top-level "start date"/"fee"/"guests" field, only itinerary
 // dates and totalAmount — see trips/entities/trip.entity.ts.
@@ -173,7 +206,13 @@ export default function GuideTours() {
   async function track(card, changes, message) {
     setBusyId(card.id);
     try {
-      await dispatch(updateTripTrackingThunk({ tripId: card.trip.id, changes })).unwrap();
+      const nowIso = new Date().toISOString();
+      await dispatch(
+        updateTripTrackingThunk({
+          tripId: card.trip.id,
+          changes: { ...changes, lastUpdatedAt: nowIso },
+        })
+      ).unwrap();
       if (message) show(message, 'success');
       return true;
     } catch (err) {
@@ -193,11 +232,11 @@ export default function GuideTours() {
     const first = card.stops[0];
     return track(card, {
       trackingStatus: 'ongoing',
-      currentDay: first?.day ?? 1,
-      currentStop: first?.title ?? '',
+      currentDay: 1,
+      currentStop: first?.title ?? 'Day 1 Arrival',
       currentLocation: first?.location ?? '',
       progressPercentage: 0,
-    }, 'Tour started.');
+    }, 'Tour started at Day 1.');
   }
 
   // "Complete" finishes the current stop and moves to the next; on the last stop it finishes the tour.
@@ -206,7 +245,11 @@ export default function GuideTours() {
     const index = stopIndex(trip, stops);
     const next = stops[index + 1];
     if (!next) {
-      const done = await track(card, { trackingStatus: 'completed', progressPercentage: 100 }, 'Tour finished.');
+      const done = await track(card, {
+        trackingStatus: 'completed',
+        progressPercentage: 100,
+        currentStop: 'Tour Completed',
+      }, 'Tour finished and completed.');
       if (done) setTab('completed');
       return;
     }
@@ -215,7 +258,19 @@ export default function GuideTours() {
       currentStop: next.title,
       currentLocation: next.location,
       progressPercentage: progressOf(index + 1, stops.length),
-    }, `Now at ${next.title}.`);
+    }, `Moved to Day ${next.day}: ${next.title}.`);
+  }
+
+  async function jumpToStop(card, targetIndex) {
+    const { stops } = card;
+    const target = stops[targetIndex];
+    if (!target) return;
+    await track(card, {
+      currentDay: target.day,
+      currentStop: target.title,
+      currentLocation: target.location,
+      progressPercentage: progressOf(targetIndex, stops.length),
+    }, `Moved to Day ${target.day}: ${target.title}.`);
   }
 
   return (
@@ -299,6 +354,7 @@ export default function GuideTours() {
               onClose={() => setOpenId(null)}
               onStart={() => start(open)}
               onAdvance={() => advance(open)}
+              onSelectStop={(idx) => jumpToStop(open, idx)}
               onPause={() => track(open, { trackingStatus: 'paused' }, 'Tracking paused.')}
               onResume={() => track(open, { trackingStatus: 'ongoing' }, 'Tracking resumed.')}
             />
@@ -471,7 +527,7 @@ function CompletedCard({ card, onDetails }) {
 
 // The old modal showed an itinerary with Start / Pause / Resume / Skip and a Leaflet map. The map is not
 // rebuilt (the old one plotted made-up coordinates), so the right half shows the live status instead.
-function TourModal({ card, busy, onClose, onStart, onAdvance, onPause, onResume }) {
+function TourModal({ card, busy, onClose, onStart, onAdvance, onSelectStop, onPause, onResume }) {
   const { trip, stops } = card;
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -481,11 +537,12 @@ function TourModal({ card, busy, onClose, onStart, onAdvance, onPause, onResume 
 
   const current = trip.trackingStatus === 'not_started' ? -1 : stopIndex(trip, stops);
   const done = trip.trackingStatus === 'completed';
+  const isPaused = trip.trackingStatus === 'paused';
   const stateOf = (i) => (done || i < current ? 'completed' : i === current ? 'current' : '');
 
   return (
     <div className="gc-overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="gc-dialog" style={{ width: 760, maxWidth: '95vw', padding: 0 }} role="dialog" aria-modal="true" aria-labelledby="tour-modal-title">
+      <div className="gc-dialog" style={{ width: 780, maxWidth: '95vw', padding: 0 }} role="dialog" aria-modal="true" aria-labelledby="tour-modal-title">
         <div className="gd-tour-modal-header">
           <h2 id="tour-modal-title">{card.title}</h2>
           <div className="gd-tour-modal-meta">
@@ -497,21 +554,69 @@ function TourModal({ card, busy, onClose, onStart, onAdvance, onPause, onResume 
 
         <div className="gd-tracking-container">
           <div className="gd-tracking-left">
-            <h3>Itinerary</h3>
+            <h3>Itinerary &amp; Stops</h3>
+            <p className="muted" style={{ fontSize: '0.85rem', marginBottom: '0.6rem' }}>
+              {done ? 'Tour completed successfully.' : 'Click any stop or use Complete to advance tracking:'}
+            </p>
             <ul className="gd-tracking-stops">
               {stops.length === 0 ? <li>No stops planned yet.</li> : null}
-              {stops.map((s, i) => <li key={s.id} className={stateOf(i)}>{s.title}</li>)}
+              {stops.map((s, i) => (
+                <li
+                  key={s.id}
+                  className={stateOf(i)}
+                  style={{
+                    cursor: !done && trip.trackingStatus !== 'not_started' ? 'pointer' : 'default',
+                    transition: 'all 0.15s ease',
+                  }}
+                  title={!done && trip.trackingStatus !== 'not_started' && i !== current ? `Jump to Stop ${i + 1}: ${s.title}` : undefined}
+                  onClick={() => {
+                    if (!done && trip.trackingStatus !== 'not_started' && i !== current && onSelectStop) {
+                      onSelectStop(i);
+                    }
+                  }}
+                >
+                  <span style={{ fontWeight: i === current ? 700 : 500 }}>
+                    {s.title}
+                  </span>
+                  {s.day ? <small style={{ display: 'block', opacity: 0.75 }}>Day {s.day} · {s.location || 'Location'}</small> : null}
+                </li>
+              ))}
             </ul>
 
             {!done ? (
-              <div className="gd-tour-modal-controls">
+              <div className="gd-tour-modal-controls" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
                 {trip.trackingStatus === 'not_started' ? (
-                  <button type="button" className="gd-btn gd-btn-primary" disabled={busy || Boolean(startBlocker(card))} title={startBlocker(card) || "Start this tour"} onClick={onStart}>Start</button>
+                  <button type="button" className="gd-btn gd-btn-primary" disabled={busy || Boolean(startBlocker(card))} title={startBlocker(card) || "Start this tour"} onClick={onStart}>
+                    Start Tour
+                  </button>
                 ) : (
                   <>
-                    <button type="button" className="gd-btn gd-btn-secondary" disabled={busy || trip.trackingStatus === 'paused'} onClick={onPause}>Pause</button>
-                    <button type="button" className="gd-btn gd-btn-secondary" disabled={busy || trip.trackingStatus !== 'paused'} onClick={onResume}>Resume</button>
-                    <button type="button" className="gd-btn gd-btn-secondary" disabled={busy || trip.trackingStatus === 'paused'} onClick={onAdvance}>Skip</button>
+                    <button
+                      type="button"
+                      className="gd-btn gd-btn-success"
+                      disabled={busy || isPaused}
+                      onClick={onAdvance}
+                      style={{ fontWeight: 600, padding: '0.5rem 1rem' }}
+                    >
+                      {current >= stops.length - 1 ? '✓ Finish & Complete Tour' : '✓ Complete Stop & Next →'}
+                    </button>
+                    <button type="button" className="gd-btn gd-btn-secondary" disabled={busy || isPaused} onClick={onPause}>
+                      Pause
+                    </button>
+                    <button type="button" className="gd-btn gd-btn-secondary" disabled={busy || !isPaused} onClick={onResume}>
+                      Resume
+                    </button>
+                    {current < stops.length - 1 && (
+                      <button
+                        type="button"
+                        className="gd-btn gd-btn-outline"
+                        disabled={busy || isPaused}
+                        onClick={onAdvance}
+                        title="Skip this stop and advance to next"
+                      >
+                        Skip
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -520,12 +625,14 @@ function TourModal({ card, busy, onClose, onStart, onAdvance, onPause, onResume 
 
           <div className="gd-tracking-right">
             <h3>Live status</h3>
-            <div><strong>Status:</strong> {trip.trackingStatus.replace('_', ' ')}</div>
-            <div><strong>Day:</strong> {trip.currentDay}</div>
+            <div><strong>Status:</strong> <span style={{ textTransform: 'capitalize', color: done ? '#16a34a' : isPaused ? '#d97706' : '#2563eb', fontWeight: 600 }}>{trip.trackingStatus.replace('_', ' ')}</span></div>
+            <div><strong>Day:</strong> {trip.currentDay || 1}</div>
             <div><strong>Current stop:</strong> {trip.currentStop || '—'}</div>
             <div><strong>Location:</strong> {trip.currentLocation || '—'}</div>
             <div><strong>Progress:</strong> {trip.progressPercentage}%</div>
-            <div className="muted">Updated {trip.lastUpdatedAt ? new Date(trip.lastUpdatedAt).toLocaleString() : '—'}</div>
+            <div className="muted" style={{ marginTop: '0.8rem', fontSize: '0.82rem' }}>
+              Updated: {trip.lastUpdatedAt ? new Date(trip.lastUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Just now'}
+            </div>
           </div>
         </div>
 

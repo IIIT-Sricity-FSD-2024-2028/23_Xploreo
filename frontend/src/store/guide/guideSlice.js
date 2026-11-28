@@ -163,16 +163,24 @@ export const guideSlice = createSlice({
     // 9. UPDATE: updateTripTrackingThunk
     // ========================================================================
     builder.addCase(updateTripTrackingThunk.fulfilled, (state, action) => {
-      const { tripId, changes } = action.payload;
+      const { tripId, changes, updatedTrip } = action.payload;
       const trip = state.trips.find((t) => t.id === tripId);
       if (trip) {
-        Object.assign(trip, changes);
+        if (updatedTrip && typeof updatedTrip === 'object' && updatedTrip.id) {
+          Object.assign(trip, updatedTrip);
+        } else {
+          Object.assign(trip, changes);
+        }
       }
       // Also update in assignments if present
       const assignment = state.assignments.find((a) => a.id === tripId || a.trip?.id === tripId);
       if (assignment) {
         if (assignment.trip) {
-          Object.assign(assignment.trip, changes);
+          if (updatedTrip && typeof updatedTrip === 'object' && updatedTrip.id) {
+            Object.assign(assignment.trip, updatedTrip);
+          } else {
+            Object.assign(assignment.trip, changes);
+          }
         } else {
           Object.assign(assignment, changes);
         }

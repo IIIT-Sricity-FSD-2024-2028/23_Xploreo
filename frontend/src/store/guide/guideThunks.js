@@ -184,8 +184,16 @@ export const updateTripTrackingThunk = createAsyncThunk(
   'guide/updateTripTracking',
   async ({ tripId, changes }, { rejectWithValue }) => {
     try {
-      await updateTripTracking(tripId, changes);
-      return { tripId, changes };
+      const res = await updateTripTracking(tripId, changes);
+      const updatedTrip = res?.data || res;
+      return {
+        tripId,
+        changes: {
+          ...changes,
+          lastUpdatedAt: updatedTrip?.lastUpdatedAt || new Date().toISOString(),
+        },
+        updatedTrip,
+      };
     } catch (err) {
       return rejectWithValue(err?.message || 'Failed to update tour tracking');
     }
