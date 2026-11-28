@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useInRouterContext, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
-import { reconcileTripTracking } from '../../utils/tripTrackingUtils.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
+import { reconcileTripTracking, formatTripDates, extractTripDateRange } from '../../utils/tripTrackingUtils.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import {
   fetchReviews,
@@ -528,6 +529,13 @@ function TravellerTripsCore({
               const tripTitle = trip.itinerary?.day1?.hotel?.name
                 ? `Journey via ${trip.itinerary.day1.hotel.name}`
                 : `Custom Trip Package #${trip.id}`;
+              const travelDates =
+                trip.travelDates ||
+                formatTripDates(trip.startDate, trip.endDate) ||
+                (() => {
+                  const range = extractTripDateRange(trip);
+                  return formatTripDates(range.startDate, range.endDate);
+                })();
 
               return (
                 <article
@@ -583,6 +591,12 @@ function TravellerTripsCore({
                       <h3 className="trav-trip-title">{tripTitle}</h3>
 
                       <div className="trav-trip-meta-row">
+                        {travelDates && (
+                          <span className="trav-meta-item trav-trip-dates" data-testid={`trip-dates-${trip.id}`}>
+                            <span className="trav-meta-icon" aria-hidden="true">📅</span>
+                            {travelDates}
+                          </span>
+                        )}
                         <span className="trav-meta-item">
                           <span className="trav-meta-icon" aria-hidden="true">🗺️</span>
                           Plan: {trip.planId}
@@ -610,17 +624,36 @@ function TravellerTripsCore({
                       >
                         View Details & Itinerary
                       </button>
-                      {trip.status === 'confirmed' && (
-                        <button
-                          type="button"
-                          className="trav-btn-cancel-trigger"
-                          onClick={() => setCancellingTrip(trip)}
-                          aria-label={`Cancel trip ${trip.id}`}
-                          style={{ marginTop: '0.4rem', width: '100%' }}
-                        >
-                          Cancel Trip
-                        </button>
-                      )}
+                      {trip.status === 'confirmed' && (() => {
+                        const tripEligibility = getBookingCancellationEligibility(trip, 'trip');
+                        return tripEligibility.canCancel ? (
+                          <button
+                            type="button"
+                            className="trav-btn-cancel-trigger"
+                            onClick={() => setCancellingTrip(trip)}
+                            aria-label={`Cancel trip ${trip.id}`}
+                            style={{ marginTop: '0.4rem', width: '100%' }}
+                          >
+                            Cancel Trip
+                          </button>
+                        ) : (
+                          <div style={{ marginTop: '0.4rem', width: '100%' }}>
+                            <button
+                              type="button"
+                              className="trav-btn-cancel-trigger is-disabled"
+                              disabled
+                              title={tripEligibility.message}
+                              aria-label={`Cancel trip disabled for ${trip.id}: ${tripEligibility.message}`}
+                              style={{ width: '100%', opacity: 0.55, cursor: 'not-allowed' }}
+                            >
+                              Cancel Trip
+                            </button>
+                            <p className="trav-cancellation-expired-msg" style={{ margin: '0.35rem 0 0', color: '#dc2626', fontSize: '0.78rem', lineHeight: '1.3' }}>
+                              {tripEligibility.message}
+                            </p>
+                          </div>
+                        );
+                      })()}
                       {isCompleted && (
                         hasReviewed ? (
                           <button

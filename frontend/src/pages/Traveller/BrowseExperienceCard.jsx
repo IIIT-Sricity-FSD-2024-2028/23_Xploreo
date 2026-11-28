@@ -1,4 +1,5 @@
 import { formatCurrency } from '../../utils/checkoutUtils.js';
+import { getExperienceAvailability } from '../../utils/browseUtils.js';
 
 const FALLBACK_EXP_IMAGES = [
   'https://images.unsplash.com/photo-1551632811-561732d1e306?auto=format&fit=crop&q=80&w=800',
@@ -38,7 +39,8 @@ export default function BrowseExperienceCard({ experience, onSelect, onBook }) {
     badge,
   } = experience;
 
-  const spotsRemaining = Math.max(0, capacity - booked);
+  const availability = getExperienceAvailability(experience);
+  const { isSoldOut, nextSlotText, spotsRemaining, statusText, isPast } = availability;
   const displayImage = getExpImage(id, image);
   const flagBadge = badge || (category === 'adventure' ? 'Top Rated Adventure' : 'Curated Activity');
 
@@ -52,9 +54,16 @@ export default function BrowseExperienceCard({ experience, onSelect, onBook }) {
           loading="lazy"
         />
         <div className="trav-browse-card-badge-top">
-          <span className="trav-browse-category-badge">
-            {category.toUpperCase()}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span className="trav-browse-category-badge">
+              {category.toUpperCase()}
+            </span>
+            {isSoldOut && (
+              <span className="trav-browse-soldout-badge">
+                {isPast ? 'Session Passed' : 'Sold Out'}
+              </span>
+            )}
+          </div>
           <span className="trav-browse-duration-badge" aria-label={`Duration ${durationHours} hours`}>
             ⏱ {durationHours}h
           </span>
@@ -70,13 +79,23 @@ export default function BrowseExperienceCard({ experience, onSelect, onBook }) {
         </div>
 
         <div className="trav-browse-experience-meta">
-          <span className="trav-browse-slot-info">
-            <span aria-hidden="true">🗓</span> Next: {nextSlot}
+          <span
+            className="trav-browse-slot-info"
+            style={isSoldOut && isPast ? { color: '#64748b', fontStyle: 'italic' } : {}}
+          >
+            <span aria-hidden="true">🗓</span> {isPast ? 'No upcoming sessions' : `Next: ${nextSlotText}`}
           </span>
           <span
-            className={`trav-browse-capacity-pill ${spotsRemaining <= 3 ? 'trav-browse-capacity-low' : ''}`}
+            className={`trav-browse-capacity-pill ${
+              isSoldOut
+                ? 'trav-browse-capacity-soldout'
+                : spotsRemaining <= 3
+                ? 'trav-browse-capacity-low'
+                : 'trav-browse-capacity-available'
+            }`}
+            data-testid={`experience-spots-${id}`}
           >
-            {spotsRemaining > 0 ? `${spotsRemaining} spots left` : 'Fully Booked'}
+            ● {statusText}
           </span>
         </div>
 
@@ -92,11 +111,11 @@ export default function BrowseExperienceCard({ experience, onSelect, onBook }) {
             {onSelect && (
               <button
                 type="button"
-                className="trav-browse-btn trav-browse-btn-outline"
+                className={`trav-browse-btn ${isSoldOut ? 'trav-browse-btn-outline is-sold-out' : 'trav-browse-btn-outline'}`}
                 onClick={() => onSelect(experience)}
                 aria-label={`View details for ${title}`}
               >
-                View Details
+                {isSoldOut ? 'View Details (Unavailable)' : 'View Details'}
               </button>
             )}
           </div>

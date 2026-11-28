@@ -18,6 +18,7 @@ import {
   selectTripCancellationResult,
 } from '../../features/tripsSlice.js';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
 
 const REASON_OPTIONS = [
   'Change of travel plans',
@@ -78,7 +79,16 @@ export default function CancellationModal({
   const totalAmount = Number(booking.totalAmount) || 0;
   const dateStr = isHotel ? booking.checkIn : isTrip ? (booking.itinerary?.day1?.hotel?.checkInDate || booking.date) : booking.date;
 
+  const cancellationEligibility = getBookingCancellationEligibility(
+    booking,
+    isTrip ? 'trip' : (isHotel ? 'hotel' : 'experience')
+  );
+
   const handleConfirmCancel = async () => {
+    if (!cancellationEligibility.canCancel) {
+      return;
+    }
+
     const selectedReason = reason === 'Other reasons' && customReason.trim() ? customReason.trim() : reason;
 
     try {
@@ -139,6 +149,11 @@ export default function CancellationModal({
         {/* Modal Body: Active cancellation confirmation */}
         {!cancellationResult ? (
           <div className="trav-cancel-modal-body">
+            {!cancellationEligibility.canCancel && (
+              <div className="trav-cancel-alert is-error" role="alert" style={{ marginBottom: '1rem' }}>
+                ⚠️ {cancellationEligibility.message}
+              </div>
+            )}
             {error && (
               <div className="trav-cancel-alert is-error" role="alert">
                 ⚠️ {error}
@@ -215,7 +230,8 @@ export default function CancellationModal({
                 type="button"
                 className="trav-btn-cancel-confirm"
                 onClick={handleConfirmCancel}
-                disabled={loading}
+                disabled={loading || !cancellationEligibility.canCancel}
+                style={!cancellationEligibility.canCancel ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
               >
                 {loading ? 'Processing...' : 'Confirm Cancellation'}
               </button>

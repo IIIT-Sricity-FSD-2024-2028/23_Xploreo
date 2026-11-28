@@ -12,6 +12,7 @@ import {
   createExperienceBooking,
   listExperienceBookings,
   retryExperienceRefund,
+  updateExperienceBookingStatus,
 } from '../services/partners.api.js';
 import {
   cancelExperienceGuide,
@@ -125,6 +126,18 @@ export const retryBookingRefund = createAsyncThunk(
       return { id, bookingType, result };
     } catch (error) {
       return rejectWithValue(error?.message || 'Failed to retry refund.');
+    }
+  },
+);
+
+export const confirmExperienceBookingEnd = createAsyncThunk(
+  'bookings/confirmExperienceBookingEnd',
+  async (bookingId, { rejectWithValue }) => {
+    try {
+      const updated = await updateExperienceBookingStatus(bookingId, 'COMPLETED');
+      return { bookingId, updated };
+    } catch (error) {
+      return rejectWithValue(error?.message || 'Failed to confirm end request.');
     }
   },
 );
@@ -329,6 +342,23 @@ const bookingsSlice = createSlice({
       .addCase(retryBookingRefund.rejected, (state, action) => {
         state.actionLoading = false;
         state.actionError = action.payload || action.error.message || 'Failed to retry refund.';
+      })
+      .addCase(confirmExperienceBookingEnd.pending, (state) => {
+        state.actionLoading = true;
+        state.actionError = null;
+      })
+      .addCase(confirmExperienceBookingEnd.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = null;
+        const { bookingId, updated } = action.payload;
+        applyBookingPatch(state, bookingId, {
+          status: 'COMPLETED',
+          ...(updated || {}),
+        });
+      })
+      .addCase(confirmExperienceBookingEnd.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.actionError = action.payload || action.error?.message || 'Failed to confirm end request.';
       })
       .addCase(requestGuideForExperienceBooking.pending, (state) => {
         state.guideActionLoading = true;

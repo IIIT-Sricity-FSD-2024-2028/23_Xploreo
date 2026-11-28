@@ -187,10 +187,10 @@
   gap: 1.25rem;
 }
 
-/* Desktop 5-column Search Row */
+/* Desktop 4-column Search Row */
 .trav-browse-search-row {
   display: grid;
-  grid-template-columns: 2fr 1.3fr 1.2fr 1.1fr auto;
+  grid-template-columns: 2fr 1.3fr 1.2fr auto;
   gap: 1rem;
   align-items: flex-end;
 }
@@ -885,13 +885,50 @@
   color: #0f766e;
   font-size: 0.75rem;
   font-weight: 600;
-  padding: 0.2rem 0.5rem;
+  padding: 0.2rem 0.55rem;
   border-radius: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 1px solid #ccfbf1;
 }
 
 .trav-browse-capacity-low {
   background: #fff1f2;
   color: #e11d48;
+  border-color: #fecdd3;
+  font-weight: 700;
+}
+
+.trav-browse-capacity-soldout {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+  font-weight: 700;
+}
+
+.trav-browse-capacity-available {
+  background: #f0fdfa;
+  color: #0f766e;
+  border-color: #ccfbf1;
+}
+
+.trav-browse-soldout-badge {
+  background: rgba(220, 38, 38, 0.92);
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.trav-browse-btn.is-sold-out {
+  border-color: #cbd5e1;
+  color: #64748b;
+  background-color: #f8fafc;
 }
 
 .trav-browse-card-reviews {

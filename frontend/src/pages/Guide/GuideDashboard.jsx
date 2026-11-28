@@ -62,7 +62,7 @@ const tripDate = (job) => job.itinerary?.day1?.hotel?.checkInDate || job.itinera
 export default function GuideDashboard() {
   const dispatch = useDispatch();
   const { user } = useAuth();
-  const region = user.region || '';
+  const region = user?.region || user?.location || '';
   const { toast, show } = useToast();
 
   // Redux Selectors: All data is read directly from the Redux Store

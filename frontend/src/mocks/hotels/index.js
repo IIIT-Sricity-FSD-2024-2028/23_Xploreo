@@ -10,6 +10,7 @@
 
 import { ApiError, registerMock, requireRole, requireUser, assertRegion, assertOwner, whitelist } from '@/foundation';
 import { hotelTodayIso, isPastHotelStay } from '@/lib/datetime.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
 import {
   HOTEL_BOOKING_STATUSES,
   bookingsForHotel,
@@ -409,6 +410,10 @@ registerMock('PATCH', '/bookings/:id/cancel', (ctx) => {
   } else if (user.role === 'traveller') {
     if (booking.travellerId !== user.id) throw new ApiError(403, 'You can only cancel your own bookings.');
     if (['CHECKED_IN', 'CHECKED_OUT'].includes(booking.status)) throw new ApiError(400, `Cannot cancel a booking that is ${booking.status}.`);
+    const eligibility = getBookingCancellationEligibility(booking, 'hotel');
+    if (!eligibility.canCancel) {
+      throw new ApiError(400, eligibility.message);
+    }
   } else {
     throw new ApiError(403, 'Forbidden.');
   }

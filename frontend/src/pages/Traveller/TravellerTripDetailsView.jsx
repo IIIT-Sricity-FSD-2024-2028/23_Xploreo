@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
+import { formatTripDates, extractTripDateRange } from '../../utils/tripTrackingUtils.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
 import { retryTravellerTripRefund } from '../../features/tripsSlice.js';
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
@@ -63,6 +65,14 @@ export default function TravellerTripDetailsView({
   const isCancelled = status === 'cancelled';
   const isConfirmed = status === 'confirmed';
 
+  const travelDates =
+    trip.travelDates ||
+    formatTripDates(trip.startDate, trip.endDate) ||
+    (() => {
+      const range = extractTripDateRange(trip);
+      return formatTripDates(range.startDate, range.endDate);
+    })();
+
   const handleRetryRefund = async () => {
     setRetrying(true);
     setRetryMessage(null);
@@ -119,6 +129,11 @@ export default function TravellerTripDetailsView({
             Itinerary & Live Tracking
           </h2>
           <span className="trav-card-meta">
+            {travelDates && (
+              <span className="trav-trip-dates-detail" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#0f766e', fontWeight: 600, marginRight: '0.6rem' }} data-testid="trip-details-dates">
+                <span aria-hidden="true">📅</span> {travelDates} ·
+              </span>
+            )}
             Plan ID: {planId} · Status: <strong>{status.toUpperCase()}</strong>
           </span>
         </div>
@@ -128,16 +143,34 @@ export default function TravellerTripDetailsView({
           <p className="trav-card-price" style={{ margin: 0 }}>
             {formatCurrency(totalAmount)}
           </p>
-          {isConfirmed && onCancelClick && (
-            <button
-              type="button"
-              className="trav-btn-cancel-trigger"
-              onClick={() => onCancelClick(trip)}
-              style={{ marginTop: '0.5rem' }}
-            >
-              Cancel Trip Package
-            </button>
-          )}
+          {isConfirmed && onCancelClick && (() => {
+            const tripEligibility = getBookingCancellationEligibility(trip, 'trip');
+            return tripEligibility.canCancel ? (
+              <button
+                type="button"
+                className="trav-btn-cancel-trigger"
+                onClick={() => onCancelClick(trip)}
+                style={{ marginTop: '0.5rem' }}
+              >
+                Cancel Trip Package
+              </button>
+            ) : (
+              <div style={{ marginTop: '0.5rem', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  className="trav-btn-cancel-trigger is-disabled"
+                  disabled
+                  title={tripEligibility.message}
+                  style={{ opacity: 0.55, cursor: 'not-allowed' }}
+                >
+                  Cancel Trip Package
+                </button>
+                <span className="trav-cancellation-expired-msg" style={{ display: 'block', color: '#dc2626', fontSize: '0.78rem', marginTop: '0.3rem' }}>
+                  {tripEligibility.message}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -237,10 +270,17 @@ export default function TravellerTripDetailsView({
           <div className="trav-itinerary-timeline">
             <div className={`trav-timeline-node ${currentDay === 1 ? 'is-active' : ''}`}>
               <div className="trav-timeline-dot" aria-hidden="true" />
-              <span className="trav-timeline-day">Day 1 Arrival</span>
+              <span className="trav-timeline-day">
+                Day 1 Arrival {travelDates ? `(${travelDates})` : ''}
+              </span>
               <h4 className="trav-timeline-title">
                 {itinerary.day1.hotel?.name || 'Hotel Check-in & Transfer'}
               </h4>
+              {itinerary.day1.hotel?.checkInDate && (
+                <p className="trav-timeline-detail" style={{ marginTop: '0.15rem', color: '#0f766e', fontWeight: 600 }}>
+                  📅 Stay: {formatTripDates(itinerary.day1.hotel.checkInDate, itinerary.day1.hotel.checkOutDate)}
+                </p>
+              )}
               <p className="trav-timeline-detail">
                 Transport: {itinerary.day1.transport?.provider || 'Standard'} (
                 {itinerary.day1.transport?.pickupLocation || 'Pickup'} →{' '}

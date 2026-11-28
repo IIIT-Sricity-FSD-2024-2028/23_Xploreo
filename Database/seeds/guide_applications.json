@@ -2,11 +2,11 @@
   {
     "id": "guide-app-1",
     "guideId": "G001",
-    "planId": "plan-1",
+    "planId": "plan-mumbai-harbour-05",
     "guidePricePerPerson": 1800,
     "status": "accepted",
-    "autoDecisionReason": "Approved by Kerala NTA: guide is based in Kerala.",
-    "decidedBy": "NTA005",
+    "autoDecisionReason": "Approved by Mumbai NTA: guide is based in Mumbai.",
+    "decidedBy": "NTA004",
     "decidedAt": "2026-04-01T00:00:00.000Z",
     "createdAt": "2026-03-30T00:00:00.000Z",
     "updatedAt": "2026-04-01T00:00:00.000Z"
@@ -26,10 +26,12 @@
   {
     "id": "guide-app-3",
     "guideId": "G001",
-    "planId": "plan-kerala-backwaters-03",
+    "planId": "plan-mumbai-harbour-05",
     "guidePricePerPerson": 2000,
-    "status": "pending",
-    "autoDecisionReason": null,
+    "status": "accepted",
+    "autoDecisionReason": "Approved by Mumbai NTA: guide is based in Mumbai.",
+    "decidedBy": "NTA004",
+    "decidedAt": "2026-10-10T00:00:00.000Z",
     "createdAt": "2026-10-10T00:00:00.000Z",
     "updatedAt": "2026-10-10T00:00:00.000Z"
   },

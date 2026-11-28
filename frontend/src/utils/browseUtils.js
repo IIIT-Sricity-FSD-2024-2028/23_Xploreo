@@ -227,6 +227,214 @@ export const DEFAULT_GUIDE_FIXTURES = browseData.guides;
 
 
 /**
+ * Determines real-time session slot availability for an experience.
+ * Filters out sessions whose date and time have passed.
+ * Returns true availability, earliest upcoming slot, and spots remaining.
+ * @param {object} experience
+ * @param {Date|string} [referenceDate=new Date()]
+ * @returns {{
+ *   hasUpcomingSlots: boolean,
+ *   isSoldOut: boolean,
+ *   nextSlotText: string,
+ *   spotsRemaining: number,
+ *   statusText: string,
+ *   isPast: boolean
+ * }}
+ */
+export function getExperienceAvailability(experience, referenceDate = new Date()) {
+  if (!experience || typeof experience !== 'object') {
+    return {
+      hasUpcomingSlots: false,
+      isSoldOut: true,
+      nextSlotText: 'No upcoming sessions',
+      spotsRemaining: 0,
+      statusText: 'Unavailable',
+      isPast: false,
+    };
+  }
+
+  const ref = typeof referenceDate === 'string' ? new Date(referenceDate) : referenceDate;
+  const todayIso = ref.toISOString().slice(0, 10);
+  const currentTime = ref.toTimeString().slice(0, 5);
+
+  const slots = Array.isArray(experience.slots) ? experience.slots : [];
+
+  if (slots.length > 0) {
+    const isSlotPast = (s) => {
+      if (!s || !s.date) return false;
+      const sDate = String(s.date).slice(0, 10);
+      if (sDate < todayIso) return true;
+      if (sDate === todayIso && s.time && String(s.time).slice(0, 5) < currentTime) {
+        return true;
+      }
+      return false;
+    };
+
+    const upcomingSlots = slots.filter((s) => !isSlotPast(s));
+
+    if (upcomingSlots.length === 0) {
+      return {
+        hasUpcomingSlots: false,
+        isSoldOut: true,
+        nextSlotText: 'No upcoming sessions',
+        spotsRemaining: 0,
+        statusText: 'Session passed',
+        isPast: true,
+      };
+    }
+
+    // Sort upcoming slots chronologically
+    const sortedUpcoming = [...upcomingSlots].sort((a, b) => {
+      const dateA = `${String(a.date).slice(0, 10)} ${a.time || '00:00'}`;
+      const dateB = `${String(b.date).slice(0, 10)} ${b.time || '00:00'}`;
+      return dateA.localeCompare(dateB);
+    });
+
+    const availableSlots = sortedUpcoming.filter((s) => {
+      const cap = s.capacity ?? experience.capacity ?? 10;
+      const bkd = s.booked ?? 0;
+      const spotsLeft = cap - bkd;
+      return s.available !== false && spotsLeft > 0;
+    });
+
+    if (availableSlots.length === 0) {
+      const earliest = sortedUpcoming[0];
+      return {
+        hasUpcomingSlots: true,
+        isSoldOut: true,
+        nextSlotText: `${earliest.date} ${earliest.time || ''}`.trim(),
+        spotsRemaining: 0,
+        statusText: 'Fully Booked',
+        isPast: false,
+      };
+    }
+
+    const nextAvailable = availableSlots[0];
+    const cap = nextAvailable.capacity ?? experience.capacity ?? 10;
+    const bkd = nextAvailable.booked ?? 0;
+    const spots = Math.max(0, cap - bkd);
+    return {
+      hasUpcomingSlots: true,
+      isSoldOut: false,
+      nextSlotText: `${nextAvailable.date} ${nextAvailable.time || ''}`.trim(),
+      spotsRemaining: spots,
+      statusText: `${spots} spots left`,
+      isPast: false,
+    };
+  }
+
+  // Fallback when slots array is not present
+  if (experience.nextSlot && typeof experience.nextSlot === 'string') {
+    const match = /^(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?/.exec(experience.nextSlot.trim());
+    if (match) {
+      const slotDate = match[1];
+      const slotTime = match[2] || '23:59';
+      if (slotDate < todayIso || (slotDate === todayIso && slotTime < currentTime)) {
+        return {
+          hasUpcomingSlots: false,
+          isSoldOut: true,
+          nextSlotText: 'No upcoming sessions',
+          spotsRemaining: 0,
+          statusText: 'Session passed',
+          isPast: true,
+        };
+      }
+    }
+  }
+
+  const expStatus = (experience.availability || experience.status || 'available').toLowerCase();
+  if (expStatus === 'unavailable' || expStatus === 'sold_out') {
+    return {
+      hasUpcomingSlots: false,
+      isSoldOut: true,
+      nextSlotText: 'Currently unavailable',
+      spotsRemaining: 0,
+      statusText: 'Unavailable',
+      isPast: false,
+    };
+  }
+
+  const cap = typeof experience.capacity === 'number' ? experience.capacity : 10;
+  const bkd = typeof experience.booked === 'number' ? experience.booked : 0;
+  const spots = Math.max(0, cap - bkd);
+  return {
+    hasUpcomingSlots: spots > 0,
+    isSoldOut: spots <= 0,
+    nextSlotText: experience.nextSlot || 'Available daily',
+    spotsRemaining: spots,
+    statusText: spots > 0 ? `${spots} spots left` : 'Fully Booked',
+    isPast: false,
+  };
+}
+
+/**
+ * Determines room availability for a hotel.
+ * @param {object} hotel
+ * @returns {{ isSoldOut: boolean, roomsLeft: number, statusText: string }}
+ */
+export function getHotelAvailability(hotel) {
+  if (!hotel || typeof hotel !== 'object') {
+    return { isSoldOut: true, roomsLeft: 0, statusText: 'Unavailable' };
+  }
+  const status = (hotel.status || 'active').toLowerCase();
+  if (status === 'unavailable' || status === 'sold_out' || status === 'archived') {
+    return { isSoldOut: true, roomsLeft: 0, statusText: 'Sold Out' };
+  }
+
+  const availableRooms = hotel.availableRooms !== undefined
+    ? Number(hotel.availableRooms)
+    : (Array.isArray(hotel.rooms) && hotel.rooms.length > 0
+        ? hotel.rooms.reduce((acc, r) => acc + (r.availableRooms ?? r.totalRooms ?? 0), 0)
+        : undefined);
+
+  if (availableRooms !== undefined && availableRooms <= 0) {
+    return { isSoldOut: true, roomsLeft: 0, statusText: 'Sold Out' };
+  }
+
+  const roomsLeft = availableRooms !== undefined ? availableRooms : 5;
+  return {
+    isSoldOut: false,
+    roomsLeft,
+    statusText: roomsLeft <= 3 ? `Only ${roomsLeft} rooms left!` : `${roomsLeft} rooms available`,
+  };
+}
+
+/**
+ * Determines booking availability for a tour package / plan.
+ * @param {object} plan
+ * @param {Date|string} [referenceDate=new Date()]
+ * @returns {{ isSoldOut: boolean, statusText: string }}
+ */
+export function getPlanAvailability(plan, referenceDate = new Date()) {
+  if (!plan || typeof plan !== 'object') {
+    return { isSoldOut: true, statusText: 'Unavailable' };
+  }
+  const status = (plan.status || 'available').toLowerCase();
+  if (status === 'sold_out' || status === 'unavailable' || status === 'archived') {
+    return { isSoldOut: true, statusText: 'Sold Out' };
+  }
+  if (plan.availableSeats !== undefined && Number(plan.availableSeats) <= 0) {
+    return { isSoldOut: true, statusText: 'Sold Out' };
+  }
+  if (plan.capacity !== undefined && plan.booked !== undefined && (Number(plan.capacity) - Number(plan.booked)) <= 0) {
+    return { isSoldOut: true, statusText: 'Sold Out' };
+  }
+
+  // Check if departure date in itinerary has passed
+  const ref = typeof referenceDate === 'string' ? new Date(referenceDate) : referenceDate;
+  const todayIso = ref.toISOString().slice(0, 10);
+  const startDate = plan.startDate || plan.itinerary?.day1?.hotel?.checkInDate || plan.itinerary?.day1?.transport?.pickupAt;
+  if (startDate) {
+    const sDate = String(startDate).slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(sDate) && sDate < todayIso && !plan.isFlexible) {
+      return { isSoldOut: true, statusText: 'Departed' };
+    }
+  }
+
+  return { isSoldOut: false, statusText: 'Available' };
+}
+
+/**
  * Maps raw backend Hotel entity/DTO to frontend BrowseHotelCard props.
  * @param {object} raw
  * @returns {object|null}
@@ -244,6 +452,8 @@ export function mapBackendHotel(raw) {
     reviewCount: typeof raw.reviewCount === 'number' ? raw.reviewCount : (Number(raw.reviewCount) || 0),
     pricePerNight: typeof raw.pricePerNight === 'number' ? raw.pricePerNight : (Number(raw.pricePerNight) || 0),
     taxesAndFees: typeof raw.taxesAndFees === 'number' ? raw.taxesAndFees : (Number(raw.taxesAndFees) || 0),
+    totalRooms: typeof raw.totalRooms === 'number' ? raw.totalRooms : (raw.totalRooms !== undefined ? Number(raw.totalRooms) : 10),
+    availableRooms: typeof raw.availableRooms === 'number' ? raw.availableRooms : (raw.availableRooms !== undefined ? Number(raw.availableRooms) : 5),
     image: raw.image || '',
     amenities: Array.isArray(raw.amenities) ? raw.amenities : [],
     status: raw.status || 'active',

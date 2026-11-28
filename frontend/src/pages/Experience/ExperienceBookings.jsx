@@ -94,6 +94,16 @@ export default function ExperienceBookings() {
                   {STATUS_FILTERS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
               </label>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="gd-btn gd-btn-secondary gd-btn-sm"
+                  onClick={reload}
+                  disabled={loading}
+                >
+                  {loading ? 'Refreshing…' : '↻ Refresh Bookings'}
+                </button>
+              </div>
             </div>
           </section>
 

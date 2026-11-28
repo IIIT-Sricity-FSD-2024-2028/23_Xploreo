@@ -1,4 +1,5 @@
 import { formatCurrency } from '../../utils/checkoutUtils.js';
+import { getPlanAvailability } from '../../utils/browseUtils.js';
 
 const FALLBACK_PLAN_IMAGES = [
   'https://images.unsplash.com/photo-1602216056096-3b40cc0c9944?auto=format&fit=crop&q=80&w=800',
@@ -36,7 +37,8 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
     status = 'available',
   } = plan;
 
-  const isSoldOut = (status || '').toLowerCase() === 'sold_out';
+  const availability = getPlanAvailability(plan);
+  const isSoldOut = availability.isSoldOut;
   const displayImage = getPlanImage(id, image);
 
   return (
@@ -54,19 +56,7 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
               {durationNights} Nights / {durationNights + 1} Days
             </span>
             {isSoldOut && (
-              <span
-                className="trav-browse-soldout-badge"
-                style={{
-                  background: 'rgba(239, 68, 68, 0.9)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.72rem',
-                  padding: '0.25rem 0.6rem',
-                  borderRadius: '0.35rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
+              <span className="trav-browse-soldout-badge">
                 Sold Out
               </span>
             )}
@@ -97,6 +87,17 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
           </div>
         )}
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+          <span
+            className={`trav-browse-capacity-pill ${
+              isSoldOut ? 'trav-browse-capacity-soldout' : 'trav-browse-capacity-available'
+            }`}
+            data-testid={`plan-status-${id}`}
+          >
+            ● {availability.statusText}
+          </span>
+        </div>
+
         <div className="trav-browse-card-footer">
           <div className="trav-browse-price-block">
             <span className="trav-browse-price-label">All-inclusive from</span>
@@ -110,11 +111,11 @@ export default function BrowsePlanCard({ plan, onSelect, onBook }) {
             {onSelect && (
               <button
                 type="button"
-                className="trav-browse-btn trav-browse-btn-outline"
+                className={`trav-browse-btn ${isSoldOut ? 'trav-browse-btn-outline is-sold-out' : 'trav-browse-btn-outline'}`}
                 onClick={() => onSelect(plan)}
                 aria-label={`View details for ${title}`}
               >
-                View Details
+                {isSoldOut ? 'View Details (Sold Out)' : 'View Details'}
               </button>
             )}
           </div>

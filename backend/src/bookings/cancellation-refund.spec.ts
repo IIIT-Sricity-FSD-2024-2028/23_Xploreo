@@ -177,8 +177,23 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
     });
 
     it('should mark refund as NOT_ELIGIBLE when cancellation is past the free cancellation window', () => {
-      // Immediate / past check-in date
-      const imminentCheckIn = new Date(Date.now() + 2 * 3600 * 1000).toISOString().slice(0, 10);
+      // Today's booking, start time not passed (2 hours ahead in IST) -> cancellation allowed, but non-refundable
+      const future2h = new Date(Date.now() + 2 * 3600 * 1000);
+      const istParts = Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: 'Asia/Kolkata',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        })
+          .formatToParts(future2h)
+          .map(({ type, value }) => [type, value]),
+      );
+      const imminentCheckIn = `${istParts.year}-${istParts.month}-${istParts.day}`;
+      const imminentCheckInTime = `${istParts.hour}:${istParts.minute}`;
       const imminentCheckOut = new Date(Date.now() + 48 * 3600 * 1000).toISOString().slice(0, 10);
 
       const created = bookingsRepo.create({
@@ -188,6 +203,7 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
         email: 'anjali@xploreo.com',
         phone: '9123456780',
         checkIn: imminentCheckIn,
+        checkInTime: imminentCheckInTime,
         checkOut: imminentCheckOut,
         guests: 1,
         roomType: 'Standard Room',
@@ -687,6 +703,436 @@ describe('Booking Cancellation & Honest Refund Processing Specification', () => 
 
       // Bookings created at runtime are not in the fresh seed
       expect(restartedBookingsRepo.findById(created.id)).toBeUndefined();
+    });
+  });
+
+  describe('8. Consistent Cancellation Date & Time Validation Across All Booking Types', () => {
+    const fixedNow = new Date('2026-11-28T12:00:00+05:30'); // 12:00 PM IST on Nov 28, 2026
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(fixedNow);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    describe('Hotel Bookings', () => {
+      it('Scenario 1 (Past booking): blocks cancellation when check-in date has passed', () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-11-20',
+          checkOut: '2026-11-23',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 6000,
+        });
+
+        expect(() => bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER)).toThrow(
+          'This booking can no longer be cancelled because its scheduled date has passed.',
+        );
+      });
+
+      it("Scenario 2 (Today's booking, start time NOT passed): allows cancellation", () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-11-28',
+          checkInTime: '15:00', // 3:00 PM IST > 12:00 PM IST
+          checkOut: '2026-11-30',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 6000,
+        });
+
+        const cancelled = bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER);
+        expect(cancelled.status).toBe(BookingStatus.CANCELLED);
+      });
+
+      it("Scenario 3 (Today's booking, start time passed): blocks cancellation", () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-11-28',
+          checkInTime: '10:00', // 10:00 AM IST < 12:00 PM IST
+          checkOut: '2026-11-30',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 6000,
+        });
+
+        expect(() => bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER)).toThrow(
+          'This booking can no longer be cancelled because its scheduled date has passed.',
+        );
+      });
+
+      it('Scenario 4 (Future booking): allows cancellation according to policy', () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-12-05',
+          checkOut: '2026-12-08',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 7000,
+        });
+
+        const cancelled = bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER);
+        expect(cancelled.status).toBe(BookingStatus.CANCELLED);
+      });
+
+      it('Scenario 5 (Already cancelled booking): blocks duplicate cancellation', () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-12-10',
+          checkOut: '2026-12-13',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 7000,
+        });
+
+        bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER);
+        expect(() => bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER)).toThrow(
+          'Booking is already cancelled.',
+        );
+      });
+
+      it('Scenario 6 (Invalid/missing booking date): blocks cancellation safely', () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: 'invalid-date',
+          checkOut: '2026-12-13',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 7000,
+        });
+
+        expect(() => bookingsService.cancel(booking.id, 'T001', Role.TRAVELLER)).toThrow(
+          'This booking cannot be cancelled because its scheduled date is missing or invalid.',
+        );
+      });
+    });
+
+    describe('Experience Bookings', () => {
+      it('Scenario 1 (Past booking): blocks cancellation when experience date has passed', () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-11-20',
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        expect(() =>
+          expBookingsService.cancel(booking.id, { userId: '20001', role: Role.TRAVELLER }),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it("Scenario 2 (Today's booking, start time NOT passed): allows cancellation", () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-11-28',
+          time: '16:00', // 4:00 PM IST > 12:00 PM IST
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        const cancelled = expBookingsService.cancel(booking.id, {
+          userId: '20001',
+          role: Role.TRAVELLER,
+        });
+        expect(cancelled.status).toBe(ExperienceBookingStatus.CANCELLED);
+      });
+
+      it("Scenario 3 (Today's booking, start time passed): blocks cancellation", () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-11-28',
+          time: '10:00', // 10:00 AM IST < 12:00 PM IST
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        expect(() =>
+          expBookingsService.cancel(booking.id, { userId: '20001', role: Role.TRAVELLER }),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it('Scenario 4 (Future booking): allows cancellation according to policy', () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-12-05',
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        const cancelled = expBookingsService.cancel(booking.id, {
+          userId: '20001',
+          role: Role.TRAVELLER,
+        });
+        expect(cancelled.status).toBe(ExperienceBookingStatus.CANCELLED);
+      });
+
+      it('Scenario 5 (Already cancelled booking): blocks duplicate cancellation', () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-12-10',
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        expBookingsService.cancel(booking.id, { userId: '20001', role: Role.TRAVELLER });
+        expect(() =>
+          expBookingsService.cancel(booking.id, { userId: '20001', role: Role.TRAVELLER }),
+        ).toThrow('Booking is already cancelled.');
+      });
+
+      it('Scenario 6 (Invalid/missing booking date): blocks cancellation safely', () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-02-31', // non-existent calendar date
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        expect(() =>
+          expBookingsService.cancel(booking.id, { userId: '20001', role: Role.TRAVELLER }),
+        ).toThrow('This booking cannot be cancelled because its scheduled date is missing or invalid.');
+      });
+    });
+
+    describe('Holiday Package / Trip Bookings', () => {
+      it('Scenario 1 (Past booking): blocks cancellation when trip start date has passed', () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-11-20',
+                checkInTime: '14:00',
+              },
+            },
+          } as any,
+        });
+
+        expect(() =>
+          tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' }),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it("Scenario 2 (Today's booking, start time NOT passed): allows cancellation", () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-11-28',
+                checkInTime: '15:00', // 3:00 PM IST > 12:00 PM IST
+              },
+            },
+          } as any,
+        });
+
+        const cancelled = tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' });
+        expect(cancelled.status).toBe(TripStatus.CANCELLED);
+      });
+
+      it("Scenario 3 (Today's booking, start time passed): blocks cancellation", () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-11-28',
+                checkInTime: '09:00', // 9:00 AM IST < 12:00 PM IST
+              },
+            },
+          } as any,
+        });
+
+        expect(() =>
+          tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' }),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it('Scenario 4 (Future booking): allows cancellation according to policy', () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-12-15',
+                checkInTime: '14:00',
+              },
+            },
+          } as any,
+        });
+
+        const cancelled = tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' });
+        expect(cancelled.status).toBe(TripStatus.CANCELLED);
+      });
+
+      it('Scenario 5 (Already cancelled booking): blocks duplicate cancellation', () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-12-15',
+                checkInTime: '14:00',
+              },
+            },
+          } as any,
+        });
+
+        tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' });
+        expect(() =>
+          tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' }),
+        ).toThrow('Trip is already cancelled.');
+      });
+
+      it('Scenario 6 (Invalid/missing booking date): blocks cancellation safely', () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {} as any,
+        });
+
+        expect(() =>
+          tripsService.cancel(trip.id, { userId: '20001', role: 'traveller' }),
+        ).toThrow('This booking cannot be cancelled because its scheduled date is missing or invalid.');
+      });
+    });
+
+    describe('Direct Controller HTTP Endpoint Invocations', () => {
+      it('rejects cancellation on POST/PATCH endpoints for past hotel stays', () => {
+        const booking = bookingsRepo.create({
+          hotelId: 'hotel-hp001-1',
+          travellerId: 'T001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          checkIn: '2026-11-15',
+          checkOut: '2026-11-18',
+          guests: 1,
+          roomType: 'Standard Room',
+          rooms: 1,
+          guestNames: ['Anjali Sharma'],
+          totalAmount: 5000,
+        });
+
+        expect(() =>
+          bookingsController.cancel(
+            booking.id,
+            { user: { id: 'T001', userId: 'T001', role: Role.TRAVELLER } },
+            { reason: 'Trying to cancel past stay' },
+          ),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it('rejects cancellation on POST/PATCH endpoints for past experience bookings', () => {
+        const booking = expBookingsRepo.create({
+          experienceId: 'exp-jaipur-cooking',
+          travellerId: '20001',
+          guestName: 'Anjali Sharma',
+          email: 'anjali@xploreo.com',
+          phone: '9123456780',
+          date: '2026-11-15',
+          participants: 2,
+          totalAmount: 3600,
+        });
+
+        expect(() =>
+          expBookingsController.cancel(
+            booking.id,
+            { user: { id: '20001', userId: '20001', role: Role.TRAVELLER } },
+            { reason: 'Trying to cancel past experience' },
+          ),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
+
+      it('rejects cancellation on POST/PATCH endpoints for past trip packages', () => {
+        const trip = tripsRepo.create({
+          travellerId: '20001',
+          planId: 'plan-1',
+          itinerary: {
+            day1: {
+              hotel: {
+                checkInDate: '2026-11-15',
+              },
+            },
+          } as any,
+        });
+
+        expect(() =>
+          tripsController.cancel(
+            trip.id,
+            { user: { id: '20001', userId: '20001', role: 'traveller' } },
+            { reason: 'Trying to cancel past package' },
+          ),
+        ).toThrow('This booking can no longer be cancelled because its scheduled date has passed.');
+      });
     });
   });
 });

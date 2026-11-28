@@ -18,6 +18,7 @@ import { RefundStatus } from '../common/refund/refund.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { CancelBookingDto } from '../bookings/dto/cancel-booking.dto';
+import { assertBookingCancellationEligible } from '../common/utils/cancellation-guard';
 import {
   findGuideConflicts,
   rangesOverlap,
@@ -57,7 +58,13 @@ export class TripsService {
   }
 
   private withGuide<T extends Trip>(trip: T): T & { guide?: ReturnType<TripsService['guideContactFor']> } {
-    return { ...trip, guide: this.guideContactFor(trip) };
+    const range = tripDateRange(trip);
+    return {
+      ...trip,
+      startDate: trip.startDate || range.start,
+      endDate: trip.endDate || range.end,
+      guide: this.guideContactFor(trip),
+    };
   }
 
   create(dto: CreateTripDto, actor?: { userId?: string; role?: string; region?: string }) {
@@ -133,6 +140,8 @@ export class TripsService {
       trackingStatus: TripTrackingStatus.NOT_STARTED,
       progressPercentage: 0,
       lastUpdatedAt: new Date().toISOString(),
+      startDate: dateRange.start,
+      endDate: dateRange.end,
     });
 
     return trip;
@@ -512,6 +521,10 @@ export class TripsService {
 
     if (!isOwner && !isAdmin) {
       throw new ForbiddenException('Not authorized to cancel this trip.');
+    }
+
+    if (isOwner) {
+      assertBookingCancellationEligible(trip, 'trip');
     }
 
     if (trip.status === TripStatus.CANCELLED) {

@@ -140,6 +140,89 @@ export function formatLastUpdatedTime(isoDate) {
 }
 
 /**
+ * Extracts inclusive [startDate, endDate] in YYYY-MM-DD calendar format from trip or itinerary.
+ * Does NOT generate or assume dates when missing. Does not use record creation date.
+ * @param {object} trip
+ * @returns {{ startDate: string|null, endDate: string|null }}
+ */
+export function extractTripDateRange(trip) {
+  if (!trip || typeof trip !== 'object') {
+    return { startDate: null, endDate: null };
+  }
+
+  const dayOf = (value) => {
+    if (!value) return undefined;
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
+    return match ? match[1] : undefined;
+  };
+
+  const day1 = trip.itinerary?.day1;
+  const days = Array.isArray(trip.itinerary?.days) ? trip.itinerary.days : [];
+
+  const candidates = [
+    dayOf(trip.startDate),
+    dayOf(trip.endDate),
+    dayOf(trip.checkIn),
+    dayOf(trip.checkOut),
+    dayOf(day1?.hotel?.checkInDate),
+    dayOf(day1?.hotel?.checkOutDate),
+    dayOf(day1?.flight?.departureAt),
+    dayOf(day1?.transport?.pickupAt),
+    ...days.flatMap((d) =>
+      (Array.isArray(d.experiences) ? d.experiences : []).flatMap((e) => [
+        dayOf(e?.startsAt),
+        dayOf(e?.endsAt),
+      ])
+    ),
+  ].filter(Boolean);
+
+  if (candidates.length === 0) {
+    return { startDate: null, endDate: null };
+  }
+
+  const sorted = [...candidates].sort();
+  return {
+    startDate: sorted[0],
+    endDate: sorted[sorted.length - 1],
+  };
+}
+
+/**
+ * Formats trip start and end dates into a readable display string:
+ * e.g. "15 Dec 2026 – 18 Dec 2026", or "15 Dec 2026" if single day.
+ * Returns null if dates are missing.
+ * @param {string|null} startDate
+ * @param {string|null} endDate
+ * @returns {string|null}
+ */
+export function formatTripDates(startDate, endDate) {
+  if (!startDate && !endDate) return null;
+
+  const formatDatePart = (dStr) => {
+    if (!dStr) return '';
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dStr));
+    if (!match) return '';
+    const [_, y, m, d] = match;
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    const monthName = months[parseInt(m, 10) - 1];
+    const dayNum = parseInt(d, 10);
+    return `${dayNum} ${monthName} ${y}`;
+  };
+
+  const formattedStart = formatDatePart(startDate);
+  const formattedEnd = formatDatePart(endDate);
+
+  if (formattedStart && formattedEnd) {
+    if (formattedStart === formattedEnd) return formattedStart;
+    return `${formattedStart} – ${formattedEnd}`;
+  }
+  return formattedStart || formattedEnd || null;
+}
+
+/**
  * Maps raw backend Trip entity/DTO to frontend trip properties.
  * Conforms to backend Trip entity:
  * { id, travellerId, planId, guideId, status, itinerary, totalAmount, currentDay,
@@ -149,6 +232,11 @@ export function formatLastUpdatedTime(isoDate) {
  */
 export function mapBackendTrip(raw) {
   if (!raw || typeof raw !== 'object') return null;
+  const dateRange = extractTripDateRange(raw);
+  const startDate = raw.startDate || dateRange.startDate || null;
+  const endDate = raw.endDate || dateRange.endDate || null;
+  const travelDates = formatTripDates(startDate, endDate);
+
   return {
     id: raw.id || `trip-${Math.random().toString(36).slice(2, 9)}`,
     travellerId: String(raw.travellerId || '').trim(),
@@ -166,6 +254,9 @@ export function mapBackendTrip(raw) {
     trackingStatus: (raw.trackingStatus || 'not_started').toLowerCase(),
     progressPercentage: typeof raw.progressPercentage === 'number' ? raw.progressPercentage : (Number(raw.progressPercentage) || 0),
     lastUpdatedAt: raw.lastUpdatedAt || new Date().toISOString(),
+    startDate,
+    endDate,
+    travelDates,
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? raw.itinerary : {},
     ...(raw.guide ? { guide: raw.guide } : {}),
     ...(raw.refundEligibility !== undefined ? { refundEligibility: raw.refundEligibility } : {}),

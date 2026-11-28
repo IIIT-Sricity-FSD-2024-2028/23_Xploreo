@@ -3,7 +3,7 @@
     "id": "trip-kerala-1",
     "travellerId": "T001",
     "planId": "plan-1",
-    "guideId": "G001",
+    "guideId": "G002",
     "status": "confirmed",
     "itinerary": {
       "day1": {
@@ -89,7 +89,7 @@
     "id": "trip-kerala-completed",
     "travellerId": "T001",
     "planId": "plan-1",
-    "guideId": "G001",
+    "guideId": "G002",
     "status": "completed",
     "itinerary": {
       "day1": {
@@ -117,7 +117,7 @@
     "id": "trip-goa-completed",
     "travellerId": "T001",
     "planId": "plan-kerala-backwaters-03",
-    "guideId": "G001",
+    "guideId": "G002",
     "status": "completed",
     "itinerary": {
       "day1": {
@@ -155,7 +155,7 @@
     "id": "trip-manali-refunded",
     "travellerId": "T001",
     "planId": "plan-kerala-backwaters-03",
-    "guideId": "G001",
+    "guideId": "G002",
     "status": "refunded",
     "itinerary": {
       "day1": {},

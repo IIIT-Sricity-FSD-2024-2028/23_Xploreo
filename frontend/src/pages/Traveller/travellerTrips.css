@@ -507,6 +507,20 @@
   gap: 0.35rem;
 }
 
+.trav-trip-dates {
+  color: #0f766e;
+  font-weight: 600;
+  background-color: #f0fdfa;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #ccfbf1;
+}
+
+.trav-trip-dates-detail {
+  color: #0f766e;
+  font-weight: 600;
+}
+
 .trav-meta-icon {
   font-size: 0.95rem;
 }

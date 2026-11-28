@@ -638,6 +638,18 @@
   border: 1px solid #bbf7d0;
 }
 
+.trav-status-badge.is-completed {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.trav-status-badge.is-end-requested {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
 .trav-status-badge.is-cancelled {
   background: #fee2e2;
   color: #991b1b;
@@ -1147,6 +1159,56 @@
 .trav-btn-cancel-trigger:hover {
   background: #fef2f2;
   border-color: #ef4444;
+}
+
+/* Confirm End Request Button */
+.trav-btn-confirm-end {
+  background: #16a34a;
+  color: #ffffff;
+  border: 1px solid #16a34a;
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.trav-btn-confirm-end:hover:not(:disabled) {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.trav-btn-confirm-end:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dedicated End Request Notice on Card / View */
+.trav-end-request-banner {
+  margin-top: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 0.5rem;
+  font-size: 0.775rem;
+  color: #92400e;
+  line-height: 1.35;
+}
+
+.trav-end-request-card {
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 /* Refund summary badge on card */

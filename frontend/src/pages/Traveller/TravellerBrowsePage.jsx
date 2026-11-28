@@ -488,31 +488,6 @@ function TravellerBrowseCore({
             )}
           </div>
 
-          {/* Guests & Rooms */}
-          <div className="trav-browse-field">
-            <label htmlFor="browse-guests-select" className="trav-browse-field-label">
-              GUESTS & ROOMS
-            </label>
-            <div className="trav-browse-input-wrap">
-              <span className="trav-browse-input-icon" aria-hidden="true">👥</span>
-              <select
-                id="browse-guests-select"
-                className="trav-browse-select"
-                value={`${guestCount}-${roomCount}`}
-                onChange={(e) => {
-                  const [g, r] = e.target.value.split('-');
-                  dispatch(setBrowseFilters({ guestCount: g, roomCount: r }));
-                }}
-              >
-                <option value="1-1">1 Guest, 1 Room</option>
-                <option value="2-1">2 Guests, 1 Room</option>
-                <option value="3-1">3 Guests, 1 Room</option>
-                <option value="4-2">4 Guests, 2 Rooms</option>
-                <option value="5-2">5+ Guests, 2+ Rooms</option>
-              </select>
-            </div>
-          </div>
-
           {/* Primary Search CTA Button */}
           <button
             type="button"
@@ -677,22 +652,6 @@ function TravellerBrowseCore({
             </span>
 
             <div className="trav-browse-results-actions">
-              <div className="trav-browse-sort-wrap">
-                <label htmlFor="browse-sort-select" className="trav-browse-sort-label">Sort by:</label>
-                <select
-                  id="browse-sort-select"
-                  className="trav-browse-sort-select"
-                  value={sortBy}
-                  onChange={(e) => dispatch(setBrowseFilters({ sortBy: e.target.value }))}
-                >
-                  <option value={SORT_OPTIONS.DEFAULT}>Recommended</option>
-                  <option value={SORT_OPTIONS.PRICE_LOW}>Price: Low to High</option>
-                  <option value={SORT_OPTIONS.PRICE_HIGH}>Price: High to Low</option>
-                  <option value={SORT_OPTIONS.RATING}>Highest Rated</option>
-                  <option value={SORT_OPTIONS.NAME}>Alphabetical (A-Z)</option>
-                </select>
-              </div>
-
               <div className="trav-browse-view-toggle">
                 <button
                   type="button"

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { BookingSummaryCard } from '../../components/checkout/index.js';
 import { formatDate } from '../../utils/checkoutUtils.js';
-import { retryBookingRefund } from '../../features/bookingsSlice.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
+import { confirmExperienceBookingEnd, retryBookingRefund } from '../../features/bookingsSlice.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
 import './travellerBookings.css';
 
@@ -21,6 +22,8 @@ export default function BookingDetailsView({
   const dispatch = useDispatch();
   const [retrying, setRetrying] = useState(false);
   const [retryMessage, setRetryMessage] = useState(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState(null);
 
   if (!booking) {
     return (
@@ -89,6 +92,31 @@ export default function BookingDetailsView({
 
   const isConfirmed = status.toUpperCase() === 'CONFIRMED';
   const isCancelled = status.toUpperCase() === 'CANCELLED';
+  const isEndRequested = status.toUpperCase() === 'END_REQUESTED';
+  const isCompleted = status.toUpperCase() === 'COMPLETED';
+
+  const handleConfirmEnd = async () => {
+    setConfirming(true);
+    setConfirmMessage(null);
+    try {
+      await dispatch(confirmExperienceBookingEnd(id)).unwrap();
+      setConfirmMessage({
+        type: 'success',
+        text: 'Experience concluded and confirmed! Booking is now marked completed for both sides.',
+      });
+      dispatch(fetchNotifications());
+      if (onBookingUpdated) {
+        onBookingUpdated();
+      }
+    } catch (err) {
+      setConfirmMessage({
+        type: 'error',
+        text: (typeof err === 'string' ? err : err?.message) || 'Failed to confirm end request.',
+      });
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const handleRetryRefund = async () => {
     setRetrying(true);
@@ -150,23 +178,98 @@ export default function BookingDetailsView({
           )}
           <span
             className={`trav-status-badge ${
-              isConfirmed ? 'is-confirmed' : isCancelled ? 'is-cancelled' : 'is-pending'
+              isConfirmed
+                ? 'is-confirmed'
+                : isCompleted
+                ? 'is-completed'
+                : isCancelled
+                ? 'is-cancelled'
+                : isEndRequested
+                ? 'is-end-requested'
+                : 'is-pending'
             }`}
           >
-            {status}
+            {isEndRequested ? 'End Requested' : status}
           </span>
-          {isConfirmed && onCancelClick && (
+          {isEndRequested && (
             <button
               type="button"
-              className="trav-btn-cancel-trigger"
-              onClick={() => onCancelClick(booking)}
+              className="trav-btn-confirm-end"
+              onClick={handleConfirmEnd}
+              disabled={confirming}
               style={{ marginLeft: '8px' }}
             >
-              Cancel Reservation
+              {confirming ? 'Ending...' : '✓ Accept & Confirm End'}
             </button>
           )}
+          {isConfirmed && onCancelClick && (() => {
+            const cancellationEligibility = getBookingCancellationEligibility(
+              booking,
+              isHotel ? 'hotel' : 'experience'
+            );
+            return cancellationEligibility.canCancel ? (
+              <button
+                type="button"
+                className="trav-btn-cancel-trigger"
+                onClick={() => onCancelClick(booking)}
+                style={{ marginLeft: '8px' }}
+              >
+                Cancel Reservation
+              </button>
+            ) : (
+              <div style={{ display: 'inline-block', marginLeft: '8px', verticalAlign: 'top', textAlign: 'right' }}>
+                <button
+                  type="button"
+                  className="trav-btn-cancel-trigger is-disabled"
+                  disabled
+                  title={cancellationEligibility.message}
+                  style={{ opacity: 0.55, cursor: 'not-allowed' }}
+                >
+                  Cancel Reservation
+                </button>
+                <span className="trav-cancellation-expired-msg" style={{ display: 'block', color: '#dc2626', fontSize: '0.78rem', marginTop: '0.3rem' }}>
+                  {cancellationEligibility.message}
+                </span>
+              </div>
+            );
+          })()}
         </div>
       </div>
+
+      {/* End Request Confirmation Banner */}
+      {isEndRequested && (
+        <div className="trav-end-request-card" data-testid="traveller-end-request-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#166534', fontWeight: '700', fontSize: '1rem' }}>
+                <span aria-hidden="true">🏁</span> Host Requested End of Experience
+              </div>
+              <p style={{ margin: '0.35rem 0 0', color: '#15803d', fontSize: '0.875rem', lineHeight: '1.4' }}>
+                The experience partner has checked out this session and submitted an end request. Please confirm to complete this booking for both sides.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="trav-btn-confirm-end"
+              onClick={handleConfirmEnd}
+              disabled={confirming}
+              style={{ padding: '0.55rem 1.25rem', fontSize: '0.9rem' }}
+            >
+              {confirming ? 'Ending Experience...' : '✓ Accept & Confirm End Request'}
+            </button>
+          </div>
+          {confirmMessage && (
+            <div style={{ fontSize: '0.85rem', color: confirmMessage.type === 'success' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+              {confirmMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+      {confirmMessage && !isEndRequested && (
+        <div style={{ margin: '1rem 0', padding: '0.75rem 1rem', background: '#dcfce7', border: '1px solid #bbf7d0', borderRadius: '0.5rem', color: '#166534', fontSize: '0.875rem' }}>
+          ✓ {confirmMessage.text}
+        </div>
+      )}
 
       {/* Cancellation & Honest Refund Breakdown */}
       {isCancelled && (

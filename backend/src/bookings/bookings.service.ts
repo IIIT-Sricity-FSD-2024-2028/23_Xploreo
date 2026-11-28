@@ -18,6 +18,7 @@ import { RefundService } from '../common/refund/refund.service';
 import { RefundStatus } from '../common/refund/refund.types';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { assertBookingCancellationEligible } from '../common/utils/cancellation-guard';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const HOTEL_DATE_FORMATTER = new Intl.DateTimeFormat('en-CA', {
@@ -279,9 +280,7 @@ export class BookingsService {
       if (booking.travellerId !== userId) {
         throw new ForbiddenException('You can only cancel your own bookings.');
       }
-      if (booking.status === BookingStatus.CHECKED_IN || booking.status === BookingStatus.CHECKED_OUT) {
-        throw new BadRequestException(`Cannot cancel a booking that is ${booking.status}.`);
-      }
+      assertBookingCancellationEligible({ ...booking, hotel }, 'hotel');
     } else if (role !== Role.SUPERADMIN) {
       throw new ForbiddenException('Forbidden.');
     }

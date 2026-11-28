@@ -29,6 +29,8 @@ export class TripsRepository {
       trackingStatus: data.trackingStatus ?? TripTrackingStatus.NOT_STARTED,
       progressPercentage: data.progressPercentage ?? 0,
       lastUpdatedAt: data.lastUpdatedAt ?? new Date().toISOString(),
+      startDate: data.startDate,
+      endDate: data.endDate,
     };
 
     this.trips.push(trip);

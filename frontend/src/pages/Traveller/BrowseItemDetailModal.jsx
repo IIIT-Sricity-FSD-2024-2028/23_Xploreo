@@ -1,5 +1,10 @@
 import { useEffect } from 'react';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
+import {
+  getExperienceAvailability,
+  getHotelAvailability,
+  getPlanAvailability,
+} from '../../utils/browseUtils.js';
 
 const FALLBACK_MODAL_IMAGES = {
   hotels: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&q=80&w=1200',
@@ -33,7 +38,31 @@ export default function BrowseItemDetailModal({
   const title = item.name || item.title || `${item.fname || ''} ${item.lname || ''}`.trim() || 'Item Details';
   const heroImage = item.image || item.images?.[0] || FALLBACK_MODAL_IMAGES[category] || FALLBACK_MODAL_IMAGES.hotels;
   const startingRate = item.pricePerNight ?? item.price ?? item.pricePerPerson ?? 0;
-  const isSoldOut = (item.status || '').toLowerCase() === 'sold_out';
+
+  let isSoldOut = (item.status || '').toLowerCase() === 'sold_out' || (item.status || '').toLowerCase() === 'unavailable';
+  let soldOutMessage = 'This item is currently sold out and unavailable for booking.';
+
+  if (category === 'experiences') {
+    const expAvail = getExperienceAvailability(item);
+    if (expAvail.isSoldOut) {
+      isSoldOut = true;
+      soldOutMessage = expAvail.isPast
+        ? 'All scheduled sessions for this experience have already passed.'
+        : 'This experience is currently fully booked with no remaining spots.';
+    }
+  } else if (category === 'hotels') {
+    const hotelAvail = getHotelAvailability(item);
+    if (hotelAvail.isSoldOut) {
+      isSoldOut = true;
+      soldOutMessage = 'This hotel currently has no available rooms.';
+    }
+  } else if (category === 'plans') {
+    const planAvail = getPlanAvailability(item);
+    if (planAvail.isSoldOut) {
+      isSoldOut = true;
+      soldOutMessage = 'This travel package is currently unavailable or departed.';
+    }
+  }
 
   return (
     <div
@@ -113,12 +142,27 @@ export default function BrowseItemDetailModal({
             <div className="trav-browse-modal-section">
               <h4>Available Schedule Slots</h4>
               <div className="trav-browse-modal-slots">
-                {item.slots.map((s) => (
-                  <div key={s.id} className="trav-browse-slot-chip">
-                    <span>{s.date} at {s.time}</span>
-                    <small style={{ display: 'block', color: '#64748b' }}>({s.capacity - s.booked} spots left)</small>
-                  </div>
-                ))}
+                {item.slots.map((s) => {
+                  const todayIso = new Date().toISOString().slice(0, 10);
+                  const isPast = String(s.date).slice(0, 10) < todayIso;
+                  const cap = s.capacity ?? item.capacity ?? 10;
+                  const bkd = s.booked ?? 0;
+                  const spotsLeft = Math.max(0, cap - bkd);
+                  const isSlotSoldOut = spotsLeft <= 0 || s.available === false || isPast;
+
+                  return (
+                    <div
+                      key={s.id}
+                      className={`trav-browse-slot-chip ${isSlotSoldOut ? 'is-past' : ''}`}
+                      style={isPast ? { opacity: 0.7, background: '#fef2f2', borderColor: '#fecaca' } : {}}
+                    >
+                      <span>{s.date} at {s.time}</span>
+                      <small style={{ display: 'block', color: isPast ? '#dc2626' : (spotsLeft <= 3 ? '#e11d48' : '#0f766e'), fontWeight: 600 }}>
+                        {isPast ? '● Session passed' : (spotsLeft <= 0 ? '● Sold Out' : `● ${spotsLeft} spots left`)}
+                      </small>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -181,7 +225,7 @@ export default function BrowseItemDetailModal({
                 textAlign: 'center',
               }}
             >
-              This travel package is currently Sold Out. Bookings are unavailable.
+              ⚠️ {soldOutMessage}
             </div>
           )}
         </div>

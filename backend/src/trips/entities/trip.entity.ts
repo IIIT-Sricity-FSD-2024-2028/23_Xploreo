@@ -32,6 +32,8 @@ export class Trip {
   trackingStatus!: TripTrackingStatus;
   progressPercentage!: number;
   lastUpdatedAt!: string;
+  startDate?: string;
+  endDate?: string;
   refundAmount?: number;
   // Guide selection: the traveller picks an NTA-approved guide, who then confirms or declines.
   guideName?: string;

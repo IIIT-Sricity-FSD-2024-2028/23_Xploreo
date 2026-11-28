@@ -406,6 +406,20 @@ describe('Phase 2 & 3 — Browse, Bookings, Guides, Trips, Reviews, Tickets, Not
     assert.equal(bookingsModule.selectBookingCancellationResult(store.getState()).result.refundAmount, 4200);
     store.dispatch(bookingsModule.clearBookingCancellationResult());
     assert.equal(bookingsModule.selectBookingCancellationResult(store.getState()), null);
+
+    // Confirm experience booking end request (traveller side accepts and concludes experience)
+    fetchHandler = async (url, opts) => {
+      if (url.includes('/experience-bookings/eb-1/status') && opts.method === 'PATCH') {
+        const body = JSON.parse(opts.body);
+        if (body.status === 'COMPLETED') {
+          return { ok: true, status: 200, json: async () => ({ id: 'eb-1', status: 'COMPLETED' }) };
+        }
+      }
+      return { ok: false, status: 400, json: async () => ({ message: 'Bad request' }) };
+    };
+    const confirmRes = await store.dispatch(bookingsModule.confirmExperienceBookingEnd('eb-1'));
+    assert.equal(confirmRes.meta.requestStatus, 'fulfilled');
+    assert.equal(confirmRes.payload.updated.status, 'COMPLETED');
   });
 
   test('tripsSlice full AsyncThunk lifecycles (pending/fulfilled/rejected) across trips, refund retry, and guide requests', async () => {

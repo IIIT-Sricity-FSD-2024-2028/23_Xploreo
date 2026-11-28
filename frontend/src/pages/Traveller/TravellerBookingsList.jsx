@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useInRouterContext, useLocation } from 'react-router-dom';
 import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
+import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
 import {
   clearBookingActionError,
   clearBookingCancellationResult,
+  confirmExperienceBookingEnd,
   fetchTravellerBookings,
   selectBookingsError,
   selectBookingsList,
@@ -94,6 +96,8 @@ function TravellerBookingsCore({
   const [searchQuery, setSearchQuery] = useState('');
   const [localSelectedBookingId, setLocalSelectedBookingId] = useState(null);
   const [cancellingBooking, setCancellingBooking] = useState(null);
+  const [confirmingBookingId, setConfirmingBookingId] = useState(null);
+  const [actionSuccessMessage, setActionSuccessMessage] = useState(null);
 
   const selectedBookingId = isPreviewMode ? localSelectedBookingId : reduxSelectedBookingId;
   const updateSelectedBookingId = (id) => {
@@ -107,6 +111,20 @@ function TravellerBookingsCore({
   const fetchLiveBookings = useCallback(() => {
     return dispatch(fetchTravellerBookings());
   }, [dispatch]);
+
+  const handleConfirmEnd = async (booking) => {
+    setConfirmingBookingId(booking.id);
+    setActionSuccessMessage(null);
+    try {
+      await dispatch(confirmExperienceBookingEnd(booking.id)).unwrap();
+      setActionSuccessMessage(`Experience #${booking.id} has ended and is now completed for both sides.`);
+      fetchLiveBookings();
+    } catch (err) {
+      alert((typeof err === 'string' ? err : err?.message) || 'Failed to confirm end request.');
+    } finally {
+      setConfirmingBookingId(null);
+    }
+  };
 
   useEffect(() => {
     if (shouldAutoFetch) {
@@ -189,6 +207,7 @@ function TravellerBookingsCore({
 
     const statusMatch =
       activeTab === 'ALL' ||
+      (activeTab === 'CONFIRMED' && ['CONFIRMED', 'CHECKED_IN', 'END_REQUESTED'].includes(booking.status?.toUpperCase())) ||
       (booking.status && booking.status.toUpperCase() === activeTab);
 
     const title = booking.hotel?.name || booking.experience?.title || booking.guestName || '';
@@ -345,9 +364,11 @@ function TravellerBookingsCore({
           {/* Status Tabs */}
           <div className="trav-filter-strip">
             <div className="trav-status-tabs" role="tablist" aria-label="Filter bookings by status">
-              {['ALL', 'CONFIRMED', 'CANCELLED'].map((tab) => {
+              {['ALL', 'CONFIRMED', 'COMPLETED', 'CANCELLED'].map((tab) => {
                 const count = tab === 'ALL'
                   ? authorizedBookings.length
+                  : tab === 'CONFIRMED'
+                  ? authorizedBookings.filter((b) => ['CONFIRMED', 'CHECKED_IN', 'END_REQUESTED'].includes(b.status?.toUpperCase())).length
                   : authorizedBookings.filter((b) => b.status && b.status.toUpperCase() === tab).length;
 
                 return (
@@ -371,6 +392,33 @@ function TravellerBookingsCore({
             </div>
           </div>
         </section>
+
+        {actionSuccessMessage && (
+          <div
+            style={{
+              margin: '0.5rem 0 1rem',
+              padding: '0.75rem 1rem',
+              background: '#dcfce7',
+              border: '1px solid #bbf7d0',
+              borderRadius: '0.5rem',
+              color: '#166534',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+            }}
+          >
+            <span>✓ {actionSuccessMessage}</span>
+            <button
+              type="button"
+              onClick={() => setActionSuccessMessage(null)}
+              style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer', fontSize: '1rem' }}
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* ── 5. Loading State ── */}
         {isLoading && (
@@ -433,6 +481,8 @@ function TravellerBookingsCore({
               const hotel = booking.hotel || {};
               const isConfirmed = booking.status?.toUpperCase() === 'CONFIRMED';
               const isCancelled = booking.status?.toUpperCase() === 'CANCELLED';
+              const isEndRequested = booking.status?.toUpperCase() === 'END_REQUESTED';
+              const isCompleted = booking.status?.toUpperCase() === 'COMPLETED';
               const isDemo = !!booking.isDemo || booking.source === 'mock';
 
               const title = isHotel ? hotel.name : (exp.title || `Booking for ${booking.guestName}`);
@@ -472,10 +522,18 @@ function TravellerBookingsCore({
                       )}
                       <span
                         className={`trav-status-badge ${
-                          isConfirmed ? 'is-confirmed' : isCancelled ? 'is-cancelled' : 'is-pending'
+                          isConfirmed
+                            ? 'is-confirmed'
+                            : isCompleted
+                            ? 'is-completed'
+                            : isCancelled
+                            ? 'is-cancelled'
+                            : isEndRequested
+                            ? 'is-end-requested'
+                            : 'is-pending'
                         }`}
                       >
-                        {booking.status}
+                        {isEndRequested ? 'End Requested' : booking.status}
                       </span>
                       <span className="trav-booking-id">#{booking.id}</span>
                       {isCancelled && booking.refundStatus && (
@@ -520,6 +578,12 @@ function TravellerBookingsCore({
                         Reserved on {formatDate(booking.createdAt)}
                       </div>
                     )}
+
+                    {isEndRequested && (
+                      <div className="trav-end-request-banner">
+                        <strong>Host requested end:</strong> Please accept and confirm to conclude this experience.
+                      </div>
+                    )}
                   </div>
 
                   {/* Price & Action */}
@@ -542,17 +606,51 @@ function TravellerBookingsCore({
                     >
                       View Details →
                     </button>
-                    {isConfirmed && (
+                    {isEndRequested && (
                       <button
                         type="button"
-                        className="trav-btn-cancel-trigger"
-                        onClick={() => setCancellingBooking(booking)}
-                        aria-label={`Cancel booking for ${title || booking.id}`}
+                        className="trav-btn-confirm-end"
+                        disabled={confirmingBookingId === booking.id}
+                        onClick={() => handleConfirmEnd(booking)}
+                        aria-label={`Accept end request for ${title || booking.id}`}
                         style={{ marginTop: '0.4rem', width: '100%' }}
                       >
-                        Cancel Booking
+                        {confirmingBookingId === booking.id ? 'Ending…' : '✓ Accept End Request'}
                       </button>
                     )}
+                    {isConfirmed && (() => {
+                      const cancellationEligibility = getBookingCancellationEligibility(
+                        booking,
+                        isHotel ? 'hotel' : 'experience'
+                      );
+                      return cancellationEligibility.canCancel ? (
+                        <button
+                          type="button"
+                          className="trav-btn-cancel-trigger"
+                          onClick={() => setCancellingBooking(booking)}
+                          aria-label={`Cancel booking for ${title || booking.id}`}
+                          style={{ marginTop: '0.4rem', width: '100%' }}
+                        >
+                          Cancel Booking
+                        </button>
+                      ) : (
+                        <div style={{ marginTop: '0.4rem', width: '100%' }}>
+                          <button
+                            type="button"
+                            className="trav-btn-cancel-trigger is-disabled"
+                            disabled
+                            title={cancellationEligibility.message}
+                            aria-label={`Cancel booking disabled for ${title || booking.id}: ${cancellationEligibility.message}`}
+                            style={{ width: '100%', opacity: 0.55, cursor: 'not-allowed' }}
+                          >
+                            Cancel Booking
+                          </button>
+                          <p className="trav-cancellation-expired-msg" style={{ margin: '0.35rem 0 0', color: '#dc2626', fontSize: '0.78rem', lineHeight: '1.3' }}>
+                            {cancellationEligibility.message}
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {booking.bookingType === 'experience' ? (

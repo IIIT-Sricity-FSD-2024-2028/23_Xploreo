@@ -42,10 +42,15 @@ export const applications = [
   { id: 'app-2', guideId: 'guide-jpr-1', planId: 'plan-jpr-2', guidePricePerPerson: 2200, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Jaipur' matches plan destination 'Jaipur'", createdAt: iso(-33), updatedAt: iso(-33) },
   { id: 'app-3', guideId: 'guide-jpr-1', planId: 'plan-jpr-3', guidePricePerPerson: 1200, status: 'pending', createdAt: iso(-2), updatedAt: iso(-2) },
   { id: 'app-9', guideId: 'guide-del-1', planId: 'plan-del-1', guidePricePerPerson: 1400, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Delhi' matches plan destination 'Delhi'", createdAt: iso(-12), updatedAt: iso(-12) },
-  // Canonical G001 applications
-  { id: 'guide-app-1', guideId: 'G001', planId: 'plan-1', guidePricePerPerson: 1800, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Kerala' matches plan destination 'Kerala'", createdAt: iso(-40), updatedAt: iso(-40) },
-  { id: 'guide-app-2', guideId: 'G001', planId: 'plan-jaipur-heritage-01', guidePricePerPerson: 2200, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Jaipur' matches plan destination 'Jaipur'", createdAt: iso(-33), updatedAt: iso(-33) },
-  { id: 'guide-app-3', guideId: 'G001', planId: 'plan-2', guidePricePerPerson: 1500, status: 'pending', createdAt: iso(-2), updatedAt: iso(-2) },
+  // Canonical G001 applications (Mumbai)
+  { id: 'guide-app-1', guideId: 'G001', planId: 'plan-mum-1', guidePricePerPerson: 1800, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Mumbai' matches plan destination 'Mumbai'", createdAt: iso(-40), updatedAt: iso(-40) },
+  { id: 'guide-app-2', guideId: 'G001', planId: 'plan-mum-1', guidePricePerPerson: 2200, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Mumbai' matches plan destination 'Mumbai'", createdAt: iso(-33), updatedAt: iso(-33) },
+  { id: 'guide-app-3', guideId: 'G001', planId: 'plan-mum-1', guidePricePerPerson: 1500, status: 'pending', createdAt: iso(-2), updatedAt: iso(-2) },
+  // Canonical G002 applications (Kerala)
+  { id: 'guide-app-4', guideId: 'G002', planId: 'plan-ker-1', guidePricePerPerson: 1800, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Kerala' matches plan destination 'Kerala'", createdAt: iso(-40), updatedAt: iso(-40) },
+  { id: 'guide-app-5', guideId: 'G002', planId: 'plan-ker-1', guidePricePerPerson: 1500, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Kerala' matches plan destination 'Kerala'", createdAt: iso(-30), updatedAt: iso(-30) },
+  // Canonical G003 applications (Jaipur)
+  { id: 'guide-app-6', guideId: 'G003', planId: 'plan-jpr-1', guidePricePerPerson: 1600, status: 'accepted', autoDecisionReason: "Auto-accepted: Guide location 'Jaipur' matches plan destination 'Jaipur'", createdAt: iso(-20), updatedAt: iso(-20) },
 ];
 export const newApplicationId = () => `app-${applicationSeq++}`;
 
@@ -76,6 +81,10 @@ export const assignments = [
   assignment('asg-6', 'plan-jpr-1', 'trav-206', 1500, 2, 15, 3, 'rejected_by_guide'),
   assignment('asg-7', 'plan-jpr-3', 'trav-207', 1200, 1, 20, 2, 'cancelled'),
   { ...assignment('asg-8', 'plan-del-1', 'trav-208', 1400, 2, 5, 3, 'pending_guide_confirm'), guideId: 'guide-del-1' },
+  { ...assignment('asg-9', 'plan-mum-1', 'trav-201', 1800, 2, 4, 3, 'confirmed'), guideId: 'G001' },
+  { ...assignment('asg-10', 'plan-mum-1', 'trav-202', 1800, 3, 12, 3, 'pending_guide_confirm'), guideId: 'G001' },
+  { ...assignment('asg-11', 'plan-ker-1', 'trav-203', 1800, 2, 2, 5, 'confirmed'), guideId: 'G002' },
+  { ...assignment('asg-12', 'plan-ker-1', 'trav-204', 1800, 4, 9, 5, 'pending_guide_confirm'), guideId: 'G002' },
 ];
 export const findAssignment = (id) => assignments.find((a) => a.id === id);
 
@@ -132,14 +141,21 @@ export const trips = [
     itinerary: itineraryFor([[['Chandni Chowk Food Walk', 'Chandni Chowk']]], 5), totalAmount: 31000, currentDay: 1,
     currentStop: '', currentLocation: '', trackingStatus: 'not_started', progressPercentage: 0, lastUpdatedAt: iso(-3),
   },
-  // Canonical G001 trips
+  // Canonical G002 trips (Kerala)
   {
-    id: 'trip-kerala-1', travellerId: 'T001', planId: 'plan-1', guideId: 'G001', status: 'confirmed',
+    id: 'trip-kerala-1', travellerId: 'T001', planId: 'plan-ker-1', guideId: 'G002', status: 'confirmed',
     itinerary: itineraryFor([[['Backwater Cruise', 'Alleppey']]], 1), totalAmount: 47000, currentDay: 1,
-    currentStop: 'Not started', currentLocation: 'Bangalore', trackingStatus: 'not_started', progressPercentage: 0, lastUpdatedAt: iso(0, 9),
+    currentStop: 'Not started', currentLocation: 'Alleppey', trackingStatus: 'not_started', progressPercentage: 0, lastUpdatedAt: iso(0, 9),
   },
+  // Canonical G001 trips (Mumbai)
   {
-    id: 'trip-jaipur-1', travellerId: '20002', planId: 'plan-2', guideId: 'G001', status: 'started',
+    id: 'trip-mumbai-1', travellerId: 'T001', planId: 'plan-mum-1', guideId: 'G001', status: 'confirmed',
+    itinerary: itineraryFor([[['Marine Drive Promenade', 'Marine Drive'], ['Elephanta Caves Tour', 'Elephanta Island']]], 1), totalAmount: 38000, currentDay: 1,
+    currentStop: 'Not started', currentLocation: 'Mumbai', trackingStatus: 'not_started', progressPercentage: 0, lastUpdatedAt: iso(0, 9),
+  },
+  // Canonical G003 trips (Jaipur)
+  {
+    id: 'trip-jaipur-1', travellerId: '20002', planId: 'plan-jpr-1', guideId: 'G003', status: 'started',
     itinerary: itineraryFor(HERITAGE, -1), totalAmount: 38500, currentDay: 1,
     currentStop: 'Jaipur Arrival', currentLocation: 'Jaipur', trackingStatus: 'ongoing', progressPercentage: 25, lastUpdatedAt: iso(0, 9),
   },

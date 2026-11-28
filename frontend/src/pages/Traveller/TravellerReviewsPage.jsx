@@ -24,7 +24,6 @@ import './travellerReviews.css';
  * Top-level container component for Traveller Reviews:
  * - Shared Traveller navbar and consistent application layout
  * - Page Header with "Reviews & Ratings" title and "Write a Review" trigger
- * - Overall Rating Summary and Rating Distribution (5★ to 1★)
  * - Review list with category filtering, ratings filter, and states (loading, empty, error)
  * - Modal dialog for writing reviews with validation and demo transparency
  * - Connects to reviewsSlice (GET/POST /reviews) and tripsSlice in live mode
@@ -120,29 +119,6 @@ function TravellerReviewsCore({
   const eligibleTrips = useMemo(() => {
     return completedTrips.filter((t) => !reviewedTripIds.has(t.id));
   }, [completedTrips, reviewedTripIds]);
-
-  // Overall rating summary calculations
-  const totalCount = reviews.length;
-  const avgRating = totalCount > 0
-    ? (reviews.reduce((acc, r) => acc + Number(r.rating || 0), 0) / totalCount).toFixed(1)
-    : '0.0';
-
-  const ratingCounts = useMemo(() => {
-    const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
-    if (Array.isArray(reviews)) {
-      reviews.forEach((r) => {
-        const star = Math.round(Number(r.rating || 0));
-        if (counts[star] !== undefined) {
-          counts[star]++;
-        }
-      });
-    }
-    return counts;
-  }, [reviews]);
-
-  const recommendedPct = totalCount > 0
-    ? Math.round(((ratingCounts[5] + ratingCounts[4]) / totalCount) * 100)
-    : 100;
 
   const fetchLiveReviews = useCallback(() => {
     return dispatch(fetchReviews());
@@ -289,97 +265,6 @@ function TravellerReviewsCore({
             ✏️ Write a Review
           </button>
         </header>
-
-        {/* Overall Rating Summary & Rating Distribution */}
-        {!isLoading && !error && totalCount > 0 && (
-          <section className="trav-review-summary-card" aria-label="Rating Overview">
-            {/* Col 1: Average Score & Overall Stars */}
-            <div className="trav-summary-score-col">
-              <span className="trav-summary-score-label">Overall Rating</span>
-              <div className="trav-summary-score-row">
-                <span className="trav-summary-score-num">{avgRating}</span>
-                <span className="trav-summary-score-max">/ 5.0</span>
-              </div>
-              <div
-                className="trav-summary-stars-row"
-                aria-label={`Average rating ${avgRating} out of 5 stars`}
-              >
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <span
-                    key={star}
-                    className={`trav-star-icon ${
-                      star <= Math.round(Number(avgRating)) ? 'trav-star-filled' : 'trav-star-empty'
-                    }`}
-                    aria-hidden="true"
-                  >
-                    ★
-                  </span>
-                ))}
-              </div>
-              <p className="trav-summary-review-count">
-                Based on <strong>{totalCount}</strong> verified {totalCount === 1 ? 'review' : 'reviews'}
-              </p>
-              <div className="trav-summary-rec-badge">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                <span>{recommendedPct}% Positive Feedback</span>
-              </div>
-            </div>
-
-            {/* Col 2: Rating Distribution Bars (5★ to 1★) */}
-            <div className="trav-summary-bars-col">
-              <h3 className="trav-summary-bars-title">Rating Distribution</h3>
-              <div className="trav-dist-list">
-                {[5, 4, 3, 2, 1].map((stars) => {
-                  const count = ratingCounts[stars] || 0;
-                  const pct = totalCount > 0 ? Math.round((count / totalCount) * 100) : 0;
-                  return (
-                    <div key={stars} className="trav-dist-row">
-                      <span className="trav-dist-label">{stars}★</span>
-                      <div className="trav-dist-bar-track">
-                        <div
-                          className="trav-dist-bar-fill"
-                          style={{ width: `${pct}%` }}
-                          aria-valuenow={pct}
-                          aria-valuemin="0"
-                          aria-valuemax="100"
-                        />
-                      </div>
-                      <span className="trav-dist-count">{count} ({pct}%)</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Col 3: Community Reassurance & Action */}
-            <div className="trav-summary-cta-col">
-              <div className="trav-cta-badge">Verified Community</div>
-              <h3 className="trav-cta-title">Share Your Journey</h3>
-              <p className="trav-cta-desc">
-                Your feedback helps fellow travellers discover verified local guides, boutique stays, and authentic experiences.
-              </p>
-              <button
-                type="button"
-                className="trav-review-btn trav-review-btn-primary"
-                onClick={handleOpenModal}
-              >
-                ✏️ Write a Review
-              </button>
-            </div>
-          </section>
-        )}
 
         {/* Main Reviews Content */}
         <TravellerReviewsList
