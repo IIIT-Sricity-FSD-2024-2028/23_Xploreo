@@ -316,7 +316,7 @@ export default function BookingDetailsView({
           {isConfirmed && onCancelClick && (() => {
             const cancellationEligibility = getBookingCancellationEligibility(
               booking,
-              isHotel ? 'hotel' : 'experience'
+              isPackage ? 'package' : isHotel ? 'hotel' : 'experience'
             );
             return cancellationEligibility.canCancel ? (
               <button

@@ -31,7 +31,9 @@ export function normalizeAuthAccount(account) {
     account.userId === 'NTA005' || account.username === 'NTA005' ? 'Kerala' : undefined
   );
   const region = account.region || account.location || account.destination || tokenClaims?.region || (
-    account.userId === 'XP001' || account.username === 'XP001' || account.role === 'experience'
+    account.userId === 'XP001' || account.username === 'XP001'
+      ? 'Jaipur'
+      : account.userId === 'XP005' || account.username === 'XP005'
       ? 'Kerala'
       : defaultNtaRegion
   );

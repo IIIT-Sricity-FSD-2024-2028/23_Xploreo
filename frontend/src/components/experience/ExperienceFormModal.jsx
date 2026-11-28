@@ -51,7 +51,7 @@ export default function ExperienceFormModal({ experience, onClose, onSaved }) {
     user?.destination ||
     experience?.destination ||
     experience?.location ||
-    (user?.userId === 'XP001' || user?.username === 'XP001' || user?.role === 'experience' || user?.partnerType === 'experience' ? 'Kerala' : '');
+    (user?.userId === 'XP001' || user?.username === 'XP001' ? 'Jaipur' : user?.userId === 'XP005' || user?.username === 'XP005' || user?.role === 'experience' || user?.partnerType === 'experience' ? 'Kerala' : '');
   const editing = Boolean(experience);
   const [values, setValues] = useState(() => toForm(experience));
   const [errors, setErrors] = useState({});

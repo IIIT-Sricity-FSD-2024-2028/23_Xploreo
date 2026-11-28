@@ -81,7 +81,7 @@ export const users = [
   { userId: 'G014', username: 'lakshmi.menon@example.com', name: 'Lakshmi Menon', email: 'lakshmi.menon@example.com', phone: '9847001122', role: 'guide', location: 'Kerala', businessName: '' },
   { userId: 'G015', username: 'joseph.kurian@example.com', name: 'Joseph Kurian', email: 'joseph.kurian@example.com', phone: '9847001123', role: 'guide', location: 'Kerala', businessName: '' },
   { userId: 'HP001', username: 'hotel.partner@xploreo.com', name: 'The Heritage Haveli & Spa, Jaipur', email: 'hotel.partner@xploreo.com', phone: '9000000001', role: 'hotel', location: 'Jaipur', businessName: 'Heritage Stays Pvt Ltd' },
-  { userId: 'XP001', username: 'experience.partner@xploreo.com', name: 'Jaipur Royal Walking Tours', email: 'experience.partner@xploreo.com', phone: '9000000002', role: 'experience', location: 'Jaipur', businessName: 'Pink City Days' },
+  { userId: 'XP001', username: 'experience.partner@xploreo.com', name: 'Pink City Days & Heritage Trails', email: 'experience.partner@xploreo.com', phone: '9000000002', role: 'experience', location: 'Jaipur', businessName: 'Pink City Days & Heritage Trails' },
   { userId: 'TA001', username: 'tech.admin@xploreo.com', name: 'Dev Mehta', email: 'dev@xploreo.com', phone: '9876543210', role: 'techadmin', location: 'Bangalore', businessName: '' },
   { userId: 'SA001', username: 'super.admin@xploreo.com', name: 'Raj Sharma', email: 'raj@xploreo.com', phone: '9988776655', role: 'superadmin', location: 'Bangalore', businessName: '' },
   { userId: 'NTA001', username: 'nontech.admin@xploreo.com', name: 'Neha Mehra', email: 'nontech.admin@xploreo.com', phone: '9876543211', role: 'nontechadmin', location: 'Jaipur', businessName: '' },

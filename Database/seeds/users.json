@@ -342,11 +342,11 @@
     "password": "XP@123",
     "role": "experience",
     "name": "Xploreo Experience Partner",
-    "businessName": "Pink City Days",
+    "businessName": "Pink City Days & Heritage Trails",
     "email": "experience.partner@xploreo.com",
     "phone": "9000000002",
     "status": "active",
-    "region": "Kerala",
+    "region": "Jaipur",
     "location": "Jaipur"
   },
   {
@@ -398,7 +398,7 @@
     "email": "exp.kerala@xploreo.com",
     "phone": "9000000025",
     "status": "active",
-    "region": "Jaipur",
+    "region": "Kerala",
     "location": "Kerala"
   }
 ]

@@ -333,15 +333,24 @@ export function getBookingCancellationEligibility(booking, bookingType, now = ne
     };
   }
 
-  // Determine type if not explicitly passed
+  // Determine type if not explicitly passed, or normalize auto-detection
   let type = bookingType ? String(bookingType).toLowerCase() : '';
-  if (!type) {
+  const isTripOrPackage =
+    type === 'trip' ||
+    type === 'package' ||
+    booking.bookingType === 'package' ||
+    booking.bookingType === 'trip' ||
+    Boolean(booking.planId) ||
+    Boolean(booking.packageId) ||
+    (Boolean(booking.itinerary) && !booking.roomType && !booking.roomId && !booking.hotel);
+
+  if (isTripOrPackage) {
+    type = 'package';
+  } else if (!type || type === 'auto') {
     if (booking.bookingType) {
       type = String(booking.bookingType).toLowerCase();
     } else if (booking.hotel || booking.roomType || booking.checkIn) {
       type = 'hotel';
-    } else if (booking.planId || booking.itinerary) {
-      type = 'trip';
     } else {
       type = 'experience';
     }
@@ -410,7 +419,17 @@ export function getBookingCancellationEligibility(booking, bookingType, now = ne
       }
     }
     if (moments.length === 0) {
-      const fallbackDate = String(booking.startDate || booking.checkIn || booking.date || '').slice(0, 10);
+      const fallbackDate = String(
+        booking.startDate ||
+        booking.start_date ||
+        booking.checkIn ||
+        booking.checkInDate ||
+        booking.date ||
+        booking.itinerary?.startDate ||
+        booking.itinerary?.start_date ||
+        booking.itinerary?.day1?.date ||
+        ''
+      ).slice(0, 10);
       if (fallbackDate && isValidIsoCalendarDate(fallbackDate)) {
         const ms = parseScheduledMomentToMs(fallbackDate, '10:00');
         if (ms) moments.push(ms);

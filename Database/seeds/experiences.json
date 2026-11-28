@@ -1,7 +1,7 @@
 [
   {
     "id": "exp-1",
-    "partnerId": "XP001",
+    "partnerId": "XP005",
     "title": "Western Ghats Guided Rainforest Trek",
     "description": "A guided trek through lush Western Ghats forest trails with stream crossings and bird watching.",
     "destination": "Kerala",
@@ -50,7 +50,7 @@
   },
   {
     "id": "exp-2",
-    "partnerId": "XP001",
+    "partnerId": "XP005",
     "title": "Alleppey Sunrise Kayaking & Canal Walk",
     "description": "Paddle through serene narrow backwater canals before the heat of the day, guided by local boatmen.",
     "destination": "Kerala",
@@ -80,6 +80,14 @@
         "available": true
       },
       {
+        "id": "slot-exp-2-live",
+        "date": "2026-11-29",
+        "time": "06:00",
+        "booked": 0,
+        "capacity": 10,
+        "available": true
+      },
+      {
         "id": "s-2-a",
         "date": "2026-12-02",
         "time": "06:00",
@@ -99,7 +107,7 @@
   },
   {
     "id": "exp-3",
-    "partnerId": "XP005",
+    "partnerId": "XP001",
     "title": "Amber Fort Twilight Heritage Walk & Bazaar Food Trail",
     "description": "Experience Amber Fort under evening illumination followed by authentic Rajasthani street delicacies.",
     "destination": "Jaipur",
@@ -140,7 +148,7 @@
   },
   {
     "id": "exp-kerala-2",
-    "partnerId": "XP001",
+    "partnerId": "XP005",
     "title": "Kumarakom Houseboat Cooking & Village Walk",
     "description": "Cook a Kerala sadya with a local family and cruise the quiet canals.",
     "destination": "Kerala",
@@ -153,6 +161,14 @@
     "image": "https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80",
     "nextSlot": "2026-12-09 10:00",
     "slots": [
+      {
+        "id": "slot-kerala-2-live",
+        "date": "2026-11-29",
+        "time": "10:00",
+        "booked": 0,
+        "capacity": 8,
+        "available": true
+      },
       {
         "id": "s-k2-1",
         "date": "2026-12-09",
@@ -181,7 +197,7 @@
   },
   {
     "id": "exp-jaipur-2",
-    "partnerId": "XP005",
+    "partnerId": "XP001",
     "title": "Jaipur Block-Printing Workshop",
     "description": "Hand-block print your own textile with Bagru artisans.",
     "destination": "Jaipur",
@@ -370,7 +386,7 @@
   },
   {
     "id": "EXP-JAI-101",
-    "partnerId": "XP005",
+    "partnerId": "XP001",
     "title": "Amer Fort Sunrise Guided Walk",
     "description": "Expert historian-led walk across the Sheesh Mahal, ramparts, and Maota Lake at dawn.",
     "destination": "Jaipur",
@@ -395,7 +411,7 @@
   },
   {
     "id": "EXP-JAI-102",
-    "partnerId": "XP005",
+    "partnerId": "XP001",
     "title": "Old Bazaar Spice & Textile Trail",
     "description": "Navigate Johari and Bapu Bazaars with a local insider, discovering natural dye textiles and street teas.",
     "destination": "Jaipur",
@@ -420,7 +436,7 @@
   },
   {
     "id": "EXP-JAI-103",
-    "partnerId": "XP005",
+    "partnerId": "XP001",
     "title": "Blue Pottery Artisan Workshop",
     "description": "Hands-on molding and painting workshop in a master artisan studio in Sanganer.",
     "destination": "Jaipur",
@@ -670,7 +686,7 @@
   },
   {
     "id": "EXP-KER-501",
-    "partnerId": "XP001",
+    "partnerId": "XP005",
     "title": "Vembanad Lake Houseboat Cruise & Village Cooking Class",
     "description": "Private day cruise on Vembanad Lake stopping at an organic village farm for a hands-on Syrian Christian cooking class.",
     "destination": "Kerala",
@@ -684,6 +700,14 @@
     "nextSlot": "2026-10-25 10:00",
     "slots": [
       {
+        "id": "slot-ker-501-live",
+        "date": "2026-11-30",
+        "time": "07:30",
+        "booked": 0,
+        "capacity": 12,
+        "available": true
+      },
+      {
         "id": "slot-ker-501",
         "date": "2026-10-25",
         "time": "10:00",
@@ -695,7 +719,7 @@
   },
   {
     "id": "EXP-KER-502",
-    "partnerId": "XP001",
+    "partnerId": "XP005",
     "title": "Munnar Tea Plantation Dawn Trek & Tasting",
     "description": "Early morning hike through high-elevation orthodox tea estates with panoramic Western Ghats cloud views and tea cupping.",
     "destination": "Kerala",
@@ -708,6 +732,14 @@
     "image": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
     "nextSlot": "2026-10-26 06:00",
     "slots": [
+      {
+        "id": "slot-ker-502-live",
+        "date": "2026-11-30",
+        "time": "09:00",
+        "booked": 0,
+        "capacity": 12,
+        "available": true
+      },
       {
         "id": "slot-ker-502",
         "date": "2026-10-26",

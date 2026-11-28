@@ -655,7 +655,7 @@ function TravellerBookingsCore({
                     {isConfirmed && (() => {
                       const cancellationEligibility = getBookingCancellationEligibility(
                         booking,
-                        isHotel ? 'hotel' : 'experience'
+                        isPackage ? 'package' : isHotel ? 'hotel' : 'experience'
                       );
                       return cancellationEligibility.canCancel ? (
                         <button
@@ -707,7 +707,13 @@ function TravellerBookingsCore({
           <CancellationModal
             isOpen={!!cancellingBooking}
             booking={cancellingBooking}
-            bookingType={cancellingBooking.bookingType || (cancellingBooking.hotel ? 'hotel' : 'experience')}
+            bookingType={
+              cancellingBooking.bookingType === 'package' || cancellingBooking.planId || cancellingBooking.packageId
+                ? 'trip'
+                : cancellingBooking.hotel
+                ? 'hotel'
+                : (cancellingBooking.bookingType || 'experience')
+            }
             onClose={() => setCancellingBooking(null)}
             onSuccess={() => {
               fetchLiveBookings();

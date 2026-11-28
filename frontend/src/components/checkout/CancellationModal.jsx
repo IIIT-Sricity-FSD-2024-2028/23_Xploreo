@@ -56,8 +56,15 @@ export default function CancellationModal({
 
   if (!isOpen || !booking) return null;
 
-  const isHotel = bookingType === 'hotel' || !!booking.hotel;
-  const isTrip = bookingType === 'trip' || (!isHotel && (booking.planId || booking.itinerary));
+  const isHotel = bookingType === 'hotel' || (!booking.planId && !booking.packageId && booking.bookingType !== 'package' && !!booking.hotel);
+  const isTrip =
+    bookingType === 'trip' ||
+    bookingType === 'package' ||
+    booking.bookingType === 'package' ||
+    booking.bookingType === 'trip' ||
+    Boolean(booking.planId) ||
+    Boolean(booking.packageId) ||
+    (!isHotel && Boolean(booking.itinerary));
   const isExperience = !isHotel && !isTrip;
 
   const loading = isTrip ? tripLoading : bookingLoading;
@@ -71,11 +78,15 @@ export default function CancellationModal({
   const title = isHotel
     ? (booking.hotel?.name || 'Hotel Reservation')
     : isTrip
-      ? (booking.itinerary?.day1?.hotel?.name || `Trip #${booking.id}`)
+      ? (booking.planTitle || booking.itinerary?.day1?.hotel?.name || `Trip #${booking.id}`)
       : (booking.experience?.title || 'Experience Booking');
 
   const totalAmount = Number(booking.totalAmount) || 0;
-  const dateStr = isHotel ? booking.checkIn : isTrip ? (booking.itinerary?.day1?.hotel?.checkInDate || booking.date) : booking.date;
+  const dateStr = isHotel
+    ? booking.checkIn
+    : isTrip
+    ? (booking.startDate || booking.checkIn || booking.itinerary?.day1?.hotel?.checkInDate || booking.date)
+    : booking.date;
 
   const cancellationEligibility = getBookingCancellationEligibility(
     booking,
