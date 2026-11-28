@@ -18,6 +18,7 @@
 
 .gd-trip-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(13, 148, 136, 0.08); border-color: #cbd5e1; }
 .gd-trip-card.is-earned { border-left: 4px solid #16a34a; }
+.gd-trip-card.is-refunded { border-left: 4px solid #ef4444; background: #fffbfb; }
 
 .gd-trip-left { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
 

@@ -59,11 +59,18 @@ export const selectDashboardStats = createSelector(
   (applications, assignments) => {
     const apps = applications || [];
     const jobs = assignments || [];
+    const acceptedCount = apps.filter((a) => a.status === 'accepted').length;
+    const pendingCount = apps.filter((a) => a.status === 'pending').length;
+    const activeJobsCount = jobs.filter((a) => a.status === 'confirmed').length;
+    const totalJobsCount = jobs.length;
     return {
-      acceptedCount: apps.filter((a) => a.status === 'accepted').length,
-      pendingCount: apps.filter((a) => a.status === 'pending').length,
-      activeJobsCount: jobs.filter((a) => a.status === 'confirmed').length,
-      totalJobsCount: jobs.length,
+      accepted: acceptedCount,
+      pending: pendingCount,
+      activeJobs: activeJobsCount,
+      acceptedCount,
+      pendingCount,
+      activeJobsCount,
+      totalJobsCount,
     };
   }
 );

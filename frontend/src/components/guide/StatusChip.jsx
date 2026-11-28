@@ -9,6 +9,7 @@ const CHIPS = {
   completed: ['🏁 Completed', '#0f766e', '#f0fdfa'],
   rejected_by_guide: ['❌ Guide Rejected', '#dc2626', '#fef2f2'],
   cancelled: ['🚫 Cancelled', '#6b7280', '#f9fafb'],
+  refunded: ['↩️ Refunded', '#dc2626', '#fef2f2'],
 };
 
 export default function StatusChip({ status }) {

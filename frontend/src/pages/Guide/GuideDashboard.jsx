@@ -142,15 +142,15 @@ export default function GuideDashboard() {
           </div>
           <div className="gd-kpi-card">
             <div className="gd-kpi-icon-wrap kpi-green">✓</div>
-            <div className="gd-kpi-data"><span className="gd-kpi-val">{accepted}</span><span className="gd-kpi-lbl">Accepted</span></div>
+            <div className="gd-kpi-data"><span className="gd-kpi-val">{accepted ?? 0}</span><span className="gd-kpi-lbl">Accepted</span></div>
           </div>
           <div className="gd-kpi-card">
             <div className="gd-kpi-icon-wrap kpi-yellow">⏳</div>
-            <div className="gd-kpi-data"><span className="gd-kpi-val">{pending}</span><span className="gd-kpi-lbl">Pending</span></div>
+            <div className="gd-kpi-data"><span className="gd-kpi-val">{pending ?? 0}</span><span className="gd-kpi-lbl">Pending</span></div>
           </div>
           <div className="gd-kpi-card">
             <div className="gd-kpi-icon-wrap kpi-teal">🧳</div>
-            <div className="gd-kpi-data"><span className="gd-kpi-val">{activeJobs}</span><span className="gd-kpi-lbl">Active Jobs</span></div>
+            <div className="gd-kpi-data"><span className="gd-kpi-val">{activeJobs ?? 0}</span><span className="gd-kpi-lbl">Active Jobs</span></div>
           </div>
         </section>
 

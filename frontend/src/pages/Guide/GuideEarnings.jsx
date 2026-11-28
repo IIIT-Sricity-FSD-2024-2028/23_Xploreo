@@ -19,6 +19,7 @@ const FILTERS = [
   ['all', 'All'],
   ['confirmed', 'Confirmed'],
   ['pending_guide_confirm', 'Pending'],
+  ['refunded', 'Refunded'],
   ['rejected_by_guide', 'Rejected'],
 ];
 
@@ -67,9 +68,21 @@ export default function GuideEarnings() {
     }
   };
 
+  const allEntries = useMemo(() => {
+    const existingIds = new Set(jobs.map((j) => j.id));
+    const refundedTrips = trips.filter(
+      (t) => (t.status === 'refunded' || t.status === 'cancelled') && !existingIds.has(t.id)
+    );
+    return [...jobs, ...refundedTrips];
+  }, [jobs, trips]);
+
   const rows = useMemo(() => {
-    return filter === 'all' ? jobs : jobs.filter((j) => j.status === filter);
-  }, [jobs, filter]);
+    if (filter === 'all') return allEntries;
+    if (filter === 'refunded') {
+      return allEntries.filter((j) => j.status === 'refunded' || j.status === 'cancelled');
+    }
+    return allEntries.filter((j) => j.status === filter);
+  }, [allEntries, filter]);
 
   const planOf = (id) => plans.find((p) => String(p.id) === String(id));
   const data = !loading || jobs.length > 0 || trips.length > 0;
@@ -147,8 +160,9 @@ export default function GuideEarnings() {
             {rows.map((job) => {
               const plan = planOf(job.planId);
               const earned = job.status === 'confirmed' || job.status === 'started' || job.status === 'completed';
+              const isRefunded = job.status === 'refunded' || job.status === 'cancelled';
               return (
-                <article className={`gd-trip-card${earned ? ' is-earned' : ''}`} key={job.id}>
+                <article className={`gd-trip-card${earned ? ' is-earned' : ''}${isRefunded ? ' is-refunded' : ''}`} key={job.id}>
                   <div className="gd-trip-left">
                     <span className="gd-trip-dest">{job.kind === 'experience' ? job.destination : plan?.destination || 'Trip'}</span>
                     <h3 className="gd-trip-name">{job.kind === 'experience' ? `🎟 ${job.title}` : plan?.title || job.planId}</h3>
@@ -159,7 +173,7 @@ export default function GuideEarnings() {
                   <div className="gd-trip-right">
                     <div className="gd-trip-total-block">
                       <span className="gd-trip-total-label">{job.kind === 'experience' ? 'Guide Fee' : 'Trip Amount'}</span>
-                      <span className={`gd-trip-total${earned ? ' is-earned' : ''}`}>
+                      <span className={`gd-trip-total${earned ? ' is-earned' : ''}${isRefunded ? ' is-refunded' : ''}`}>
                         {inr(amountOf(job))}
                       </span>
                     </div>
