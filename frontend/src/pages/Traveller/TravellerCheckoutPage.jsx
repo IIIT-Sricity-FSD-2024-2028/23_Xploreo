@@ -11,12 +11,14 @@ import {
   DEFAULT_PAYMENT_METHODS,
 } from '../../components/checkout/index.js';
 import { selectAuthUser } from '../../features/authSlice.js';
-import { fetchBrowseItemDetail, selectBrowseDetail } from '../../features/browseSlice.js';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
 import {
   DEFAULT_DEMO_ITEM,
+  fetchBrowseItemDetail,
   initCheckoutSession,
   processCheckoutPayment,
   resetCheckoutState,
+  selectBrowseDetail,
   selectCheckoutState,
   setCheckoutError,
   setCheckoutStep,
@@ -25,8 +27,7 @@ import {
   setRoomCount,
   setSimulatedOutcome,
   setTravellerDetails,
-} from '../../features/checkoutSlice.js';
-import { fetchNotifications } from '../../features/notificationsSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import {
   getTodayIsoDate,

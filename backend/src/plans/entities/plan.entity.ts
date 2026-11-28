@@ -14,4 +14,5 @@ export class Plan {
   image!: string;
   tags!: string[];
   itinerary!: StructuredItinerary;
+  createdByNtaId?: string;
 }

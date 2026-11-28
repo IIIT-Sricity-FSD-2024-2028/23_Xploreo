@@ -1,47 +1,10 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
-import { createTicket, getTickets, resolveTicket } from '../services/tickets.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
-
-const EMPTY_LIST = [];
-
-export const fetchSupportTickets = createAsyncThunk(
-  'supportTickets/fetchSupportTickets',
-  async (_, { rejectWithValue }) => {
-    try {
-      const data = await getTickets();
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load your support tickets.');
-    }
-  },
-);
-
-export const createSupportTicket = createAsyncThunk(
-  'supportTickets/createSupportTicket',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const created = await createTicket(payload);
-      return created;
-    } catch (error) {
-      return rejectWithValue({
-        status: error?.status || error?.response?.status || 500,
-        message: error?.message || 'An unexpected error occurred while submitting the ticket.',
-      });
-    }
-  },
-);
-
-export const resolveSupportTicket = createAsyncThunk(
-  'supportTickets/resolveSupportTicket',
-  async ({ ticketId, resolution = '' }, { rejectWithValue }) => {
-    try {
-      const updated = await resolveTicket(ticketId, resolution);
-      return { ticketId, resolution, updated };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to resolve support ticket.');
-    }
-  },
-);
+import { createSlice } from '@reduxjs/toolkit';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from '@/features/authSlice.js';
+import {
+  createSupportTicket,
+  fetchSupportTickets,
+  resolveSupportTicket,
+} from './supportTicketsThunks.js';
 
 const initialState = {
   items: [],
@@ -56,7 +19,7 @@ const initialState = {
 };
 
 const supportTicketsSlice = createSlice({
-  name: 'supportTickets',
+  name: 'traveller/supportTickets',
   initialState,
   reducers: {
     clearSupportTicketsError(state) {
@@ -120,9 +83,9 @@ const supportTicketsSlice = createSlice({
         state.items = state.items.map((t) =>
           t.id === ticketId
             ? {
-              ...t,
-              ...(updated && typeof updated === 'object' ? updated : { status: 'resolved', resolution }),
-            }
+                ...t,
+                ...(updated && typeof updated === 'object' ? updated : { status: 'resolved', resolution }),
+              }
             : t,
         );
       })
@@ -144,15 +107,5 @@ export const {
   clearCreateTicketState,
   resetSupportTicketsState,
 } = supportTicketsSlice.actions;
-
-export const selectSupportTickets = (state) => state.supportTickets?.items || EMPTY_LIST;
-export const selectSupportTicketsHasLoaded = (state) => Boolean(state.supportTickets?.hasLoaded);
-export const selectSupportTicketsLoading = (state) => Boolean(state.supportTickets?.loading);
-export const selectSupportTicketsError = (state) => state.supportTickets?.error || null;
-export const selectSupportTicketCreating = (state) => Boolean(state.supportTickets?.creating);
-export const selectSupportTicketCreateError = (state) => state.supportTickets?.createError || null;
-export const selectLastCreatedTicket = (state) => state.supportTickets?.lastCreatedTicket || null;
-export const selectSupportTicketResolving = (state) => Boolean(state.supportTickets?.resolving);
-export const selectSupportTicketResolveError = (state) => state.supportTickets?.resolveError || null;
 
 export default supportTicketsSlice.reducer;

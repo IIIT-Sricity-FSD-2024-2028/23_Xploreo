@@ -81,8 +81,43 @@ export const selectGuideApplicationsByStatus = createSelector(
 
 const selectDashboardState = (state) => state.nta.dashboard;
 
-export const selectNtaDashboardTripCount = (state) => selectDashboardState(state).tripCount;
-export const selectNtaRecentBookings = (state) => selectDashboardState(state).recentBookings;
+// Every package booking (trip) in the NTA's region, as GET /trips returned it.
+export const selectNtaBookings = (state) => selectDashboardState(state).bookings;
+
+// Trip statuses that are still a live booking: booked and not yet over. Cancelled (incl. refunded)
+// and completed trips are excluded; 'draft' trips were never booked.
+export const ACTIVE_BOOKING_STATUSES = ['confirmed', 'pending_guide_confirm', 'rejected_by_guide', 'started'];
+
+// The "Active Bookings" KPI: region bookings whose status is in ACTIVE_BOOKING_STATUSES.
+export const selectNtaDashboardTripCount = createSelector([selectNtaBookings], (bookings) =>
+  bookings.filter((b) => ACTIVE_BOOKING_STATUSES.includes(norm(b.status))).length,
+);
+
+// Package title for a booking: the title GET /trips sends, else the plan in state.nta.plans.
+const withPackageTitle = (booking, plansById) => ({
+  ...booking,
+  packageTitle: booking.packageTitle || plansById.get(booking.packageId)?.title || booking.packageId || null,
+});
+
+// Recent Package Bookings table: newest first (trips without a booking time last), 15 rows,
+// every status included so cancellations stay visible.
+export const selectNtaRecentBookings = createSelector([selectNtaBookings, selectNtaPlans], (bookings, plans) => {
+  const plansById = new Map(plans.map((p) => [p.id, p]));
+  return [...bookings]
+    .sort((a, b) => String(b.bookingDate || '').localeCompare(String(a.bookingDate || '')))
+    .slice(0, 15)
+    .map((b) => withPackageTitle(b, plansById));
+});
+
+// One booking (with its booked hotel and experiences) by trip id, or null.
+export const selectNtaBookingById = createSelector(
+  [selectNtaBookings, selectNtaPlans, (_state, bookingId) => bookingId],
+  (bookings, plans, bookingId) => {
+    const booking = bookings.find((b) => b.bookingId === bookingId);
+    return booking ? withPackageTitle(booking, new Map(plans.map((p) => [p.id, p]))) : null;
+  },
+);
+
 export const selectNtaDashboardStatus = (state) => selectDashboardState(state).status;
 export const selectNtaDashboardError = (state) => selectDashboardState(state).error;
 
@@ -103,10 +138,44 @@ export const selectNtaDashboardKpis = createSelector(
     availablePackagesTrend: { value: 7.7, direction: 'up', label: 'active' },
     unavailablePackages: plans.filter((p) => p.status === 'unavailable').length,
     unavailablePackagesTrend: { value: 0, direction: 'neutral', label: 'paused / draft' },
+    // Active bookings only (see ACTIVE_BOOKING_STATUSES); cancelled and completed trips excluded.
     recentBookingsCount: tripCount,
     recentBookingsTrend: { value: 18.2, direction: 'up', label: 'past 30 days' },
   }),
 );
+
+// ---------------------------------------------------------------------------
+// Partner inventory (state.nta.inventory) for building packages
+// ---------------------------------------------------------------------------
+
+const selectInventoryState = (state) => state.nta.inventory;
+const EMPTY_ROOMS = { items: [], status: 'idle', error: null };
+
+export const selectNtaInventoryHotels = (state) => selectInventoryState(state).hotels.items;
+export const selectNtaInventoryExperiences = (state) => selectInventoryState(state).experiences.items;
+export const selectNtaInventoryHotelsStatus = (state) => selectInventoryState(state).hotels.status;
+export const selectNtaInventoryExperiencesStatus = (state) => selectInventoryState(state).experiences.status;
+export const selectNtaInventoryError = (state) =>
+  selectInventoryState(state).hotels.error || selectInventoryState(state).experiences.error;
+
+// Active partner hotels in a destination (exact city match, case-insensitive) — the only hotels
+// the backend accepts in a package for that destination.
+export const selectNtaRegionHotels = createSelector(
+  [selectNtaInventoryHotels, (_state, destination) => destination],
+  (hotels, destination) =>
+    hotels.filter((h) => (!h.status || h.status === 'active') && norm(h.city) === norm(destination)),
+);
+
+// Available partner experiences in a destination (exact match on experience.destination).
+export const selectNtaRegionExperiences = createSelector(
+  [selectNtaInventoryExperiences, (_state, destination) => destination],
+  (experiences, destination) =>
+    experiences.filter((e) => norm(e.availability) === 'available' && norm(e.destination) === norm(destination)),
+);
+
+// Room types of one hotel: { items, status, error }.
+export const selectNtaHotelRooms = (state, hotelId) =>
+  selectInventoryState(state).roomsByHotel[hotelId] || EMPTY_ROOMS;
 
 // Package pricing distribution — as nta.api.js#getNtaPricingDistribution built it from GET /plans:
 // plans in the region (exact, case-insensitive), in the order the server returns them.
@@ -148,3 +217,20 @@ export const selectGuideApplicationCounts = createSelector([selectGuideApplicati
   });
   return res;
 });
+
+// ---------------------------------------------------------------------------
+// Package Bookings & Component Distribution (state.nta.packageBookings)
+// ---------------------------------------------------------------------------
+
+const selectNtaPackageBookingsState = (state) => state.nta.packageBookings;
+
+export const selectNtaPackageBookings = (state) => selectNtaPackageBookingsState(state)?.items ?? [];
+export const selectNtaPackageBookingsStatus = (state) => selectNtaPackageBookingsState(state)?.status ?? 'idle';
+export const selectNtaPackageBookingsError = (state) => selectNtaPackageBookingsState(state)?.error ?? null;
+export const selectSelectedNtaPackageBookingId = (state) => selectNtaPackageBookingsState(state)?.selectedId ?? null;
+export const selectSelectedNtaPackageBookingDetail = (state) => selectNtaPackageBookingsState(state)?.selectedDetail ?? null;
+export const selectNtaPackageBookingDetailStatus = (state) => selectNtaPackageBookingsState(state)?.detailStatus ?? 'idle';
+export const selectNtaPackageBookingDetailError = (state) => selectNtaPackageBookingsState(state)?.detailError ?? null;
+export const selectNtaPackageDispatchStatus = (state) => selectNtaPackageBookingsState(state)?.dispatchStatus ?? 'idle';
+export const selectNtaPackageDispatchError = (state) => selectNtaPackageBookingsState(state)?.dispatchError ?? null;
+export const selectNtaPackageLastDispatchResult = (state) => selectNtaPackageBookingsState(state)?.lastDispatchResult ?? null;

@@ -204,6 +204,15 @@ export function validatePackageBooking({
     }
   }
 
+  // The server's booking quote (GET /plans/:id/capacity) says why a package cannot be booked:
+  // inactive or other-region inventory, no session on a date, no capacity left, unknown capacity.
+  if (plan?.bookingQuote && plan.bookingQuote.bookable === false) {
+    return {
+      valid: false,
+      error: plan.bookingQuote.issues?.[0] || 'This tour package cannot be booked right now.',
+    };
+  }
+
   if (!Number.isInteger(guestsNum) || guestsNum < 1) {
     return { valid: false, error: 'At least 1 traveller is required.' };
   }

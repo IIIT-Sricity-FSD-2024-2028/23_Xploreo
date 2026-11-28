@@ -75,59 +75,89 @@ export class ApiError extends Error {
   }
 }
 
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** YYYY-MM-DD of `dateIso` plus `offset` days (calendar arithmetic in UTC). */
+export function addDaysIso(dateIso, offset) {
+  const d = new Date(`${dateIso}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+/** "HH:MM" from either an "HH:MM" value or an ISO date-time. */
+function timeOf(value, fallback) {
+  const s = String(value || '');
+  const m = /^(\d{2}:\d{2})/.exec(s) || /T(\d{2}:\d{2})/.exec(s);
+  return m ? m[1] : fallback;
+}
+
 /**
- * Normalizes an incoming client itinerary into a valid backend StructuredItinerary.
- * Handles silent backend compatibility for non-optional Day1 transport without
- * exposing transport or flight concepts in the UI.
- * 
+ * Converts the PlanForm itinerary into the backend StructuredItinerary — the exact shape
+ * CreateTripDto accepts, so a saved package can be booked as-is:
+ *   day1.hotel     { id, hotelId, name, checkInDate, checkOutDate, roomType, status } (no UI-only fields)
+ *   day1.transport  a self-arranged placeholder required by the backend (no transport in the UI)
+ *   days[n]        experiences dated check-in + (dayNumber - 1), at the chosen HH:MM times
+ * There are no fallback dates or ids: a missing hotel, room type or date is an error.
+ *
  * @param {Object} rawItinerary - Client itinerary { day1: { hotel }, days: [...] }
  * @param {string} destination - Plan destination city
  * @returns {Object} StructuredItinerary compatible with NestJS backend
  */
-function buildBackendItinerary(rawItinerary = {}, destination = 'Destination') {
-  const day1Hotel = rawItinerary.day1?.hotel || {
-    id: `hotel-default-${Date.now()}`,
-    hotelId: 'HP-DEFAULT',
-    name: `${destination} Partner Stay`,
-    checkInDate: '2026-11-01',
-    checkOutDate: '2026-11-05',
-    roomType: 'Standard Room',
-    status: 'planned',
-  };
+export function buildBackendItinerary(rawItinerary = {}, destination = '') {
+  const hotel = rawItinerary?.day1?.hotel || {};
+  const checkIn = String(hotel.checkInDate || '').slice(0, 10);
+  const checkOut = String(hotel.checkOutDate || '').slice(0, 10);
+  if (!hotel.hotelId) throw new ApiError('Please select a partner hotel for this package.', 400);
+  if (!hotel.roomType) throw new ApiError('Please select a room type for the partner hotel.', 400);
+  if (!ISO_DATE.test(checkIn) || !ISO_DATE.test(checkOut)) {
+    throw new ApiError('Please set both the hotel check-in and check-out dates.', 400);
+  }
+  if (checkOut <= checkIn) throw new ApiError('Hotel check-out must be after check-in.', 400);
 
-  // Construct silent transport compatibility record required by DayOneItinerary class
-  const transportCompatibility = {
-    id: `transport-compat-${Date.now()}`,
-    provider: 'Independent / Self-Arranged',
-    vehicleType: 'None',
-    pickupLocation: destination,
-    dropoffLocation: destination,
-    pickupAt: `${day1Hotel.checkInDate || '2026-11-01'}T12:00:00.000Z`,
-    status: 'planned',
-  };
-
-  const days = Array.isArray(rawItinerary.days)
-    ? rawItinerary.days.map((dayGroup, idx) => ({
-        dayNumber: Number(dayGroup.dayNumber || idx + 2),
-        experiences: Array.isArray(dayGroup.experiences)
-          ? dayGroup.experiences.map((exp, expIdx) => ({
-              id: exp.id || `exp-local-${Date.now()}-${expIdx}`,
-              experienceId: exp.experienceId || `EXP-${expIdx + 1}`,
-              title: String(exp.title || 'Curated Activity').trim(),
-              location: String(exp.location || destination).trim(),
-              startsAt: String(exp.startsAt || '2026-11-02T10:00:00.000Z'),
-              endsAt: String(exp.endsAt || '2026-11-02T12:00:00.000Z'),
-              status: exp.status || 'planned',
-            }))
-          : [],
-      }))
-    : [];
+  const days = (Array.isArray(rawItinerary.days) ? rawItinerary.days : [])
+    .map((dayGroup) => {
+      const dayNumber = Number(dayGroup.dayNumber);
+      const date = addDaysIso(checkIn, dayNumber - 1);
+      return {
+        dayNumber,
+        experiences: (Array.isArray(dayGroup.experiences) ? dayGroup.experiences : []).map((exp) => {
+          if (!exp.experienceId) throw new ApiError(`An experience on day ${dayNumber} has no catalogue id.`, 400);
+          return {
+            id: `${exp.experienceId}-day${dayNumber}`,
+            experienceId: exp.experienceId,
+            title: String(exp.title || '').trim(),
+            location: String(exp.location || destination).trim(),
+            startsAt: `${date}T${timeOf(exp.startsAt, '10:00')}:00.000Z`,
+            endsAt: `${date}T${timeOf(exp.endsAt, '13:00')}:00.000Z`,
+            status: 'planned',
+          };
+        }),
+      };
+    })
+    .filter((dayGroup) => dayGroup.experiences.length > 0);
 
   return {
     day1: {
       flight: null, // Product decision: No flights
-      transport: transportCompatibility, // Silent backend compatibility bridge
-      hotel: day1Hotel,
+      // Required by the backend's DayOneItinerary; packages have no transport in the UI.
+      transport: {
+        id: `${hotel.hotelId}-transport`,
+        provider: 'Independent / Self-Arranged',
+        vehicleType: 'None',
+        pickupLocation: destination,
+        dropoffLocation: destination,
+        pickupAt: `${checkIn}T12:00:00.000Z`,
+        status: 'planned',
+      },
+      hotel: {
+        id: `${hotel.hotelId}-stay`,
+        hotelId: hotel.hotelId,
+        name: String(hotel.name || '').trim(),
+        checkInDate: checkIn,
+        checkOutDate: checkOut,
+        roomType: hotel.roomType,
+        status: 'planned',
+      },
     },
     days,
   };
@@ -187,7 +217,7 @@ export async function getPlans(params = {}, session = {}) {
     });
     return result;
   } catch (err) {
-    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     throw new ApiError(err.message || 'Failed to load travel plans.', status);
   }
 }
@@ -229,7 +259,7 @@ export async function getPlanById(id, session = {}) {
     });
     return plan;
   } catch (err) {
-    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     if (status === 404) {
       throw new ApiError(`Plan #${id} not found on server.`, 404);
     }
@@ -299,13 +329,11 @@ export async function createPlan(data, session = {}) {
     });
     return created;
   } catch (err) {
-    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     if (status === 403) {
-      throw new ApiError('You do not have permission to create travel plans.', 403);
+      throw new ApiError(err.message || 'You do not have permission to create travel plans.', 403);
     }
-    if (status === 400) {
-      throw new ApiError('Invalid plan payload provided. Please check all fields.', 400);
-    }
+    // 400s carry the server's reason (missing dates, inactive or other-region hotel, ...).
     throw new ApiError(err.message || 'Failed to create plan.', status);
   }
 }
@@ -390,7 +418,7 @@ export async function updatePlan(id, data, session = {}) {
   payload.includesFlight = false;
 
   if (data.itinerary) {
-    payload.itinerary = buildBackendItinerary(data.itinerary, payload.destination || 'Destination');
+    payload.itinerary = buildBackendItinerary(data.itinerary, payload.destination || session.region || '');
   }
 
   try {
@@ -401,9 +429,9 @@ export async function updatePlan(id, data, session = {}) {
     });
     return updated;
   } catch (err) {
-    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     if (status === 403) {
-      throw new ApiError('You do not have permission to edit this plan.', 403);
+      throw new ApiError(err.message || 'You do not have permission to edit this plan.', 403);
     }
     if (status === 404) {
       throw new ApiError(`Plan #${id} not found on server.`, 404);
@@ -450,7 +478,7 @@ export async function deletePlan(id, session = {}) {
     });
     return result;
   } catch (err) {
-    const status = parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
     if (status === 403) {
       throw new ApiError('Only SuperAdmins are permitted to delete travel plans.', 403);
     }
@@ -458,5 +486,34 @@ export async function deletePlan(id, session = {}) {
       throw new ApiError(`Plan #${id} not found on server.`, 404);
     }
     throw new ApiError(err.message || `Failed to delete plan #${id}.`, status);
+  }
+}
+
+/**
+ * What can be booked on a package right now. Calls GET /plans/:id/capacity.
+ * Permitted roles: TRAVELLER, SUPERADMIN, NONTECHADMIN.
+ *
+ * @param {string} id - Plan ID
+ * @param {Object} [session] - User session identity
+ * @returns {Promise<{ planId: string, maxGuests: number|null, bookable: boolean, issues: string[],
+ *   limits: Array<{ kind: 'hotel'|'experience', id: string, name: string, date?: string,
+ *   capacity: number|null, basis: string }>, pricePerPerson: number }>}
+ */
+export async function getPlanCapacity(id, session = {}) {
+  if (!id) throw new ApiError('Plan ID is required.', 400);
+
+  if (isPlansMockMode()) {
+    // Mock data has no inventory: capacity is unknown, never invented.
+    return { planId: id, maxGuests: null, bookable: true, issues: [], limits: [], pricePerPerson: null };
+  }
+
+  try {
+    return await fetchData(`${BASE_URL}/plans/${encodeURIComponent(id)}/capacity`, {
+      method: 'GET',
+      headers: buildPlansHeaders(session),
+    });
+  } catch (err) {
+    const status = err.status || parseInt(err.message?.match(/status:\s*(\d+)/)?.[1], 10) || 500;
+    throw new ApiError(err.message || `Failed to load availability for package #${id}.`, status);
   }
 }

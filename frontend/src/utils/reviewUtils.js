@@ -126,3 +126,46 @@ export function getStarArray(rating = 0) {
     isFilled: starIndex <= clamped,
   }));
 }
+
+/**
+ * Normalizes and compares review author identifiers across string and numeric IDs (e.g. 'T001', '20001').
+ */
+export function matchesReviewAuthor(reviewUserId, currentUserId) {
+  if (reviewUserId == null || currentUserId == null) return false;
+  const left = String(reviewUserId).trim().toLowerCase();
+  const right = String(currentUserId).trim().toLowerCase();
+  return Boolean(left && right && left === right);
+}
+
+/**
+ * Checks whether a review already exists for a given trip, optionally scoped by targetType and userId,
+ * matching backend ReviewsService uniqueness per (tripId, targetType, userId).
+ */
+export function hasReviewedTripTarget(reviews = [], { tripId, targetType = null, userId = null } = {}) {
+  if (!tripId) return false;
+  const targetNorm = targetType ? String(targetType).trim().toLowerCase() : null;
+  const userNorm = userId != null && String(userId).trim() !== '' ? String(userId).trim().toLowerCase() : null;
+  return (Array.isArray(reviews) ? reviews : []).some((r) => {
+    if (!r || r.tripId !== tripId) return false;
+    if (userNorm && !matchesReviewAuthor(r.userId, userNorm)) return false;
+    if (targetNorm && r.targetType && String(r.targetType).trim().toLowerCase() !== targetNorm) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Returns completed trips that still have at least one unreviewed target for the active user.
+ */
+export function getEligibleTripsForReview(trips = [], reviews = [], { targetType = null, userId = null } = {}) {
+  const completed = (Array.isArray(trips) ? trips : []).filter(
+    (t) => (t?.status || '').toLowerCase() === 'completed' || (t?.trackingStatus || '').toLowerCase() === 'completed',
+  );
+  if (targetType) {
+    return completed.filter((t) => !hasReviewedTripTarget(reviews, { tripId: t.id, targetType, userId }));
+  }
+  return completed.filter((t) =>
+    VALID_TARGET_TYPES.some((type) => !hasReviewedTripTarget(reviews, { tripId: t.id, targetType: type, userId })),
+  );
+}

@@ -81,6 +81,35 @@ export class TripsController {
     return this.tripsService.findByGuide(guideId, req.user);
   }
 
+  @Roles(Role.NONTECHADMIN, Role.SUPERADMIN)
+  @Get('nta/packages')
+  @ApiOperation({ summary: 'Get package bookings owned by the NTA with component details' })
+  @ApiReadEndpoint()
+  findNtaPackageBookings(@Req() req: any) {
+    return this.tripsService.findNtaPackageBookings(req.user);
+  }
+
+  @Roles(Role.NONTECHADMIN, Role.SUPERADMIN)
+  @Get('nta/packages/:id')
+  @ApiOperation({ summary: 'Get a single package booking owned by the NTA with component details' })
+  @ApiReadEndpoint()
+  getNtaPackageBookingDetail(
+    @Param('id', NonEmptyStringPipe) id: string,
+    @Req() req: any,
+  ) {
+    return this.tripsService.getNtaPackageBookingDetail(id, req.user);
+  }
+
+  @Roles(Role.NONTECHADMIN, Role.SUPERADMIN)
+  @Post('nta/packages/:id/dispatch')
+  @ApiOperation({ summary: 'NTA dispatches a booked package components to Hotel and Experience partners' })
+  dispatchNtaPackageBooking(
+    @Param('id', NonEmptyStringPipe) id: string,
+    @Req() req: any,
+  ) {
+    return this.tripsService.dispatchNtaPackageBooking(id, req.user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get trip by ID' })
   @ApiReadEndpoint()

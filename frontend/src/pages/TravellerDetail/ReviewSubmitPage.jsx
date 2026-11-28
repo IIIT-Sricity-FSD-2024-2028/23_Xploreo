@@ -2,22 +2,22 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { selectAuthUser } from '@/features/authSlice.js';
-import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
+import { getEligibleTripsForReview, hasReviewedTripTarget } from '@/utils/reviewUtils.js';
 import {
   clearReviewSubmitState,
+  fetchBrowseItemDetail,
   fetchReviews,
+  fetchTravellerTrips,
+  selectBrowseDetail,
   selectLastSubmittedReview,
   selectReviewsList,
   selectReviewsLoading,
   selectReviewSubmitError,
   selectReviewSubmitting,
-  submitReview,
-} from '@/features/reviewsSlice.js';
-import {
-  fetchTravellerTrips,
   selectTripsList,
   selectTripsLoading,
-} from '@/features/tripsSlice.js';
+  submitReview,
+} from '@/store/traveller/index.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 
@@ -102,25 +102,31 @@ export default function ReviewSubmitPage() {
     dispatch(fetchReviews());
   }, [dispatch, authUser]);
 
+  const activeUserId = authUser && authUser.role !== 'default'
+    ? (authUser.userId || authUser.id || authUser.username || null)
+    : null;
+
   const { eligibleTrips, eligibilityError } = useMemo(() => {
     const completed = (rawTrips || []).filter(
       (t) => (t.status || '').toLowerCase() === 'completed' || (t.trackingStatus || '').toLowerCase() === 'completed'
     );
-    const reviewedIds = new Set((rawReviews || []).map((r) => r.tripId).filter(Boolean));
-    const available = completed.filter((t) => !reviewedIds.has(t.id));
+    const available = getEligibleTripsForReview(rawTrips, rawReviews, {
+      targetType,
+      userId: activeUserId,
+    });
 
     let nextError = null;
     if (paramTripId && !tripsLoading && !reviewsLoading) {
       const match = completed.find((t) => t.id === paramTripId);
       if (!match) {
         nextError = `Trip #${paramTripId} is not a completed trip. Reviews can only be submitted for completed trips.`;
-      } else if (reviewedIds.has(paramTripId)) {
-        nextError = `A review has already been submitted for Trip #${paramTripId}. Duplicate reviews are not allowed.`;
+      } else if (hasReviewedTripTarget(rawReviews, { tripId: paramTripId, targetType, userId: activeUserId })) {
+        nextError = `A ${targetType} review has already been submitted for Trip #${paramTripId}. Duplicate reviews are not allowed.`;
       }
     }
 
     return { eligibleTrips: available, eligibilityError: nextError };
-  }, [rawTrips, rawReviews, paramTripId, tripsLoading, reviewsLoading]);
+  }, [rawTrips, rawReviews, paramTripId, targetType, activeUserId, tripsLoading, reviewsLoading]);
 
   const loadingTrips = tripsLoading || reviewsLoading;
   const selectedTripId = manualSelectedTripId || eligibleTrips[0]?.id || '';

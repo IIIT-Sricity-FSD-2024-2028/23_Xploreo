@@ -17,7 +17,11 @@ export class ExperienceBooking {
   email!: string;
   phone!: string;
   date!: string;
+  time?: string;
   participants!: number;
+  tripId?: string;
+  isPackageComponent?: boolean;
+  packagePlanId?: string;
   subtotal?: number;
   taxesAndFees?: number;
   totalAmount!: number;

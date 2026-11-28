@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
-import { createHotelBooking } from '@/features/bookingsSlice.js';
+import {
+  createHotelBooking,
+  fetchBrowseItemDetail,
+  selectBrowseDetail,
+} from '@/store/traveller/index.js';
 import {
   calculateNightCount,
   getTodayIsoDate,

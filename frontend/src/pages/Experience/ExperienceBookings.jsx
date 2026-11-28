@@ -137,8 +137,26 @@ export default function ExperienceBookings() {
                         return (
                           <div key={b.id} className="ep-booking-user-row">
                             <div>
-                              <strong style={{ color: '#0f172a' }}>{b.guestName}</strong><br />
-                              <small>{b.id}</small>
+                              <strong style={{ color: '#0f172a' }}>{b.guestName}</strong>
+                              {b.isPackageComponent ? (
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    marginLeft: 8,
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: '2px 8px',
+                                    borderRadius: 999,
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                  }}
+                                >
+                                  Part of Holiday Package
+                                </span>
+                              ) : null}
+                              <br />
+                              <small>{b.id}{b.isPackageComponent && b.tripId ? ` · Trip #${b.tripId}` : ''}</small>
                             </div>
                             <div>{b.participants} guests</div>
                             <div><span className="gd-chip" style={{ ...statusStyle(meta.className), borderColor: 'transparent' }}>{meta.label}</span></div>
@@ -179,6 +197,11 @@ export default function ExperienceBookings() {
                     <span id="modalId">{details.id}</span>
                     <span id="modalStatus" className={`status-badge ${detailsMeta.className}`}>{detailsMeta.label}</span>
                   </div>
+                  {details.isPackageComponent ? (
+                    <p style={{ margin: '6px 0 0', fontSize: 12, fontWeight: 600, color: '#1d4ed8' }}>
+                      Part of Holiday Package · Trip #{details.tripId}{details.packagePlanId ? ` (Plan ${details.packagePlanId})` : ''}
+                    </p>
+                  ) : null}
                 </div>
                 <CloseButton label="Close booking details" glyph="✕" onClick={() => setDetailsId(null)} />
               </div>
@@ -191,7 +214,7 @@ export default function ExperienceBookings() {
                 <p id="modalExperience">{details.experience?.title ?? 'Experience'}</p>
                 <div className="grid-3">
                   <div><p className="label">Date</p><p id="modalDate">{longDate(details.date)}</p></div>
-                  <div><p className="label">Time</p><p id="modalTime">{details.time}</p></div>
+                  <div><p className="label">Time</p><p id="modalTime">{details.time || '—'}</p></div>
                   <div><p className="label">Guests</p><p id="modalGuests">{details.participants} guests</p></div>
                 </div>
               </div>
@@ -209,8 +232,21 @@ export default function ExperienceBookings() {
               <div className="section">
                 <h3>Payment</h3>
                 <div className="payment-box">
-                  <div><p className="label">Total Amount</p><h2 id="modalAmount">{formatCurrency(details.totalAmount)}</h2></div>
-                  <span id="modalPaymentStatus" className="paid-badge">{details.status === 'CANCELLED' ? 'Refunded' : 'Paid'}</span>
+                  <div>
+                    <p className="label">Total Amount</p>
+                    <h2 id="modalAmount">
+                      {details.isPackageComponent && !details.totalAmount
+                        ? 'Included in Package'
+                        : formatCurrency(details.totalAmount)}
+                    </h2>
+                  </div>
+                  <span id="modalPaymentStatus" className="paid-badge">
+                    {details.status === 'CANCELLED'
+                      ? 'Refunded'
+                      : details.isPackageComponent
+                        ? 'Package Component'
+                        : 'Paid'}
+                  </span>
                 </div>
               </div>
             </ModalFrame>

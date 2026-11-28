@@ -14,7 +14,7 @@ import {
   selectBookingsLoading,
   selectSelectedBookingId,
   setSelectedBookingId,
-} from '../../features/bookingsSlice.js';
+} from '../../store/traveller/index.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import BookingDetailsView from './BookingDetailsView.jsx';
 import ExperienceGuidePanel from './ExperienceGuidePanel.jsx';
@@ -35,6 +35,14 @@ const DESTINATION_FALLBACK_IMAGES = {
 };
 
 function getBookingImage(booking) {
+  if (booking.bookingType === 'package') {
+    if (booking.itinerary?.day1?.hotel?.image) return booking.itinerary.day1.hotel.image;
+    const pkgLoc = (booking.currentLocation || booking.itinerary?.day1?.hotel?.name || '').toLowerCase();
+    for (const [key, url] of Object.entries(DESTINATION_FALLBACK_IMAGES)) {
+      if (pkgLoc.includes(key)) return url;
+    }
+    return DESTINATION_FALLBACK_IMAGES.defaultHotel;
+  }
   if (booking.experience?.image) return booking.experience.image;
   if (booking.hotel?.image) return booking.hotel.image;
   if (booking.imageUrl) return booking.imageUrl;
@@ -182,7 +190,11 @@ function TravellerBookingsCore({
             <CancellationModal
               isOpen={!!cancellingBooking}
               booking={cancellingBooking}
-              bookingType={cancellingBooking.bookingType || (cancellingBooking.hotel ? 'hotel' : 'experience')}
+              bookingType={
+                cancellingBooking.bookingType === 'package'
+                  ? 'trip'
+                  : cancellingBooking.bookingType || (cancellingBooking.hotel ? 'hotel' : 'experience')
+              }
               onClose={() => setCancellingBooking(null)}
               onSuccess={() => {
                 fetchLiveBookings();
@@ -197,11 +209,13 @@ function TravellerBookingsCore({
 
   // Filter by category, status tab & search term
   const filteredBookings = authorizedBookings.filter((booking) => {
-    const isHotel = !!booking.hotel || booking.bookingType === 'hotel';
-    const isExperience = !isHotel;
+    const isPackage = booking.bookingType === 'package';
+    const isHotel = !isPackage && (!!booking.hotel || booking.bookingType === 'hotel');
+    const isExperience = !isPackage && !isHotel;
 
     const categoryMatch =
       categoryFilter === 'ALL' ||
+      (categoryFilter === 'PACKAGE' && isPackage) ||
       (categoryFilter === 'HOTEL' && isHotel) ||
       (categoryFilter === 'EXPERIENCE' && isExperience);
 
@@ -210,8 +224,12 @@ function TravellerBookingsCore({
       (activeTab === 'CONFIRMED' && ['CONFIRMED', 'CHECKED_IN', 'END_REQUESTED'].includes(booking.status?.toUpperCase())) ||
       (booking.status && booking.status.toUpperCase() === activeTab);
 
-    const title = booking.hotel?.name || booking.experience?.title || booking.guestName || '';
-    const dest = booking.hotel?.city || booking.experience?.destination || '';
+    const title = isPackage
+      ? (booking.planTitle || booking.itinerary?.day1?.hotel?.name || 'Holiday Package')
+      : (booking.hotel?.name || booking.experience?.title || booking.guestName || '');
+    const dest = isPackage
+      ? (booking.destination || booking.currentLocation || '')
+      : (booking.hotel?.city || booking.experience?.destination || '');
     const id = booking.id || '';
     const query = searchQuery.trim().toLowerCase();
 
@@ -334,6 +352,13 @@ function TravellerBookingsCore({
                 onClick={() => setCategoryFilter('HOTEL')}
               >
                 🏨 Hotels
+              </button>
+              <button
+                type="button"
+                className={`trav-cat-btn ${categoryFilter === 'PACKAGE' ? 'is-active' : ''}`}
+                onClick={() => setCategoryFilter('PACKAGE')}
+              >
+                🎁 Holiday Packages
               </button>
             </div>
 
@@ -476,7 +501,8 @@ function TravellerBookingsCore({
         {!isLoading && !error && filteredBookings.length > 0 && (
           <div className="trav-bookings-grid" data-testid="traveller-bookings-grid">
             {filteredBookings.map((booking) => {
-              const isHotel = !!booking.hotel || booking.bookingType === 'hotel';
+              const isPackage = booking.bookingType === 'package';
+              const isHotel = !isPackage && (!!booking.hotel || booking.bookingType === 'hotel');
               const exp = booking.experience || {};
               const hotel = booking.hotel || {};
               const isConfirmed = booking.status?.toUpperCase() === 'CONFIRMED';
@@ -485,12 +511,20 @@ function TravellerBookingsCore({
               const isCompleted = booking.status?.toUpperCase() === 'COMPLETED';
               const isDemo = !!booking.isDemo || booking.source === 'mock';
 
-              const title = isHotel ? hotel.name : (exp.title || `Booking for ${booking.guestName}`);
-              const location = isHotel ? hotel.city : (exp.destination || 'Destination');
-              const datesDisplay = isHotel
+              const title = isPackage
+                ? (booking.planTitle || 'Holiday Package')
+                : isHotel
+                  ? hotel.name
+                  : (exp.title || `Booking for ${booking.guestName}`);
+              const location = isPackage
+                ? (booking.destination || booking.currentLocation || booking.itinerary?.day1?.hotel?.name || 'India')
+                : isHotel
+                  ? hotel.city
+                  : (exp.destination || 'Destination');
+              const datesDisplay = isPackage || isHotel
                 ? (booking.checkIn ? `${formatDate(booking.checkIn)} → ${formatDate(booking.checkOut)}` : 'Dates pending')
                 : formatDate(booking.date);
-              const guestCount = isHotel ? (booking.guests || 1) : (booking.participants || 1);
+              const guestCount = isPackage ? (booking.travellers || booking.guests || 1) : isHotel ? (booking.guests || 1) : (booking.participants || 1);
               const cardImage = getBookingImage(booking);
 
               return (
@@ -508,7 +542,7 @@ function TravellerBookingsCore({
                       loading="lazy"
                     />
                     <span className="trav-card-type-tag">
-                      {isHotel ? '🏨 Hotel' : '🧭 Experience'}
+                      {isPackage ? '🎁 Holiday Package' : isHotel ? '🏨 Hotel' : '🧭 Experience'}
                     </span>
                   </div>
 

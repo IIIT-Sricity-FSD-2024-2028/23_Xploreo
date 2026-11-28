@@ -25,7 +25,13 @@ export class Trip {
   guideId?: string;
   status!: TripStatus;
   itinerary!: StructuredItinerary;
+  // Number of guests booked on the package, and when the booking was made. Optional because
+  // trips seeded or created before these were recorded do not have them.
+  travellers?: number;
+  createdAt?: string;
   totalAmount!: number;
+  hotelBookingId?: string;
+  experienceBookingIds?: string[];
   currentDay!: number;
   currentStop!: string;
   currentLocation!: string;

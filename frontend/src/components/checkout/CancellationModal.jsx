@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { fetchNotifications } from '../../features/notificationsSlice.js';
 import {
   cancelTravellerBooking,
+  cancelTravellerTrip,
   clearBookingActionError,
   clearBookingCancellationResult,
+  clearTripActionError,
+  clearTripCancellationResult,
   selectBookingActionError,
   selectBookingActionLoading,
   selectBookingCancellationResult,
-} from '../../features/bookingsSlice.js';
-import { fetchNotifications } from '../../features/notificationsSlice.js';
-import {
-  cancelTravellerTrip,
-  clearTripActionError,
-  clearTripCancellationResult,
   selectTripActionError,
   selectTripActionLoading,
   selectTripCancellationResult,
-} from '../../features/tripsSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
 

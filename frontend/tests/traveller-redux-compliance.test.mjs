@@ -58,15 +58,16 @@ const vite = await createServer({
 const { configureStore } = await import('@reduxjs/toolkit');
 const session = await vite.ssrLoadModule('/src/services/session.js');
 const authModule = await vite.ssrLoadModule('/src/features/authSlice.js');
-const dashboardModule = await vite.ssrLoadModule('/src/features/dashboardSlice.js');
-const browseModule = await vite.ssrLoadModule('/src/features/browseSlice.js');
-const bookingsModule = await vite.ssrLoadModule('/src/features/bookingsSlice.js');
-const tripsModule = await vite.ssrLoadModule('/src/features/tripsSlice.js');
-const reviewsModule = await vite.ssrLoadModule('/src/features/reviewsSlice.js');
-const ticketsModule = await vite.ssrLoadModule('/src/features/supportTicketsSlice.js');
-const checkoutModule = await vite.ssrLoadModule('/src/features/checkoutSlice.js');
 const notificationsModule = await vite.ssrLoadModule('/src/features/notificationsSlice.js');
+const travellerModule = await vite.ssrLoadModule('/src/store/traveller/index.js');
 const validationModule = await vite.ssrLoadModule('/src/utils/bookingValidationUtils.js');
+
+const browseModule = travellerModule;
+const bookingsModule = travellerModule;
+const tripsModule = travellerModule;
+const reviewsModule = travellerModule;
+const ticketsModule = travellerModule;
+const checkoutModule = travellerModule;
 
 after(async () => {
   await vite.close();
@@ -76,14 +77,8 @@ function createTestStore() {
   return configureStore({
     reducer: {
       auth: authModule.default,
-      dashboard: dashboardModule.default,
-      browse: browseModule.default,
-      bookings: bookingsModule.default,
-      trips: tripsModule.default,
-      reviews: reviewsModule.default,
-      supportTickets: ticketsModule.default,
-      checkout: checkoutModule.default,
       notifications: notificationsModule.default,
+      traveller: travellerModule.travellerReducer,
     },
   });
 }

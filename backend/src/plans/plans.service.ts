@@ -1,11 +1,71 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { ValidationError, validateSync } from 'class-validator';
+import { StructuredItineraryDto } from '../common/dto/itinerary.dto';
+import { StructuredItinerary } from '../common/entities/itinerary.entity';
+import { HotelsRepository } from '../hotels/hotels.repository';
+import { RoomTypesRepository } from '../hotels/room-types.repository';
+import { ExperiencesRepository } from '../experiences/experiences.repository';
 import { PlansRepository } from './plans.repository';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
+import { findItineraryProblems, InventoryLookups } from './package-inventory';
+
+function flattenValidationErrors(errors: ValidationError[], path = 'itinerary'): string[] {
+  return errors.flatMap((error) => {
+    const here = `${path}.${error.property}`;
+    const own = Object.values(error.constraints ?? {}).map((message) => `${here}: ${message}`);
+    return [...own, ...flattenValidationErrors(error.children ?? [], here)];
+  });
+}
 
 @Injectable()
 export class PlansService {
-  constructor(private readonly plansRepository: PlansRepository) {}
+  constructor(
+    private readonly plansRepository: PlansRepository,
+    @Optional() private readonly hotelsRepository?: HotelsRepository,
+    @Optional() private readonly roomTypesRepository?: RoomTypesRepository,
+    @Optional() private readonly experiencesRepository?: ExperiencesRepository,
+  ) {}
+
+  private inventoryLookups(): InventoryLookups | null {
+    if (!this.hotelsRepository || !this.roomTypesRepository || !this.experiencesRepository) return null;
+    return {
+      findHotel: (id) => this.hotelsRepository!.findById(id),
+      roomTypesFor: (hotelId) => this.roomTypesRepository!.findByHotelId(hotelId),
+      findExperience: (id) => this.experiencesRepository!.findById(id),
+    };
+  }
+
+  /**
+   * A package itinerary must be the same structured itinerary a trip is booked with (the trip DTO
+   * rejects anything else), and its hotel, room type and experiences must exist, be active and
+   * belong to the package destination, on valid future dates.
+   */
+  private assertBookableItinerary(itinerary: unknown, destination: string): StructuredItinerary {
+    if (!itinerary || typeof itinerary !== 'object' || Array.isArray(itinerary)) {
+      throw new BadRequestException(
+        'Itinerary must be a structured itinerary with a partner hotel (day1.hotel) and experience days.',
+      );
+    }
+    const errors = validateSync(plainToInstance(StructuredItineraryDto, itinerary), {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
+    // One message (not an array): the frontend shows only the first entry of a message array.
+    if (errors.length > 0) {
+      throw new BadRequestException(`Invalid itinerary — ${flattenValidationErrors(errors).join('; ')}`);
+    }
+    const lookups = this.inventoryLookups();
+    if (lookups) {
+      const problems = findItineraryProblems(itinerary as StructuredItinerary, destination, lookups, {
+        requireKnownRoomType: true,
+        requireFutureDates: true,
+      });
+      if (problems.length > 0) throw new BadRequestException(problems.join(' '));
+    }
+    return itinerary as StructuredItinerary;
+  }
 
   create(dto: CreatePlanDto, actor?: { userId?: string; role?: string; region?: string }) {
     if (actor?.role === 'nontechadmin') {
@@ -30,6 +90,12 @@ export class PlansService {
     if (pricePerPerson === undefined || pricePerPerson === null) {
       throw new BadRequestException('price or pricePerPerson is required');
     }
+    // The DTO requires an itinerary over HTTP; a direct service call without one keeps the legacy
+    // placeholder itinerary, which booking then rejects until a real hotel is attached.
+    const itinerary =
+      dto.itinerary === undefined
+        ? undefined
+        : this.assertBookableItinerary(dto.itinerary, dto.destination);
 
     return this.plansRepository.create({
       id: dto.id,
@@ -44,7 +110,8 @@ export class PlansService {
       includesFlight: dto.includesFlight ?? true,
       image: dto.image ?? '',
       tags: dto.tags ?? [],
-      itinerary: dto.itinerary,
+      createdByNtaId: actor?.role === 'nontechadmin' ? actor.userId : undefined,
+      itinerary,
     });
   }
 
@@ -77,6 +144,7 @@ export class PlansService {
       to: query.to,
       destination: effectiveDestination,
       statuses,
+      createdByNtaId: actor?.role === 'nontechadmin' ? actor.userId : undefined,
     });
   }
 
@@ -99,6 +167,11 @@ export class PlansService {
           `Cannot access package in destination '${plan.destination}': outside your assigned region '${actor.region}'`,
         );
       }
+      if (plan.createdByNtaId && plan.createdByNtaId !== actor.userId) {
+        throw new ForbiddenException(
+          `Cannot access package '${plan.id}': owned by another NTA`,
+        );
+      }
     }
 
     return plan;
@@ -115,11 +188,24 @@ export class PlansService {
           `Cannot modify package in destination '${existing.destination}': outside your assigned region '${actor.region}'`,
         );
       }
+      if (existing.createdByNtaId && existing.createdByNtaId !== actor.userId) {
+        throw new ForbiddenException(
+          `Cannot modify package '${existing.id}': owned by another NTA`,
+        );
+      }
       if (dto.destination && dto.destination.trim().toLowerCase() !== ntaRegion) {
         throw new ForbiddenException(
           `Cannot change package destination to '${dto.destination}': outside your assigned region '${actor.region}'`,
         );
       }
+    }
+
+    // A new itinerary, or a new destination for the existing one, must still be bookable there.
+    const destination = dto.destination ?? existing.destination;
+    if (dto.itinerary !== undefined) {
+      this.assertBookableItinerary(dto.itinerary, destination);
+    } else if (dto.destination && dto.destination.trim().toLowerCase() !== existing.destination.trim().toLowerCase()) {
+      this.assertBookableItinerary(existing.itinerary, destination);
     }
 
     const updated = await this.plansRepository.update(id, dto);

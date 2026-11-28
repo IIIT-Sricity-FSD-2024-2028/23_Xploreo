@@ -8,7 +8,7 @@ import {
   selectSelectedBookingDetail,
   selectSelectedBookingHotel,
   setSelectedBookingDetail,
-} from '@/features/bookingsSlice.js';
+} from '@/store/traveller/index.js';
 import CancellationModal from '@/components/checkout/CancellationModal.jsx';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
@@ -64,13 +64,13 @@ export default function BookingConfirmationPage() {
     const updatedBooking = result?.booking
       ? result.booking
       : {
-          ...booking,
-          status: 'CANCELLED',
-          refundStatus: result?.refundStatus,
-          refundAmount: result?.refundAmount,
-          refundReference: result?.refundReference,
-          cancellationPolicyNote: result?.cancellationPolicyNote,
-        };
+        ...booking,
+        status: 'CANCELLED',
+        refundStatus: result?.refundStatus,
+        refundAmount: result?.refundAmount,
+        refundReference: result?.refundReference,
+        cancellationPolicyNote: result?.cancellationPolicyNote,
+      };
     dispatch(setSelectedBookingDetail({ booking: updatedBooking, hotel }));
     setCancelSuccess(true);
   };

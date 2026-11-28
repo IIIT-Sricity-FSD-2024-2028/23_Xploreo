@@ -170,14 +170,14 @@ describe('Traveller Portal - Travel Dates Display & Mapping Validation', () => {
   describe('2. UI Component Rendering Verification', () => {
     test('TravellerTripsList renders travel dates on trip cards', async () => {
       const TravellerTripsList = (await vite.ssrLoadModule('/src/pages/Traveller/TravellerTripsList.jsx')).default;
-      const tripsSlice = (await vite.ssrLoadModule('/src/features/tripsSlice.js')).default;
+      const { travellerReducer } = await vite.ssrLoadModule('/src/store/traveller/index.js');
       const notificationsSlice = (await vite.ssrLoadModule('/src/features/notificationsSlice.js')).default;
       const authSlice = (await vite.ssrLoadModule('/src/features/authSlice.js')).default;
 
       const store = configureStore({
         reducer: {
           auth: authSlice,
-          trips: tripsSlice,
+          traveller: travellerReducer,
           notifications: notificationsSlice,
         },
       });
@@ -222,7 +222,7 @@ describe('Traveller Portal - Travel Dates Display & Mapping Validation', () => {
 
     test('TravellerTripDetailsView renders travel dates in header meta and Day 1 arrival', async () => {
       const TravellerTripDetailsView = (await vite.ssrLoadModule('/src/pages/Traveller/TravellerTripDetailsView.jsx')).default;
-      const tripsSlice = (await vite.ssrLoadModule('/src/features/tripsSlice.js')).default;
+      const tripsSlice = (await vite.ssrLoadModule('/src/store/traveller/tripsSlice.js')).default;
       const notificationsSlice = (await vite.ssrLoadModule('/src/features/notificationsSlice.js')).default;
       const authSlice = (await vite.ssrLoadModule('/src/features/authSlice.js')).default;
 

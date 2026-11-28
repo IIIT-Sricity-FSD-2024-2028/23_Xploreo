@@ -4,7 +4,7 @@ import { formatCurrency, formatDate } from '../../utils/checkoutUtils.js';
 import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
 import { formatTripDates, extractTripDateRange } from '../../utils/tripTrackingUtils.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
-import { retryTravellerTripRefund } from '../../features/tripsSlice.js';
+import { retryTravellerTripRefund } from '../../store/traveller/index.js';
 import TripLiveTrackerWidget from './TripLiveTrackerWidget.jsx';
 import './travellerTrips.css';
 
@@ -281,6 +281,15 @@ export default function TravellerTripDetailsView({
                   📅 Stay: {formatTripDates(itinerary.day1.hotel.checkInDate, itinerary.day1.hotel.checkOutDate)}
                 </p>
               )}
+              {itinerary.day1.hotel?.hotelId && (
+                <p className="trav-timeline-detail" style={{ marginBottom: 4 }}>
+                  Hotel Status:{' '}
+                  <strong>
+                    {String(itinerary.day1.hotel?.status || 'planned').toUpperCase().replace('_', ' ')}
+                  </strong>
+                  {trip.hotelBookingId ? ` · Ref #${trip.hotelBookingId}` : ' · Awaiting NTA Dispatch'}
+                </p>
+              )}
               <p className="trav-timeline-detail">
                 Transport: {itinerary.day1.transport?.provider || 'Standard'} (
                 {itinerary.day1.transport?.pickupLocation || 'Pickup'} →{' '}
@@ -305,6 +314,43 @@ export default function TravellerTripDetailsView({
                         ? dayItem.experiences.map((exp) => exp.title).join(', ')
                         : 'Scheduled Sightseeing & Activities'}
                     </h4>
+                    {Array.isArray(dayItem.experiences) && dayItem.experiences.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '6px 0' }}>
+                        {dayItem.experiences.map((exp, idx) => (
+                          <span
+                            key={`${exp.experienceId || idx}-${dayItem.dayNumber}`}
+                            style={{
+                              fontSize: 12,
+                              padding: '2px 8px',
+                              borderRadius: 999,
+                              background:
+                                exp.status === 'completed'
+                                  ? '#dcfce7'
+                                  : exp.status === 'cancelled'
+                                    ? '#fee2e2'
+                                    : exp.status === 'checked_in'
+                                      ? '#dbeafe'
+                                      : exp.status === 'confirmed'
+                                        ? '#e0f2fe'
+                                        : '#fef3c7',
+                              color:
+                                exp.status === 'completed'
+                                  ? '#166534'
+                                  : exp.status === 'cancelled'
+                                    ? '#991b1b'
+                                    : exp.status === 'checked_in'
+                                      ? '#1e40af'
+                                      : exp.status === 'confirmed'
+                                        ? '#0369a1'
+                                        : '#92400e',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {exp.title}: {String(exp.status || 'planned').toUpperCase().replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                     <p className="trav-timeline-detail">
                       Assigned Guide: {guideId && status !== 'rejected_by_guide' ? (trip.guideName || `Guide #${guideId}`) : 'Not assigned yet'}
                     </p>

@@ -58,6 +58,12 @@ export class BookingsRepository {
       .map((booking) => ({ ...booking }));
   }
 
+  findByTripId(tripId: string): Booking[] {
+    return this.bookings
+      .filter((booking) => booking.tripId === tripId)
+      .map((booking) => ({ ...booking }));
+  }
+
   setStatus(id: string, status: BookingStatus): Booking | undefined {
     const booking = this.bookings.find((item) => item.id === id);
     if (!booking) return undefined;

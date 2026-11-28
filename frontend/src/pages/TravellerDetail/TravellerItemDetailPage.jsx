@@ -6,9 +6,9 @@ import { selectAuthUser } from '../../features/authSlice.js';
 import {
   fetchBrowseItemDetail,
   selectBrowseDetail,
+  setCheckoutItem,
   setSelectedItemPreview,
-} from '../../features/browseSlice.js';
-import { setCheckoutItem } from '../../features/checkoutSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import {
   validateExperienceBooking,
@@ -124,6 +124,10 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     } else if (effectiveType === 'experience' && Array.isArray(item?.slots)) {
       const slot = item.slots.find((s) => s.id === effectiveSelectedSlotId);
       if (slot) max = Math.max(1, (Number(slot.capacity) || 0) - (Number(slot.booked) || 0));
+    } else if (effectiveType === 'package' && item?.bookingQuote) {
+      // The server's maximum across the package hotel and experience sessions. When it is unknown
+      // or zero the package is not bookable (validatePackageBooking reports why).
+      max = Number(item.bookingQuote.maxGuests) > 0 ? Number(item.bookingQuote.maxGuests) : 1;
     }
     return Array.from({ length: Math.max(1, max) }, (_, i) => i + 1);
   }, [item, effectiveType, effectiveSelectedSlotId, selectedRoom, selectedGuests]);
@@ -176,8 +180,12 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const nights = calculateNights();
   const guestCountNum = Math.max(1, Number(clampedSelectedGuests) || 2);
   const roomCountNum = Math.max(1, Number(clampedSelectedRooms) || 1);
+  // A package is charged the per-person amount the server records for it (bookingQuote), all-inclusive.
+  const packageQuotePrice = effectiveType === 'package' ? Number(item?.bookingQuote?.pricePerPerson) : NaN;
   const startingRate = Number(
-    (effectiveType === 'hotel' ? selectedRoom?.pricePerNight : undefined) ?? item?.pricePerNight ?? item?.price ?? item?.pricePerPerson ?? 5000,
+    (effectiveType === 'hotel' ? selectedRoom?.pricePerNight : undefined) ??
+      (packageQuotePrice > 0 ? packageQuotePrice : undefined) ??
+      item?.pricePerNight ?? item?.price ?? item?.pricePerPerson ?? 5000,
   );
   const subtotal =
     effectiveType === 'hotel'
@@ -185,8 +193,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       : effectiveType === 'package'
         ? startingRate * guestCountNum
         : startingRate * guestCountNum;
-  // Stays and experiences carry 12% taxes & fees (same rate as the server); packages keep their own figure.
-  const taxes = effectiveType === 'package' ? Number(item?.taxesAndFees ?? 1200) : Math.round(subtotal * 0.12);
+  // Stays and experiences carry 12% taxes & fees (same rate as the server). A package with a server
+  // quote is all-inclusive; without one (mock data) it keeps its own figure.
+  const taxes = effectiveType === 'package'
+    ? (packageQuotePrice > 0 ? 0 : Number(item?.taxesAndFees ?? 1200))
+    : Math.round(subtotal * 0.12);
   const totalAmount = subtotal + taxes;
   const packageStatus = effectiveType === 'package' ? String(item?.status || 'available').toLowerCase() : 'available';
   const isSoldOut = effectiveType === 'package' && packageStatus !== 'available';
@@ -194,19 +205,21 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
   const selectedSlotObj = Array.isArray(item?.slots)
     ? item.slots.find((s) => s.id === effectiveSelectedSlotId)
     : null;
+  // A package runs on its own dates (its experiences are booked into sessions on those days), so
+  // its departure is the package check-in, not a date the traveller picks.
   const activeBookingCheckIn =
     effectiveType === 'experience' && selectedSlotObj?.date
       ? String(selectedSlotObj.date).slice(0, 10)
       : effectiveType === 'package'
-        ? (selectedCheckIn || String(item?.itinerary?.day1?.hotel?.checkInDate || '').slice(0, 10))
+        ? String(item?.itinerary?.day1?.hotel?.checkInDate || '').slice(0, 10)
         : selectedCheckIn;
   const activeBookingCheckOut =
     effectiveType === 'experience'
       ? activeBookingCheckIn
       : effectiveType === 'package'
         ? (String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10) >= activeBookingCheckIn
-            ? String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10)
-            : activeBookingCheckIn)
+          ? String(item?.itinerary?.day1?.hotel?.checkOutDate || '').slice(0, 10)
+          : activeBookingCheckIn)
         : selectedCheckOut;
 
   const liveBookingValidation = useMemo(() => {
@@ -267,20 +280,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       return;
     }
 
-    let bookingItinerary = effectiveType === 'package' ? item.itinerary : undefined;
-    if (effectiveType === 'package' && bookingItinerary?.day1?.hotel && activeBookingCheckIn) {
-      bookingItinerary = {
-        ...bookingItinerary,
-        day1: {
-          ...bookingItinerary.day1,
-          hotel: {
-            ...bookingItinerary.day1.hotel,
-            checkInDate: activeBookingCheckIn,
-            checkOutDate: activeBookingCheckOut || activeBookingCheckIn,
-          },
-        },
-      };
-    }
+    // The package's own itinerary (hotel, room type, experiences and dates) is what gets booked.
+    const bookingItinerary = effectiveType === 'package' ? item.itinerary : undefined;
     setBookError('');
 
     const checkoutItem = {
@@ -298,7 +299,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
       roomType: effectiveType === 'hotel' ? selectedRoom?.type : undefined,
       maxOccupancy: effectiveType === 'hotel' ? selectedRoom?.maxOccupancy : undefined,
       availableRooms: effectiveType === 'hotel' ? selectedRoom?.availableRooms : undefined,
-      capacity: effectiveType === 'experience' ? (selectedSlotObj?.capacity ?? item.capacity) : item.capacity,
+      capacity: effectiveType === 'experience'
+        ? (selectedSlotObj?.capacity ?? item.capacity)
+        : effectiveType === 'package' && Number(item.bookingQuote?.maxGuests) > 0
+          ? Number(item.bookingQuote.maxGuests)
+          : item.capacity,
       slots: effectiveType === 'experience' ? item.slots : undefined,
       status: item.status,
       availability: item.availability,
@@ -379,8 +384,8 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
     effectiveType === 'hotel'
       ? 'Hotels & Stays'
       : effectiveType === 'experience'
-      ? 'Curated Experience'
-      : 'Holiday Tour Package';
+        ? 'Curated Experience'
+        : 'Holiday Tour Package';
 
   return (
     <div className="trav-page-container" data-testid="traveller-item-detail-page">
@@ -846,11 +851,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                   const totalDaysCount = isArrayItin
                     ? rawItin.length
                     : (experienceDays.length > 0
-                        ? Math.max(
-                            day1Hotel ? 1 : 0,
-                            ...experienceDays.map((d, i) => Number(d.dayNumber || i + 2))
-                          )
-                        : (day1Hotel ? 1 : (item.durationNights ? item.durationNights + 1 : 0)));
+                      ? Math.max(
+                        day1Hotel ? 1 : 0,
+                        ...experienceDays.map((d, i) => Number(d.dayNumber || i + 2))
+                      )
+                      : (day1Hotel ? 1 : (item.durationNights ? item.durationNights + 1 : 0)));
 
                   return (
                     <>
@@ -1130,8 +1135,11 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     id="detail-date"
                     type="date"
                     min={todayStr}
-                    value={selectedCheckIn}
+                    value={effectiveType === 'package' ? activeBookingCheckIn : selectedCheckIn}
                     onChange={(e) => setSelectedCheckIn(e.target.value)}
+                    readOnly={effectiveType === 'package'}
+                    disabled={effectiveType === 'package'}
+                    title={effectiveType === 'package' ? 'Packages run on fixed dates' : undefined}
                     style={{
                       width: '100%',
                       padding: '10px 12px',
@@ -1172,6 +1180,23 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                     Max {selectedRoom.maxOccupancy} guests/room ({Number(selectedRoom.maxOccupancy || 4) * roomCountNum} max for {roomCountNum} {selectedRoom.type} room{roomCountNum === 1 ? '' : 's'})
                   </p>
                 )}
+                {effectiveType === 'package' && item?.bookingQuote && (() => {
+                  const quote = item.bookingQuote;
+                  if (!quote.bookable) {
+                    return (
+                      <p id="detail-capacity-note" style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#b91c1c' }}>
+                        {quote.issues?.[0] || 'This package cannot be booked right now.'}
+                      </p>
+                    );
+                  }
+                  const tightest = (quote.limits || []).find((l) => l.capacity === quote.maxGuests);
+                  return (
+                    <p id="detail-capacity-note" style={{ margin: '6px 0 0', fontSize: '0.78rem', color: '#475569' }}>
+                      Max {quote.maxGuests} {quote.maxGuests === 1 ? 'guest' : 'guests'}
+                      {tightest ? ` (limited by ${tightest.name})` : ''}
+                    </p>
+                  );
+                })()}
               </div>
 
               {/* Rooms selector (hotels only) */}
@@ -1211,7 +1236,7 @@ export default function TravellerItemDetailPage({ user: propUser, defaultType })
                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatCurrency(subtotal)}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginBottom: '12px', color: '#475569' }}>
-                <span>Taxes & Service Fees</span>
+                <span>{effectiveType === 'package' && packageQuotePrice > 0 ? 'Taxes & Service Fees (included)' : 'Taxes & Service Fees'}</span>
                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{formatCurrency(taxes)}</span>
               </div>
               <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '8px 0 12px' }} />

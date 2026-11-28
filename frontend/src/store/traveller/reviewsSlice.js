@@ -1,76 +1,12 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from '@/features/authSlice.js';
 import {
-  createReview,
-  deleteReview,
-  getReviewById,
-  listReviews,
-  updateReview,
-} from '../services/reviews.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
-
-const EMPTY_LIST = [];
-
-export const fetchReviews = createAsyncThunk(
-  'reviews/fetchReviews',
-  async (params, { rejectWithValue }) => {
-    try {
-      const data = await listReviews(params);
-      return Array.isArray(data) ? data : data?.data || [];
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load reviews from server.');
-    }
-  },
-);
-
-export const submitReview = createAsyncThunk(
-  'reviews/submitReview',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const result = await createReview(payload);
-      return result || payload;
-    } catch (error) {
-      return rejectWithValue({
-        status: error?.status || error?.response?.status || 500,
-        message: error?.message || 'Failed to submit review. Please try again.',
-        errors: error?.errors && typeof error.errors === 'object' ? error.errors : null,
-      });
-    }
-  },
-);
-
-export const fetchReviewById = createAsyncThunk(
-  'reviews/fetchReviewById',
-  async (id, { rejectWithValue }) => {
-    try {
-      return await getReviewById(id);
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load review details.');
-    }
-  },
-);
-
-export const updateReviewItem = createAsyncThunk(
-  'reviews/updateReviewItem',
-  async ({ id, patch }, { rejectWithValue }) => {
-    try {
-      return await updateReview(id, patch);
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to update review.');
-    }
-  },
-);
-
-export const deleteReviewItem = createAsyncThunk(
-  'reviews/deleteReviewItem',
-  async (id, { rejectWithValue }) => {
-    try {
-      await deleteReview(id);
-      return id;
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to delete review.');
-    }
-  },
-);
+  deleteReviewItem,
+  fetchReviewById,
+  fetchReviews,
+  submitReview,
+  updateReviewItem,
+} from './reviewsThunks.js';
 
 const initialState = {
   items: [],
@@ -87,7 +23,7 @@ const initialState = {
 };
 
 const reviewsSlice = createSlice({
-  name: 'reviews',
+  name: 'traveller/reviews',
   initialState,
   reducers: {
     addDemoReview(state, action) {
@@ -209,17 +145,5 @@ export const {
   clearReviewSubmitState,
   resetReviewsState,
 } = reviewsSlice.actions;
-
-export const selectReviewsList = (state) => state.reviews?.items || EMPTY_LIST;
-export const selectReviewsHasLoaded = (state) => Boolean(state.reviews?.hasLoaded);
-export const selectReviewsLoading = (state) => Boolean(state.reviews?.loading);
-export const selectReviewsError = (state) => state.reviews?.error || null;
-export const selectReviewSubmitting = (state) => Boolean(state.reviews?.submitting);
-export const selectReviewSubmitError = (state) => state.reviews?.submitError || null;
-export const selectLastSubmittedReview = (state) => state.reviews?.lastSubmitted || null;
-export const selectReviewActionLoading = (state) => Boolean(state.reviews?.actionLoading);
-export const selectReviewActionError = (state) => state.reviews?.actionError || null;
-export const selectSelectedReview = (state) => state.reviews?.selectedReview || null;
-export const selectSelectedReviewLoading = (state) => Boolean(state.reviews?.selectedLoading);
 
 export default reviewsSlice.reducer;

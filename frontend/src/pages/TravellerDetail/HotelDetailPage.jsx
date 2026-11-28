@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, Link } from 'react-router-dom';
-import { fetchBrowseItemDetail, selectBrowseDetail } from '@/features/browseSlice.js';
+import { fetchBrowseItemDetail, selectBrowseDetail } from '@/store/traveller/index.js';
 import TravellerHeader from './TravellerHeader.jsx';
 import './travellerDetail.css';
 

@@ -10,7 +10,7 @@ import {
   selectExperienceGuidesError,
   selectExperienceGuidesLoading,
   selectSelectedBookingDetail,
-} from '../../features/bookingsSlice.js';
+} from '../../store/traveller/index.js';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import './tripGuidePanel.css';
 

@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { BookingSummaryCard } from '../../components/checkout/index.js';
 import { formatDate } from '../../utils/checkoutUtils.js';
 import { getBookingCancellationEligibility } from '../../utils/bookingValidationUtils.js';
-import { confirmExperienceBookingEnd, retryBookingRefund } from '../../features/bookingsSlice.js';
+import { confirmExperienceBookingEnd, retryBookingRefund } from '../../store/traveller/index.js';
 import { fetchNotifications } from '../../features/notificationsSlice.js';
 import './travellerBookings.css';
 
@@ -41,8 +41,119 @@ export default function BookingDetailsView({
   }
 
 
-  const isHotel = !!booking.hotel || booking.bookingType === 'hotel';
+  const isPackage = booking.bookingType === 'package';
+  const isHotel = !isPackage && (!!booking.hotel || booking.bookingType === 'hotel');
   const isDemo = !!booking.isDemo || booking.source === 'mock';
+
+  if (isPackage) {
+    const itineraryHotel = booking.itinerary?.day1?.hotel;
+    const experienceDays = booking.itinerary?.days || [];
+    const progressPct = Number(booking.progressPercentage) || 0;
+    const isConfirmed = String(booking.status || '').toUpperCase() === 'CONFIRMED';
+
+    const componentBadge = (st, dispatched) => {
+      const s = String(st || 'planned').toLowerCase();
+      if (s === 'cancelled') return { label: 'Cancelled', bg: '#fee2e2', color: '#991b1b' };
+      if (s === 'completed' || s === 'checked_out') return { label: s.replace('_', ' ').toUpperCase(), bg: '#dcfce7', color: '#166534' };
+      if (s === 'checked_in') return { label: 'Checked In', bg: '#dbeafe', color: '#1e40af' };
+      if (s === 'confirmed' || dispatched) return { label: 'Confirmed / Dispatched', bg: '#e0f2fe', color: '#0369a1' };
+      return { label: 'Awaiting NTA Dispatch', bg: '#fef3c7', color: '#92400e' };
+    };
+
+    return (
+      <div className="trav-booking-details-container" data-testid="booking-details-view">
+        {onBack && (
+          <div className="trav-back-nav">
+            <button type="button" className="trav-back-btn" onClick={onBack}>
+              <span aria-hidden="true">←</span> Back to My Bookings
+            </button>
+          </div>
+        )}
+
+        <div className="trav-details-card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+            <div>
+              <span className="trav-page-eyebrow">Holiday Package · #{booking.id}</span>
+              <h2 style={{ margin: '4px 0' }}>{booking.planTitle || 'Holiday Package'}</h2>
+              <p style={{ margin: 0, color: '#64748b' }}>
+                Destination: {booking.destination || booking.currentLocation || itineraryHotel?.name || 'India'} · {booking.travellers || booking.guests || 1} Traveller(s)
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 22, fontWeight: 700 }}>{formatDate && booking.totalAmount != null ? `₹${Number(booking.totalAmount).toLocaleString('en-IN')}` : '₹0'}</div>
+              <span className="trav-status-badge is-confirmed">{booking.status}</span>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+              <span>Overall Package Progress</span>
+              <strong>{progressPct}%</strong>
+            </div>
+            <div style={{ height: 8, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${progressPct}%`, height: '100%', background: '#0ea5e9' }} />
+            </div>
+          </div>
+
+          {itineraryHotel?.hotelId ? (
+            <div style={{ marginBottom: 18 }}>
+              <h3 style={{ fontSize: 15, marginBottom: 8 }}>Included Hotel Stay</h3>
+              {(() => {
+                const badge = componentBadge(itineraryHotel.status, Boolean(booking.hotelBookingId));
+                return (
+                  <div style={{ padding: 14, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <strong>{itineraryHotel.name || itineraryHotel.hotelId}</strong>
+                      <div style={{ fontSize: 13, color: '#64748b' }}>
+                        {itineraryHotel.roomType} · {formatDate(itineraryHotel.checkInDate)} → {formatDate(itineraryHotel.checkOutDate)}
+                      </div>
+                    </div>
+                    <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: badge.bg, color: badge.color }}>
+                      {badge.label}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : null}
+
+          <div style={{ marginBottom: 18 }}>
+            <h3 style={{ fontSize: 15, marginBottom: 8 }}>Included Experiences</h3>
+            {experienceDays.flatMap((d) => (d.experiences || []).map((e) => ({ ...e, dayNumber: d.dayNumber }))).length === 0 ? (
+              <p style={{ color: '#64748b', fontSize: 14 }}>No experiences scheduled in this package.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {experienceDays.flatMap((day) =>
+                  (day.experiences || []).map((exp, idx) => {
+                    const badge = componentBadge(exp.status, (booking.experienceBookingIds || []).length > 0);
+                    return (
+                      <div key={`${day.dayNumber}-${exp.experienceId || idx}`} style={{ padding: 14, borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                        <div>
+                          <strong>Day {day.dayNumber}: {exp.title}</strong>
+                          <div style={{ fontSize: 13, color: '#64748b' }}>
+                            {String(exp.startsAt || '').slice(0, 10)} · {exp.location}
+                          </div>
+                        </div>
+                        <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600, background: badge.bg, color: badge.color }}>
+                          {badge.label}
+                        </span>
+                      </div>
+                    );
+                  }),
+                )}
+              </div>
+            )}
+          </div>
+
+          {isConfirmed && onCancelClick && (
+            <button type="button" className="trav-btn-cancel-trigger" onClick={() => onCancelClick(booking)}>
+              Cancel Holiday Package
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const {
     id,

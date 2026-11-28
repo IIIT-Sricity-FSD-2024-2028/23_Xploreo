@@ -9,14 +9,7 @@ import authReducer, {
   selectAuthUser,
   setAuthUser,
 } from '@/features/authSlice.js';
-import bookingsReducer from '@/features/bookingsSlice.js';
-import browseReducer from '@/features/browseSlice.js';
-import checkoutReducer from '@/features/checkoutSlice.js';
-import dashboardReducer from '@/features/dashboardSlice.js';
 import notificationsReducer from '@/features/notificationsSlice.js';
-import reviewsReducer from '@/features/reviewsSlice.js';
-import supportTicketsReducer from '@/features/supportTicketsSlice.js';
-import tripsReducer from '@/features/tripsSlice.js';
 import experienceBookingsReducer from './experience/bookingsSlice.js';
 import experienceEarningsReducer from './experience/earningsSlice.js';
 import experiencesReducer from './experience/experiencesSlice.js';
@@ -28,6 +21,7 @@ import { hotelReducer } from './hotel/index.js';
 import { ntaReducer } from './nta/index.js';
 import { superadminReducer } from './superadmin/index.js';
 import { techadminReducer } from './techadmin/index.js';
+import { travellerReducer } from './traveller/index.js';
 import sessionReducer, { sessionEnded, sessionStarted } from './sessionSlice.js';
 
 const reducers = combineReducers({
@@ -38,13 +32,7 @@ const reducers = combineReducers({
   superadmin: superadminReducer,
   techadmin: techadminReducer,
   nta: ntaReducer,
-  dashboard: dashboardReducer,
-  browse: browseReducer,
-  bookings: bookingsReducer,
-  trips: tripsReducer,
-  reviews: reviewsReducer,
-  supportTickets: supportTicketsReducer,
-  checkout: checkoutReducer,
+  traveller: travellerReducer,
   notifications: notificationsReducer,
   experience: combineReducers({
     catalog: experiencesReducer,

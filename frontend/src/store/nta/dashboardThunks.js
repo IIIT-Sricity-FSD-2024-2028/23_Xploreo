@@ -12,17 +12,15 @@ function errorDetails(error, fallback) {
 const sessionFor = (session, getState) => session ?? selectUser(getState());
 
 // READ — GET /trips (SUPERADMIN, NONTECHADMIN; the server limits an NTA to their region).
-// Only the dashboard's trip activity lives here; its plan figures come from state.nta.plans.
+// Only the region's package bookings live here (one record per trip, as nta.api.js maps them);
+// counts and the recent-bookings table are derived by selectors, plan figures from state.nta.plans.
 // Skipped while a request is in flight, and once loaded unless { force: true } is passed.
 export const fetchNtaTripActivity = createAsyncThunk(
   'nta/dashboard/fetchTripActivity',
   async ({ session } = {}, { getState, rejectWithValue }) => {
     try {
-      const { tripCount, recentBookings } = await getNtaTripActivity(sessionFor(session, getState));
-      return {
-        tripCount: Number(tripCount) || 0,
-        recentBookings: Array.isArray(recentBookings) ? recentBookings : [],
-      };
+      const { bookings } = await getNtaTripActivity(sessionFor(session, getState));
+      return { bookings: Array.isArray(bookings) ? bookings : [] };
     } catch (error) {
       return rejectWithValue(errorDetails(error, 'Failed to load NTA dashboard telemetry.'));
     }

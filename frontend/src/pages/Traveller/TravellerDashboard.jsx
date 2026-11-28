@@ -5,22 +5,20 @@ import Navbar from '../../components/Navbar/navbar.jsx';
 import { formatCurrency } from '../../utils/checkoutUtils.js';
 import {
   calculateBookingStats,
-  fetchDashboardSummary,
-  selectBookingStats,
-  selectReviewStats,
-  selectTripStats,
-} from '../../features/dashboardSlice.js';
-import {
   fetchBrowseExperiences,
   fetchBrowseHotels,
   fetchBrowsePlans,
+  fetchDashboardSummary,
+  selectBookingStats,
   selectBrowseExperiences,
   selectBrowseHotels,
   selectBrowsePlans,
+  selectReviewStats,
+  selectTripStats,
   setBrowseCategory,
   setBrowseFilters,
-} from '../../features/browseSlice.js';
-import { setCheckoutItem } from '../../features/checkoutSlice.js';
+  setCheckoutItem,
+} from '../../store/traveller/index.js';
 import { selectAuthUser } from '../../features/authSlice.js';
 import { BROWSE_CATEGORIES } from '../../utils/browseUtils.js';
 

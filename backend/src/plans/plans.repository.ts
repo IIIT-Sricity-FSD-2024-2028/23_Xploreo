@@ -77,6 +77,7 @@ export class PlansRepository {
       includesFlight: data.includesFlight ?? true,
       image: data.image ?? '',
       tags: data.tags ?? [],
+      createdByNtaId: data.createdByNtaId,
       itinerary: normalizeStructuredItinerary(data.itinerary, {
         idPrefix: id,
         originCity: data.originCity,
@@ -96,10 +97,17 @@ export class PlansRepository {
     to?: string;
     destination?: string;
     statuses?: string[];
+    createdByNtaId?: string;
   }): { data: Plan[]; total: number; page: number; limit: number } {
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 50;
     let filtered = [...this.plans];
+
+    if (options?.createdByNtaId) {
+      filtered = filtered.filter(
+        (p) => !p.createdByNtaId || p.createdByNtaId === options.createdByNtaId,
+      );
+    }
 
     if (options?.statuses && options.statuses.length > 0) {
       const allowed = options.statuses.map((s) => s.toLowerCase());
@@ -149,9 +157,11 @@ export class PlansRepository {
     const idx = this.plans.findIndex((p) => p.id === id);
     if (idx === -1) return undefined;
     data = stripUndefined(data) as typeof data;
+    const { createdByNtaId: _ignoredCreator, ...safeData } = data;
     this.plans[idx] = {
       ...this.plans[idx],
-      ...data,
+      ...safeData,
+      createdByNtaId: this.plans[idx].createdByNtaId,
       itinerary: data.itinerary
         ? normalizeStructuredItinerary(data.itinerary, {
             idPrefix: id,

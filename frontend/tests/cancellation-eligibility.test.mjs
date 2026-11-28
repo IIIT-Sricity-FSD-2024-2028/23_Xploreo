@@ -307,7 +307,7 @@ describe('Traveller Portal - Booking Cancellation Date & Time Validation', () =>
   describe('4. UI Component Rendering Verification', () => {
     test('BookingDetailsView renders disabled Cancel button and expired date message for past booking', async () => {
       const BookingDetailsView = (await vite.ssrLoadModule('/src/pages/traveller/BookingDetailsView.jsx')).default;
-      const bookingsSlice = (await vite.ssrLoadModule('/src/features/bookingsSlice.js')).default;
+      const bookingsSlice = (await vite.ssrLoadModule('/src/store/traveller/bookingsSlice.js')).default;
       const notificationsSlice = (await vite.ssrLoadModule('/src/features/notificationsSlice.js')).default;
 
       const store = configureStore({
@@ -348,7 +348,7 @@ describe('Traveller Portal - Booking Cancellation Date & Time Validation', () =>
 
     test('BookingDetailsView renders active Cancel button for future booking', async () => {
       const BookingDetailsView = (await vite.ssrLoadModule('/src/pages/traveller/BookingDetailsView.jsx')).default;
-      const bookingsSlice = (await vite.ssrLoadModule('/src/features/bookingsSlice.js')).default;
+      const bookingsSlice = (await vite.ssrLoadModule('/src/store/traveller/bookingsSlice.js')).default;
       const notificationsSlice = (await vite.ssrLoadModule('/src/features/notificationsSlice.js')).default;
 
       const store = configureStore({
@@ -385,14 +385,12 @@ describe('Traveller Portal - Booking Cancellation Date & Time Validation', () =>
 
     test('CancellationModal displays warning banner and disables confirmation for past bookings', async () => {
       const CancellationModal = (await vite.ssrLoadModule('/src/components/checkout/CancellationModal.jsx')).default;
-      const bookingsSlice = (await vite.ssrLoadModule('/src/features/bookingsSlice.js')).default;
-      const tripsSlice = (await vite.ssrLoadModule('/src/features/tripsSlice.js')).default;
+      const { travellerReducer } = await vite.ssrLoadModule('/src/store/traveller/index.js');
       const notificationsSlice = (await vite.ssrLoadModule('/src/features/notificationsSlice.js')).default;
 
       const store = configureStore({
         reducer: {
-          bookings: bookingsSlice,
-          trips: tripsSlice,
+          traveller: travellerReducer,
           notifications: notificationsSlice,
         },
       });

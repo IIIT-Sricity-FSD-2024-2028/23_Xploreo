@@ -1,185 +1,18 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from '@/features/authSlice.js';
 import {
-  cancelBooking,
-  createBooking,
-  getBooking,
-  getHotel,
-  listHotelBookings,
-  retryHotelRefund,
-} from '../services/hotels.api.js';
-import {
-  cancelExperienceBooking,
-  createExperienceBooking,
-  listExperienceBookings,
-  retryExperienceRefund,
-  updateExperienceBookingStatus,
-} from '../services/partners.api.js';
-import {
-  cancelExperienceGuide,
-  listExperienceGuides,
-  requestExperienceGuide,
-} from '../services/tripGuides.api.js';
-import { loginUser, logoutSession, logoutUser, registerUser, restoreAuthSession, setAuthUser } from './authSlice.js';
-import { processCheckoutPayment } from './checkoutSlice.js';
-
-export const fetchTravellerBookings = createAsyncThunk(
-  'bookings/fetchTravellerBookings',
-  async (_, { rejectWithValue }) => {
-    try {
-      const [expData, hotelData] = await Promise.all([
-        listExperienceBookings(),
-        listHotelBookings(),
-      ]);
-
-      const expList = (Array.isArray(expData) ? expData : expData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'experience',
-      }));
-
-      const hotelList = (Array.isArray(hotelData) ? hotelData : hotelData?.data || []).map((b) => ({
-        ...b,
-        bookingType: 'hotel',
-      }));
-
-      return [...expList, ...hotelList];
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to load bookings from server.');
-    }
-  },
-);
-
-export const fetchBookingDetail = createAsyncThunk(
-  'bookings/fetchBookingDetail',
-  async (bookingId, { rejectWithValue }) => {
-    try {
-      if (!bookingId || String(bookingId).trim() === '') {
-        return rejectWithValue({ status: 400, message: 'Invalid booking reference ID provided.' });
-      }
-      const bookingData = await getBooking(bookingId);
-      let hotel = null;
-      if (bookingData?.hotelId) {
-        try {
-          hotel = await getHotel(bookingData.hotelId);
-        } catch {
-          hotel = null;
-        }
-      }
-      return { booking: bookingData, hotel };
-    } catch (error) {
-      return rejectWithValue({
-        status: error?.status || error?.response?.status || 500,
-        message: error?.message || 'Failed to load booking details.',
-      });
-    }
-  },
-);
-
-export const createHotelBooking = createAsyncThunk(
-  'bookings/createHotelBooking',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const booking = await createBooking(payload);
-      return { ...booking, bookingType: 'hotel' };
-    } catch (error) {
-      return rejectWithValue({
-        status: error?.status || error?.response?.status || 500,
-        message: error?.message || 'Failed to complete booking. Please review your details.',
-        fieldErrors: error?.fieldErrors || error?.errors || null,
-      });
-    }
-  },
-);
-
-export const createExperienceSlotBooking = createAsyncThunk(
-  'bookings/createExperienceSlotBooking',
-  async (payload, { rejectWithValue }) => {
-    try {
-      const booking = await createExperienceBooking(payload);
-      return { ...booking, bookingType: 'experience' };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to book this experience. Please try again.');
-    }
-  },
-);
-
-export const cancelTravellerBooking = createAsyncThunk(
-  'bookings/cancelTravellerBooking',
-  async ({ id, bookingType, reason }, { rejectWithValue }) => {
-    try {
-      const result = bookingType === 'experience'
-        ? await cancelExperienceBooking(id, { reason })
-        : await cancelBooking(id, { reason });
-      return { id, bookingType, result };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to cancel booking. Please try again.');
-    }
-  },
-);
-
-export const retryBookingRefund = createAsyncThunk(
-  'bookings/retryBookingRefund',
-  async ({ id, bookingType }, { rejectWithValue }) => {
-    try {
-      const result = bookingType === 'experience'
-        ? await retryExperienceRefund(id)
-        : await retryHotelRefund(id);
-      return { id, bookingType, result };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to retry refund.');
-    }
-  },
-);
-
-export const confirmExperienceBookingEnd = createAsyncThunk(
-  'bookings/confirmExperienceBookingEnd',
-  async (bookingId, { rejectWithValue }) => {
-    try {
-      const updated = await updateExperienceBookingStatus(bookingId, 'COMPLETED');
-      return { bookingId, updated };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Failed to confirm end request.');
-    }
-  },
-);
-
-export const requestGuideForExperienceBooking = createAsyncThunk(
-  'bookings/requestGuideForExperience',
-  async ({ bookingId, guideId }, { rejectWithValue }) => {
-    try {
-      const updated = await requestExperienceGuide(bookingId, guideId);
-      return { bookingId, updated };
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Could not send the request.');
-    }
-  },
-);
-
-export const fetchExperienceAvailableGuides = createAsyncThunk(
-  'bookings/fetchExperienceAvailableGuides',
-  async (bookingId, { rejectWithValue }) => {
-    try {
-      const guides = await listExperienceGuides(bookingId);
-      return { bookingId, guides: Array.isArray(guides) ? guides : [] };
-    } catch (error) {
-      return rejectWithValue({
-        bookingId,
-        message: error?.message || 'Could not load guides.',
-      });
-    }
-  },
-);
-
-export const cancelGuideForExperienceBooking = createAsyncThunk(
-  'bookings/cancelGuideForExperience',
-  async (bookingId, { rejectWithValue }) => {
-    try {
-      await cancelExperienceGuide(bookingId);
-      return bookingId;
-    } catch (error) {
-      return rejectWithValue(error?.message || 'Could not cancel the request.');
-    }
-  },
-);
+  cancelGuideForExperienceBooking,
+  cancelTravellerBooking,
+  confirmExperienceBookingEnd,
+  createExperienceSlotBooking,
+  createHotelBooking,
+  fetchBookingDetail,
+  fetchExperienceAvailableGuides,
+  fetchTravellerBookings,
+  requestGuideForExperienceBooking,
+  retryBookingRefund,
+} from './bookingsThunks.js';
+import { processCheckoutPayment } from './checkoutThunks.js';
 
 function applyBookingPatch(state, id, patch) {
   state.items = state.items.map((item) => (item.id === id ? { ...item, ...patch } : item));
@@ -209,7 +42,7 @@ const initialState = {
 };
 
 const bookingsSlice = createSlice({
-  name: 'bookings',
+  name: 'traveller/bookings',
   initialState,
   reducers: {
     setSelectedBookingId(state, action) {
@@ -447,25 +280,5 @@ export const {
   clearBookingCancellationResult,
   resetBookingsState,
 } = bookingsSlice.actions;
-
-export const selectBookingsList = (state) => state.bookings.items;
-export const selectBookingsLoading = (state) => state.bookings.loading;
-export const selectBookingsError = (state) => state.bookings.error;
-export const selectSelectedBookingId = (state) => state.bookings.selectedBookingId;
-export const selectSelectedBookingDetail = (state) => state.bookings.selectedBookingDetail;
-export const selectSelectedBookingHotel = (state) => state.bookings.selectedBookingHotel;
-export const selectBookingDetailLoading = (state) => state.bookings.detailLoading;
-export const selectBookingDetailError = (state) => state.bookings.detailError;
-export const selectBookingActionLoading = (state) => Boolean(state.bookings.actionLoading);
-export const selectBookingActionError = (state) => state.bookings.actionError || null;
-export const selectBookingCancellationResult = (state) => state.bookings.lastCancellation || null;
-export const selectBookingGuideActionLoading = (state) => Boolean(state.bookings.guideActionLoading);
-export const selectBookingGuideActionError = (state) => state.bookings.guideActionError || null;
-export const selectExperienceAvailableGuides = (state, bookingId) =>
-  state.bookings.availableGuidesByBookingId?.[bookingId] ?? null;
-export const selectExperienceGuidesLoading = (state, bookingId) =>
-  Boolean(state.bookings.availableGuidesLoading?.[bookingId]);
-export const selectExperienceGuidesError = (state, bookingId) =>
-  state.bookings.availableGuidesError?.[bookingId] || null;
 
 export default bookingsSlice.reducer;

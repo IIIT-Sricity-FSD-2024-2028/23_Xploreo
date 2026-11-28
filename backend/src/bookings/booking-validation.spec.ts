@@ -333,7 +333,7 @@ describe('Platform-Wide Booking Validation Suite', () => {
     it('rejects unknown planId (no allPlans[0] fallback), unavailable plan, past date, and multiplies price by travellers', async () => {
       const ctx = await createTestingContext();
       const plans = ctx.plansRepository.findAll().data;
-      const availablePlan = plans.find((p) => p.status === 'available');
+      const availablePlan = plans.find((p) => p.status === 'available' && p.destination === 'Jaipur');
       expect(availablePlan).toBeDefined();
 
       // Unknown planId must throw NotFoundException instead of falling back to allPlans[0]
@@ -383,7 +383,7 @@ describe('Platform-Wide Booking Validation Suite', () => {
           flight: null,
           hotel: {
             hotelId: 'HP-JAI-001',
-            roomType: 'Deluxe Room',
+            roomType: 'Maharaja Suite',
             checkInDate: futureIso(10),
             checkOutDate: futureIso(12),
           },
