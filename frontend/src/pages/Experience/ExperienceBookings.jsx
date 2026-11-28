@@ -204,7 +204,7 @@ export default function ExperienceBookings() {
                 <p id="modalExperience">{details.experience?.title ?? 'Experience'}</p>
                 <div className="grid-3">
                   <div><p className="label">Date</p><p id="modalDate">{longDate(details.date)}</p></div>
-                  <div><p className="label">Time</p><p id="modalTime">{details.time}</p></div>
+                  <div><p className="label">Time</p><p id="modalTime">{details.time || '—'}</p></div>
                   <div><p className="label">Guests</p><p id="modalGuests">{details.participants} guests</p></div>
                 </div>
               </div>

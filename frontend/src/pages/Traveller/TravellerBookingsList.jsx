@@ -206,10 +206,10 @@ function TravellerBookingsCore({
       (booking.status && booking.status.toUpperCase() === activeTab);
 
     const title = isPackage
-      ? (booking.itinerary?.day1?.hotel?.name || `Holiday Package #${booking.planId || booking.id}`)
+      ? (booking.planTitle || booking.itinerary?.day1?.hotel?.name || 'Holiday Package')
       : (booking.hotel?.name || booking.experience?.title || booking.guestName || '');
     const dest = isPackage
-      ? (booking.currentLocation || '')
+      ? (booking.destination || booking.currentLocation || '')
       : (booking.hotel?.city || booking.experience?.destination || '');
     const id = booking.id || '';
     const query = searchQuery.trim().toLowerCase();
@@ -462,12 +462,12 @@ function TravellerBookingsCore({
               const isDemo = !!booking.isDemo || booking.source === 'mock';
 
               const title = isPackage
-                ? (booking.planTitle || `Holiday Package (${booking.planId || booking.id})`)
+                ? (booking.planTitle || 'Holiday Package')
                 : isHotel
                   ? hotel.name
                   : (exp.title || `Booking for ${booking.guestName}`);
               const location = isPackage
-                ? (booking.currentLocation || booking.itinerary?.day1?.hotel?.name || 'India')
+                ? (booking.destination || booking.currentLocation || booking.itinerary?.day1?.hotel?.name || 'India')
                 : isHotel
                   ? hotel.city
                   : (exp.destination || 'Destination');

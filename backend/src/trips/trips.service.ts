@@ -419,7 +419,13 @@ export class TripsService {
       }
     }
 
-    return this.withGuide(trip);
+    return {
+      ...this.withGuide(trip),
+      planTitle: this.plansRepository.findById(trip.planId)?.title,
+      destination:
+        this.plansRepository.findById(trip.planId)?.destination ||
+        trip.currentLocation,
+    };
   }
 
   findNtaPackageBookings(actor?: { userId?: string; role?: string; region?: string }) {
@@ -700,6 +706,14 @@ export class TripsService {
               nextExpBookingId = `${baseExpBookingId}-r${expRetry++}`;
             }
 
+            const timeMatch =
+              /(?:T|\s)(\d{2}:\d{2})/.exec(String(exp.startsAt || '')) ??
+              /^(\d{2}:\d{2})$/.exec(String(exp.startsAt || '').trim());
+            const slotTime = experience.slots?.find(
+              (s) => String(s.date).slice(0, 10) === scheduledDate,
+            )?.time;
+            const scheduledTime = timeMatch?.[1] || slotTime || undefined;
+
             const created = this.experienceBookingsRepository.create({
               id: nextExpBookingId,
               experienceId: experience.id,
@@ -708,6 +722,7 @@ export class TripsService {
               email,
               phone,
               date: scheduledDate,
+              time: scheduledTime,
               participants: travellersCount,
               totalAmount: 0,
               tripId: trip.id,
@@ -920,7 +935,14 @@ export class TripsService {
     if (actor?.role === 'traveller' && actor.userId !== travellerId) {
       throw new ForbiddenException('You can only view your own trips.');
     }
-    return this.tripsRepository.findByTraveller(travellerId).map((t) => this.withGuide(t));
+    return this.tripsRepository.findByTraveller(travellerId).map((t) => {
+      const plan = this.plansRepository.findById(t.planId);
+      return {
+        ...this.withGuide(t),
+        planTitle: plan?.title,
+        destination: plan?.destination || t.currentLocation,
+      };
+    });
   }
 
   findByGuide(guideId: string, actor?: { userId?: string; role?: string }) {

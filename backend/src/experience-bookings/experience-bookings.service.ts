@@ -83,6 +83,16 @@ export class ExperienceBookingsService {
     }
   }
 
+  private resolveBookingTime(
+    booking: ExperienceBooking,
+    experience?: { slots?: Array<{ date: string; time?: string }> },
+  ): string | undefined {
+    if (booking.time) return booking.time;
+    const dateKey = String(booking.date ?? '').slice(0, 10);
+    if (!dateKey || !experience?.slots?.length) return undefined;
+    return experience.slots.find((s) => String(s.date).slice(0, 10) === dateKey)?.time;
+  }
+
   // Once a guideId is attached to a booking (the traveller legitimately picked that guide),
   // expose their contact info on the booking itself — bypasses TravellerService's stricter
   // contact-redaction rule, which only knows about Trip relationships, not Experience bookings.
@@ -242,10 +252,14 @@ export class ExperienceBookingsService {
       .findByExperienceIds(
         partnerExperiences.map((experience) => experience.id),
       )
-      .map((booking) => ({
-        ...booking,
-        experience: experienceById.get(booking.experienceId),
-      }));
+      .map((booking) => {
+        const experience = experienceById.get(booking.experienceId);
+        return {
+          ...booking,
+          time: this.resolveBookingTime(booking, experience),
+          experience,
+        };
+      });
   }
 
   cancel(
@@ -358,9 +372,11 @@ export class ExperienceBookingsService {
       }
     }
 
+    const resolvedExp = this.experiencesRepository.findById(booking.experienceId);
     return {
       ...updated,
-      experience: this.experiencesRepository.findById(booking.experienceId),
+      time: updated ? this.resolveBookingTime(updated, resolvedExp) : undefined,
+      experience: resolvedExp,
       guide: updated ? this.guideContactFor(updated) : undefined,
     };
   }
@@ -405,9 +421,11 @@ export class ExperienceBookingsService {
       });
     }
 
+    const resolvedExp = this.experiencesRepository.findById(booking.experienceId);
     return {
       ...updated,
-      experience: this.experiencesRepository.findById(booking.experienceId),
+      time: updated ? this.resolveBookingTime(updated, resolvedExp) : undefined,
+      experience: resolvedExp,
       guide: updated ? this.guideContactFor(updated) : undefined,
     };
   }
@@ -459,9 +477,11 @@ export class ExperienceBookingsService {
       });
     }
 
+    const resolvedExp = this.experiencesRepository.findById(booking.experienceId);
     return {
       ...updated,
-      experience: this.experiencesRepository.findById(booking.experienceId),
+      time: updated ? this.resolveBookingTime(updated, resolvedExp) : undefined,
+      experience: resolvedExp,
       guide: updated ? this.guideContactFor(updated) : undefined,
     };
   }

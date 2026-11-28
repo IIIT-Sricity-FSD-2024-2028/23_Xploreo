@@ -71,9 +71,9 @@ export default function BookingDetailsView({
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
             <div>
               <span className="trav-page-eyebrow">Holiday Package · #{booking.id}</span>
-              <h2 style={{ margin: '4px 0' }}>{booking.planTitle || `Package #${booking.planId || booking.id}`}</h2>
+              <h2 style={{ margin: '4px 0' }}>{booking.planTitle || 'Holiday Package'}</h2>
               <p style={{ margin: 0, color: '#64748b' }}>
-                Destination: {booking.currentLocation || itineraryHotel?.name || 'India'} · {booking.travellers || booking.guests || 1} Traveller(s)
+                Destination: {booking.destination || booking.currentLocation || itineraryHotel?.name || 'India'} · {booking.travellers || booking.guests || 1} Traveller(s)
               </p>
             </div>
             <div style={{ textAlign: 'right' }}>
